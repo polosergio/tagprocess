@@ -1,4 +1,7 @@
+var ViewManager = require('./utilities/viewmanager');
+
 module.exports = {
+	ViewManager: ViewManager,
 	locations: [
 		{
 			'href': '#test',
