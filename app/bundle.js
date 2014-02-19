@@ -12544,41 +12544,40 @@ return jQuery;
 
 },{}],11:[function(require,module,exports){
 var $ = require('jquery'),
-	Backbone = require('backbone');
+	Backbone = require('backbone'),
+	FooterTemplate = require('../templates/footer.hbs');
 
 module.exports = {
 	View: Backbone.View.extend({
 		initialize: function () {
+			this.template = FooterTemplate();
 			this.render();
 		},
 		render: function () {
-			this.$el.empty().append('TESTING FOOTER VIEW');
+			this.$el.empty().append(this.template);
 		}
 	})
 };
 
-},{"backbone":1,"jquery":10}],12:[function(require,module,exports){
+},{"../templates/footer.hbs":17,"backbone":1,"jquery":10}],12:[function(require,module,exports){
 var $ = require('jquery'),
 	Backbone = require('backbone'),
-	HeaderTemplate = require('../templates/headerTemplate.hbs'),
-	NavBar = require('./navbar');
+	HeaderTemplate = require('../templates/headerTemplate.hbs');
 
 module.exports = {
 	View: Backbone.View.extend({
 		initialize: function () {
-			this.navbar = new NavBar.View();
-			this.template = HeaderTemplate({data: 'header test in here'});
+			this.template = HeaderTemplate();
 			this.render();
 		},
 		render: function () {
 			var template = this.template;
 			this.$el.empty().append(template);
-			this.$('.navbar').append(this.navbar.$el);
 		}
 	})
 };
 
-},{"../templates/headerTemplate.hbs":17,"./navbar":13,"backbone":1,"jquery":10}],13:[function(require,module,exports){
+},{"../templates/headerTemplate.hbs":18,"backbone":1,"jquery":10}],13:[function(require,module,exports){
 var $ = require('jquery'),
 	Backbone = require('backbone'),
 	TagProcess = require('./tagprocess'),
@@ -12596,7 +12595,7 @@ module.exports = {
 	})
 };
 
-},{"../templates/navbar.hbs":18,"./tagprocess":15,"backbone":1,"jquery":10}],14:[function(require,module,exports){
+},{"../templates/navbar.hbs":19,"./tagprocess":15,"backbone":1,"jquery":10}],14:[function(require,module,exports){
 var Backbone = require('backbone'),
 	TagProcess = require('./tagprocess');
 
@@ -12642,30 +12641,37 @@ var	$ = require('jquery'),
 	TagProcess = require('./js/tagprocess'),
 	Router = require('./js/router'),
 	Header = require('./js/header'),
+	NavBar = require('./js/navbar'),
 	Footer = require('./js/footer'),
 	header = new Header.View(),
+	navbar = new NavBar.View(),
 	footer = new Footer.View();
 
 
 $('#header').append(header.$el);
+$('#navbar').append(navbar.$el);
 $('#footer').append(footer.$el);
 Router.initialize();
 
-},{"./js/footer":11,"./js/header":12,"./js/router":14,"./js/tagprocess":15,"jquery":10}],17:[function(require,module,exports){
+},{"./js/footer":11,"./js/header":12,"./js/navbar":13,"./js/router":14,"./js/tagprocess":15,"jquery":10}],17:[function(require,module,exports){
 var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
   this.compilerInfo = [4,'>= 1.0.0'];
 helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
-  var buffer = "", stack1, helper, functionType="function", escapeExpression=this.escapeExpression;
+  
 
 
-  buffer += "<article>\n	<div>";
-  if (helper = helpers.data) { stack1 = helper.call(depth0, {hash:{},data:data}); }
-  else { helper = (depth0 && depth0.data); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
-  buffer += escapeExpression(stack1)
-    + "</div>\n	<div class=\"navbar\"></div>\n</article>\n";
-  return buffer;
+  return "<div class=\"container\">\n	<div class=\"text-center\">\n		All rights reserved\n	</div>\n</div>\n";
   });
 },{"handlebars/runtime":9}],18:[function(require,module,exports){
+var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
+  this.compilerInfo = [4,'>= 1.0.0'];
+helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
+  
+
+
+  return "<h1>TagProcess LLC</h1>\n";
+  });
+},{"handlebars/runtime":9}],19:[function(require,module,exports){
 var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
   this.compilerInfo = [4,'>= 1.0.0'];
 helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
