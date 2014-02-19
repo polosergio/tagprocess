@@ -12580,20 +12580,23 @@ module.exports = {
 
 },{"../templates/headerTemplate.hbs":17,"./navbar":13,"backbone":1,"jquery":10}],13:[function(require,module,exports){
 var $ = require('jquery'),
-	Backbone = require('backbone');
+	Backbone = require('backbone'),
+	TagProcess = require('./tagprocess'),
+	NavBarTemplate = require('../templates/navbar.hbs');
 
 module.exports = {
 	View: Backbone.View.extend({
 		initialize: function () {
+			this.template = NavBarTemplate({locations: TagProcess.locations});
 			this.render();
 		},
 		render: function () {
-			this.$el.empty().append('TESTING NAVBAR VIEW');
+			this.$el.empty().append(this.template);
 		}
 	})
 };
 
-},{"backbone":1,"jquery":10}],14:[function(require,module,exports){
+},{"../templates/navbar.hbs":18,"./tagprocess":15,"backbone":1,"jquery":10}],14:[function(require,module,exports){
 var Backbone = require('backbone'),
 	TagProcess = require('./tagprocess');
 
@@ -12621,7 +12624,18 @@ module.exports = (function () {
 }());
 
 },{"./tagprocess":15,"backbone":1}],15:[function(require,module,exports){
-module.exports = {};
+module.exports = {
+	locations: [
+		{
+			'href': '#test',
+			'name': 'Test'
+		},
+		{
+			'href': '#home',
+			'name': 'Home'
+		}
+	]
+};
 
 },{}],16:[function(require,module,exports){
 var	$ = require('jquery'),
@@ -12644,11 +12658,38 @@ helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
   var buffer = "", stack1, helper, functionType="function", escapeExpression=this.escapeExpression;
 
 
-  buffer += "<div>";
+  buffer += "<article>\n	<div>";
   if (helper = helpers.data) { stack1 = helper.call(depth0, {hash:{},data:data}); }
   else { helper = (depth0 && depth0.data); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
   buffer += escapeExpression(stack1)
-    + "</div>\n";
+    + "</div>\n	<div class=\"navbar\"></div>\n</article>\n";
+  return buffer;
+  });
+},{"handlebars/runtime":9}],18:[function(require,module,exports){
+var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
+  this.compilerInfo = [4,'>= 1.0.0'];
+helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
+  var buffer = "", stack1, functionType="function", escapeExpression=this.escapeExpression, self=this;
+
+function program1(depth0,data) {
+  
+  var buffer = "", stack1, helper;
+  buffer += "\n				<li><a href=\"";
+  if (helper = helpers.href) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.href); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "\">";
+  if (helper = helpers.name) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.name); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "</a></li>\n				";
+  return buffer;
+  }
+
+  buffer += "<nav class=\"navbar navbar-default\" role=\"navigation\">\n	<div class=\"container-fluid\">\n		<div class=\"navbar-header\">\n			<button type=\"button\" class=\"navbar-toggle\" data-toggle=\"collapse\" data-target=\"#nav-links\">\n				<span class=\"sr-only\">Toggle Navigation</span>\n				<span class=\"icon-bar\"></span>\n				<span class=\"icon-bar\"></span>\n				<span class=\"icon-bar\"></span>\n			</button>\n			<a class=\"navbar-brand\" href=\"#home\">TagProcess</a>\n		</div>\n		<div class=\"collapse navbar-collapse\" id=\"nav-lnks\">\n			<ul class=\"nav navbar-nav\">\n				";
+  stack1 = helpers.each.call(depth0, (depth0 && depth0.locations), {hash:{},inverse:self.noop,fn:self.program(1, program1, data),data:data});
+  if(stack1 || stack1 === 0) { buffer += stack1; }
+  buffer += "\n			</ul>\n		</div>\n	</div>\n</nav>\n";
   return buffer;
   });
 },{"handlebars/runtime":9}]},{},[16])
