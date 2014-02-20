@@ -1,10 +1,11 @@
-var $ = require('jquery'),
-    _ = require('underscore'),
+var $ = jQuery = require('jquery'),
+	_ = require('underscore'),
 	Backbone = require('backbone'),
 	TagProcess = require('../tagprocess'),
 	NavBarTemplate = require('../../templates/navbar.hbs'),
     NavButton = require('./navbutton');
 
+require('../../libs/bootstrap/bootstrap.js');
 module.exports = {
     Collection: Backbone.Collection.extend({
         model: NavButton.Model
