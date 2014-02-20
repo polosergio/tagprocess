@@ -1,6 +1,6 @@
 var $ = require('jquery'),
 	Backbone = require('backbone'),
-	HeaderTemplate = require('../../templates/headerTemplate.hbs');
+	HeaderTemplate = require('../../templates/header.hbs');
 
 module.exports = {
 	View: Backbone.View.extend({
