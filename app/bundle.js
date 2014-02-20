@@ -27884,13 +27884,14 @@ module.exports = {
 };
 
 },{"../../templates/header.hbs":36,"backbone":1,"jquery":13}],23:[function(require,module,exports){
-var Backbone = require('backbone');
-'use strict';
+var Backbone = require('backbone'),
+	HomeTemplate = require('../../templates/home.hbs');
 
+'use strict';
 module.exports = {
     View: Backbone.View.extend({
         initialize: function () {
-            this.template = 'HOME PAGE CONTENT';
+            this.template = HomeTemplate();
         },
         render: function () {
             this.$el.empty().append(this.template);
@@ -27900,7 +27901,7 @@ module.exports = {
     })
 };
 
-},{"backbone":1}],24:[function(require,module,exports){
+},{"../../templates/home.hbs":37,"backbone":1}],24:[function(require,module,exports){
 var Backbone = require('backbone'),
 	TagProcess = require('../tagprocess'),
 	LoginTemplate = require('../../templates/login.hbs');
@@ -27981,7 +27982,7 @@ module.exports = {
 	})
 };
 
-},{"../../templates/login.hbs":37,"../tagprocess":30,"backbone":1}],25:[function(require,module,exports){
+},{"../../templates/login.hbs":38,"../tagprocess":30,"backbone":1}],25:[function(require,module,exports){
 var $ = jQuery = require('jquery'),
 	_ = require('underscore'),
 	Backbone = require('backbone'),
@@ -28027,7 +28028,7 @@ module.exports = {
 	})
 };
 
-},{"../../libs/bootstrap/bootstrap.js":33,"../../templates/navbar.hbs":38,"../tagprocess":30,"./navbutton":26,"backbone":1,"jquery":13,"underscore":14}],26:[function(require,module,exports){
+},{"../../libs/bootstrap/bootstrap.js":33,"../../templates/navbar.hbs":39,"../tagprocess":30,"./navbutton":26,"backbone":1,"jquery":13,"underscore":14}],26:[function(require,module,exports){
 var $ = require('jquery'),
     Backbone = require('backbone'),
     ButtonTemplate = require('../../templates/navbutton.hbs');
@@ -28058,7 +28059,7 @@ module.exports = (function () {
     }
 }());
 
-},{"../../templates/navbutton.hbs":39,"backbone":1,"jquery":13}],27:[function(require,module,exports){
+},{"../../templates/navbutton.hbs":40,"backbone":1,"jquery":13}],27:[function(require,module,exports){
 var Backbone = require('backbone');
 
 module.exports = {
@@ -30280,7 +30281,7 @@ helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
   
 
 
-  return "<div id=\"loginbox\" class=\"col-md-6 col-md-offset-3 col-sm-8 col-sm-offset-2\">\n	<div class=\"panel panel-info\" >\n		<div class=\"panel-heading\">\n			<div class=\"panel-title\">Sign In</div>\n		</div>\n		<div class=\"panel-body\">\n			<div id=\"login-alert\" class=\"alert alert-danger hide col-sm-12\"></div>\n			<form id=\"loginform\" class=\"form-horizontal\" role=\"form\">\n				<div class=\"form-group col-sm-12\">\n					<div class=\"input-group\">\n						<span class=\"input-group-addon\"><i class=\"glyphicon glyphicon-user\"></i></span>\n						<input id=\"username\" type=\"text\" class=\"form-control\" name=\"username\" value=\"\" placeholder=\"username\" required>                                   \n					</div>\n				</div>\n				<div class=\"form-group col-sm-12\">\n					<div class=\"input-group\">\n						<span class=\"input-group-addon\"><i class=\"glyphicon glyphicon-lock\"></i></span>\n						<input id=\"password\" type=\"password\" class=\"form-control\" name=\"password\" placeholder=\"password\" required>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<div class=\"col-sm-12 controls\">\n						<button id=\"btn-login\" class=\"btn btn-info btn-block\" type=\"submit\">Login  </a>\n					</div>\n				</div>\n			</form> \n		</div>                     \n	</div>  \n</div>\n";
+  return "<div class=\"container-fluid\">\n	<div class=\"row\">\n		<div class=\"col-md-6\">\n			<img class=\"img-rounded img-responsive pull-left\" src=\"app/images/header_img1.jpg\">\n			<h3 style=\"margin-top: 0px;\">We have over 11 years of experience in the process serving.</h3>\n		</div>\n		<div class=\"col-md-6\">                                                                                                                                                                                                                                              \n			<h3 style=\"margin-top: 0px;\">Changing the way of process serving</h3>                                                                                                                                                                                            \n			<h3>GREAT CUSTOMER SERVICE</h3>                                                                                                                                                                                                         \n			<p class=\"text-info\">With over 11 years of experience, TAG Process Service llc<br>                                                                                                                                                       \n				We specialize in serving all documents. Through our technology <br>\n				Which establish us as the leader in the process industry.</p>                                                                                                                                                                                                                                      \n		</div>\n	</div>\n	<hr>\n	<div class=\"row\">\n		<div class=\"col-md-6\">                                                                                                                                                                                                                                              \n			<img class=\"img-rounded img-responsive pull-left\" src=\"app/images/technology.png\">                                                                                                                                                                              \n			<h3 style=\"margin-top: 0px;\">We are the leaders in Technology in the Process Serving Industry.</h3>                                                                                                                                                             \n		</div>  \n		<div class=\"col-md-6\">\n			<img class=\"img-rounded img-response pull-right\" src=\"app/images/ts_logo.jpg\">\n			<h3 style=\"margin-top: 0px;\">We are looking forward to working with you.</h3>\n			<p class=\"text-info\">For more information on our technology click <a href=\"#aboutus\">About Us</a> </p>\n			<p class=\"text-info\">Here is a complete company directory <br>\n				Or contact us via email by completing the <br>\n				<a href=\"#contactus\">contact us</a> form. </p>\n		</div>\n	</div>\n</div>\n";
   });
 },{"handlebars/runtime":10}],38:[function(require,module,exports){
 var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
@@ -30289,9 +30290,18 @@ helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
   
 
 
-  return "<nav class=\"navbar navbar-default\" role=\"navigation\">\n	<div class=\"container-fluid\">\n		<div class=\"navbar-header\">\n			<button type=\"button\" class=\"navbar-toggle\" data-toggle=\"collapse\" data-target=\"#nav-links\">\n				<span class=\"sr-only\">Toggle Navigation</span>\n				<span class=\"icon-bar\"></span>\n				<span class=\"icon-bar\"></span>\n				<span class=\"icon-bar\"></span>\n			</button>\n			<a class=\"navbar-brand\" href=\"#home\">TagProcess</a>\n		</div>\n		<div class=\"collapse navbar-collapse\" id=\"nav-links\">\n			<button type=\"button\" onclick=\"location.href='#login'\" class=\"btn btn-default navbar-btn navbar-right\">Sign In</button>\n			<ul class=\"nav navbar-nav\"></ul>\n		</div>\n	</div>\n</nav>\n";
+  return "<div id=\"loginbox\" class=\"col-md-6 col-md-offset-3 col-sm-8 col-sm-offset-2\">\n	<div class=\"panel panel-info\" >\n		<div class=\"panel-heading\">\n			<div class=\"panel-title\">Sign In</div>\n		</div>\n		<div class=\"panel-body\">\n			<div id=\"login-alert\" class=\"alert alert-danger hide col-sm-12\"></div>\n			<form id=\"loginform\" class=\"form-horizontal\" role=\"form\">\n				<div class=\"form-group col-sm-12\">\n					<div class=\"input-group\">\n						<span class=\"input-group-addon\"><i class=\"glyphicon glyphicon-user\"></i></span>\n						<input id=\"username\" type=\"text\" class=\"form-control\" name=\"username\" value=\"\" placeholder=\"username\" required>                                   \n					</div>\n				</div>\n				<div class=\"form-group col-sm-12\">\n					<div class=\"input-group\">\n						<span class=\"input-group-addon\"><i class=\"glyphicon glyphicon-lock\"></i></span>\n						<input id=\"password\" type=\"password\" class=\"form-control\" name=\"password\" placeholder=\"password\" required>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<div class=\"col-sm-12 controls\">\n						<button id=\"btn-login\" class=\"btn btn-info btn-block\" type=\"submit\">Login  </a>\n					</div>\n				</div>\n			</form> \n		</div>                     \n	</div>  \n</div>\n";
   });
 },{"handlebars/runtime":10}],39:[function(require,module,exports){
+var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
+  this.compilerInfo = [4,'>= 1.0.0'];
+helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
+  
+
+
+  return "<nav class=\"navbar navbar-default\" role=\"navigation\">\n	<div class=\"container-fluid\">\n		<div class=\"navbar-header\">\n			<button type=\"button\" class=\"navbar-toggle\" data-toggle=\"collapse\" data-target=\"#nav-links\">\n				<span class=\"sr-only\">Toggle Navigation</span>\n				<span class=\"icon-bar\"></span>\n				<span class=\"icon-bar\"></span>\n				<span class=\"icon-bar\"></span>\n			</button>\n			<a class=\"navbar-brand\" href=\"#home\">TagProcess</a>\n		</div>\n		<div class=\"collapse navbar-collapse\" id=\"nav-links\">\n			<button type=\"button\" onclick=\"location.href='#login'\" class=\"btn btn-default navbar-btn navbar-right\">Sign In</button>\n			<ul class=\"nav navbar-nav\"></ul>\n		</div>\n	</div>\n</nav>\n";
+  });
+},{"handlebars/runtime":10}],40:[function(require,module,exports){
 var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
   this.compilerInfo = [4,'>= 1.0.0'];
 helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
