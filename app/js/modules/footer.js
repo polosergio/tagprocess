@@ -4,6 +4,9 @@ var $ = require('jquery'),
 
 module.exports = {
 	View: Backbone.View.extend({
+		id: 'footer',
+		className: 'footer',
+		tagName: 'footer',
 		initialize: function () {
 			this.template = FooterTemplate();
 		},

@@ -17,6 +17,6 @@ TagProcess.vent.on('domchange:page', function (options) {
 });
 
 $('#layout').prepend(navbar.render().$el)
-    .prepend(header.render().$el);
-$('#footer').append(footer.render().$el);
+    .prepend(header.render().$el).parent()
+	.append(footer.render().$el);
 Router.initialize();

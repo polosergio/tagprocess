@@ -22,7 +22,6 @@ module.exports = (function () {
                 return this;
             },
             setActive: function () {
-                console.log('test');
                 $(this.el).toggleClass('active', this.model.get('active'));
             }
         })

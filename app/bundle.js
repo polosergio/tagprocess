@@ -1,396 +1,4 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);throw new Error("Cannot find module '"+o+"'")}var f=n[o]={exports:{}};t[o][0].call(f.exports,function(e){var n=t[o][1][e];return s(n?n:e)},f,f.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
-var $ = require('jquery'),
-	Backbone = require('backbone'),
-	FooterTemplate = require('../../templates/footer.hbs');
-
-module.exports = {
-	View: Backbone.View.extend({
-		initialize: function () {
-			this.template = FooterTemplate();
-		},
-		render: function () {
-			this.$el.empty().append(this.template);
-
-            return this;
-		}
-	})
-};
-
-},{"../../templates/footer.hbs":12,"backbone":16,"jquery":25}],2:[function(require,module,exports){
-var $ = require('jquery'),
-	Backbone = require('backbone'),
-	HeaderTemplate = require('../../templates/headerTemplate.hbs');
-
-module.exports = {
-	View: Backbone.View.extend({
-        tagName: 'header',
-        id: 'header',
-        className: 'page-header',
-		initialize: function () {
-			this.template = HeaderTemplate();
-		},
-		render: function () {
-			var template = this.template;
-			this.$el.empty().append(template);
-
-            return this;
-		}
-	})
-};
-
-},{"../../templates/headerTemplate.hbs":13,"backbone":16,"jquery":25}],3:[function(require,module,exports){
-var Backbone = require('backbone');
-'use strict';
-
-module.exports = {
-    View: Backbone.View.extend({
-        initialize: function () {
-            this.template = 'HOME PAGE CONTENT';
-        },
-        render: function () {
-            this.$el.empty().append(this.template);
-
-            return this;
-        }
-    })
-};
-
-},{"backbone":16}],4:[function(require,module,exports){
-var $ = require('jquery'),
-    _ = require('underscore'),
-	Backbone = require('backbone'),
-	TagProcess = require('../tagprocess'),
-	NavBarTemplate = require('../../templates/navbar.hbs'),
-    NavButton = require('./navbutton');
-
-module.exports = {
-    Collection: Backbone.Collection.extend({
-        model: NavButton.Model
-    }),
-	View: Backbone.View.extend({
-        tagName: 'div',
-        className: '',
-        id: 'navbar',
-        template: NavBarTemplate,
-		initialize: function () {
-            this.collection = new module.exports.Collection(TagProcess.locations);
-            this.listenTo(TagProcess.vent, 'domchange:page', this.setActive);
-		},
-		render: function () {
-            var that = this;
-			this.$el.empty().append(this.template());
-            _.each(this.collection.models, function (item) {
-                that.renderButton(item);
-            }, this);
-
-            return this;
-		},
-        renderButton: function (item) {
-            var buttonView = new NavButton.View({
-                model: item
-            });
-            this.$('.navbar-nav').append(buttonView.render().el);
-        },
-        setActive: function (options) {
-            // Optimization needed. See tabNavigation.js
-            console.log(options);
-            _.each(this.collection.models, function (model) {
-                model.set('active', model.get('href') === options.hash);
-            });
-        }
-	})
-};
-
-},{"../../templates/navbar.hbs":14,"../tagprocess":8,"./navbutton":5,"backbone":16,"jquery":25,"underscore":26}],5:[function(require,module,exports){
-var $ = require('jquery'),
-    Backbone = require('backbone'),
-    ButtonTemplate = require('../../templates/navbutton.hbs');
-
-module.exports = (function () {
-    'use strict';
-    return {
-        Model: Backbone.Model.extend({
-            defaults: {
-                active: false
-            }
-        }),
-        View: Backbone.View.extend({
-            tagName: "li",
-            className: "",
-            template: ButtonTemplate,
-            initialize: function () {
-                this.listenTo(this.model, 'change:active', this.setActive);
-            },
-            render: function () {
-                this.$el.html(this.template(this.model.toJSON())).toggleClass('active', this.model.get('active'));
-                return this;
-            },
-            setActive: function () {
-                console.log('test');
-                $(this.el).toggleClass('active', this.model.get('active'));
-            }
-        })
-    }
-}());
-
-},{"../../templates/navbutton.hbs":15,"backbone":16,"jquery":25}],6:[function(require,module,exports){
-var Backbone = require('backbone');
-
-module.exports = {
-    View: Backbone.View.extend({
-        initialize: function () {
-            this.template = 'SERVICES';
-        },
-        render: function () {
-            this.$el.empty().append(this.template);
-
-            return this;
-        }
-    })
-};
-},{"backbone":16}],7:[function(require,module,exports){
-var Backbone = require('backbone'),
-	TagProcess = require('./tagprocess'),
-    _ = require('underscore');
-
-module.exports = (function () {
-	'use strict';
-	var Router = Backbone.Router.extend({
-		routes: {
-			''			    : 'showIndex',
-			'home'		    : 'showIndex',
-			'services'		: 'showServices'
-		},
-		initialize: function () {
-			this.viewTarget = '#content';
-			this.viewManager = new TagProcess.ViewManager({'selector': this.viewTarget});
-		},
-		showIndex: function () {
-            var view = require('./modules/home');
-			this.show({hash: '#home', title: 'Home', view: new view.View()});
-		},
-		showServices: function () {
-			var view = require('./modules/services');
-			this.show({hash: '#services', title: 'Services', view: new view.View()});
-		},
-		show: function (options) {
-			var that = this,
-                settings = _.extend({
-				hash: undefined,
-				title: '',
-				view: undefined,
-				viewOptions: {}
-			}, options);
-            TagProcess.vent.trigger('domchange:page', settings);
-            if (settings.view instanceof Backbone.View) {
-				that.viewManager.showView(settings.view);
-			}
-			return this;
-		}
-	});
-	return {
-		initialize: function () {
-			TagProcess.router = new Router();
-			Backbone.history.start();
-		}
-	};
-}());
-
-},{"./modules/home":3,"./modules/services":6,"./tagprocess":8,"backbone":16,"underscore":26}],8:[function(require,module,exports){
-var $ = require('jquery'),
-    ViewManager = require('./utilities/viewmanager'),
-    Vent = require('./utilities/vent');
-
-module.exports = {
-	ViewManager: ViewManager,
-    $doc: $(document),
-    title: $(document).attr('title'),
-    vent: Vent,
-	locations: [
-		{
-			'href': '#services',
-			'name': 'Services'
-		},
-		{
-			'href': '#technology',
-			'name': 'Technology'
-		},
-        {
-			'href': '#aboutus',
-			'name': 'About Us'
-		},
-        {
-			'href': '#contactus',
-			'name': 'Contact Us'
-		},
-        {
-            'href': '#login',
-            'name': 'Login'
-        },
-        {
-			'href': '#client',
-			'name': 'Client'
-		}
-	]
-};
-
-},{"./utilities/vent":9,"./utilities/viewmanager":10,"jquery":25}],9:[function(require,module,exports){
-var _ = require('underscore'),
-    Backbone = require('backbone');
-
-module.exports = (function () {
-    "use strict";
-    return _.extend({}, Backbone.Events);
-}());
-
-},{"backbone":16,"underscore":26}],10:[function(require,module,exports){
-var _ = require('underscore'),
-    $ = require('jquery'),
-	Backbone = require('backbone');
-module.exports = (function () {
-    'use strict';
-
-    _.extend(Backbone.View.prototype, {
-        addSubViews: function () {
-            if (!_.isArray(this.subViews)) {
-                this.subViews = [];
-            }
-            Array.prototype.push.apply(this.subViews, arguments);
-            return this;
-        },
-        // Zombie Prevention Part 1
-        // Add close function to Backbone.View to prevent "Zombies"
-        // Inspired by: Derick Bailey
-        // See: http://bit.ly/odAfKo
-        close: function () {
-            if (this.__closing) { return this; }
-            this.__closing = true;
-            if (this.beforeClose && _.isFunction(this.beforeClose)) {
-                this.beforeClose();
-            }
-            if (_.isArray(this.subViews)) {
-                _.each(this.subViews, function (subView) {
-                    if (_.isFunction(subView.close)) {
-                        subView.close();
-                    }
-                });
-            }
-            this.remove();
-            this.unbind();
-            this.__closing = false;
-            return this;
-        }
-    });
-    // Zombie Prevention Part 2
-    // Object to manage transitions between views
-    // Inspired by: Derick Bailey
-    // See: http://bit.ly/odAfKo
-    return function (options) {
-        var that = this,
-            allowed = ['selector'],
-            extender,
-            finish,
-            lastSelect;
-        that.selector = 'body';
-        that.$selector = undefined;
-        that.set = function (opts) { extender(opts); finish(); };
-        that.get = function (name) { return that[name]; };
-        that.showView = function (view) {
-            if (this.currentView) {
-                this.currentView.close();
-            }
-            that.$selector.html(view.render().el);
-            this.currentView = view;
-            return view;
-        };
-
-        // Self invoking function that extends this object
-        // with options passed to the constructor
-        extender = (function (opts) {
-            _.extend(that, _.pick(opts, allowed));
-        }(options));
-
-        // Self invoking function for final set up
-        // - Set '$selector' based on 'selector'
-        finish = (function () {
-            if ($.type(that.selector) === 'string' && that.selector !== lastSelect) {
-                that.$selector = $(that.selector);
-                lastSelect = that.selector;
-            }
-        }());
-    };
-}());
-
-},{"backbone":16,"jquery":25,"underscore":26}],11:[function(require,module,exports){
-var	$ = require('jquery'),
-	TagProcess = require('./js/tagprocess'),
-	Router = require('./js/router'),
-	Header = require('./js/modules/header'),
-	NavBar = require('./js/modules/navbar'),
-	Footer = require('./js/modules/footer'),
-	header = new Header.View(),
-	navbar = new NavBar.View(),
-	footer = new Footer.View();
-
-TagProcess.vent.on('domchange:page', function (options) {
-    if (options.title && options.title.trim() !== '') {
-        TagProcess.$doc.attr('title', TagProcess.title + ': ' + options.title);
-    } else {
-        TagProcess.$doc.attr('title', TagProcess.title);
-    }
-});
-
-$('#layout').prepend(navbar.render().$el)
-    .prepend(header.render().$el);
-$('#footer').append(footer.render().$el);
-Router.initialize();
-
-},{"./js/modules/footer":1,"./js/modules/header":2,"./js/modules/navbar":4,"./js/router":7,"./js/tagprocess":8,"jquery":25}],12:[function(require,module,exports){
-var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
-  this.compilerInfo = [4,'>= 1.0.0'];
-helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
-  
-
-
-  return "<div class=\"container\">\n	<div class=\"text-center\">\n	    Copyright 2012 Tag Process LLC. All rights reserved<br>\n		<address>\n            3500 N State Road 7 Suite 430, Lauderdale Lakes, FL 33319 Call (561)899.0777 Fax (754)200.4423\n        </address>\n	</div>\n</div>\n";
-  });
-},{"handlebars/runtime":24}],13:[function(require,module,exports){
-var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
-  this.compilerInfo = [4,'>= 1.0.0'];
-helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
-  
-
-
-  return "<div class=\"container-fluid\" style=\"position: relative\">\n    <img class=\"col-md-4\" height=\"120px\" width=\"auto\" src=\"app/images/tag_logo.jpg\"/>\n    <p class=\"text-right col-md-8\" style=\"position: absolute; bottom: 0; right: 0;\">\n        <small id=\"login-message\">You're currently not logged in.</small>\n    </p>\n</div>\n";
-  });
-},{"handlebars/runtime":24}],14:[function(require,module,exports){
-var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
-  this.compilerInfo = [4,'>= 1.0.0'];
-helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
-  
-
-
-  return "<nav class=\"navbar navbar-default\" role=\"navigation\">\n	<div class=\"container-fluid\">\n		<div class=\"navbar-header\">\n			<button type=\"button\" class=\"navbar-toggle\" data-toggle=\"collapse\" data-target=\"#nav-links\">\n				<span class=\"sr-only\">Toggle Navigation</span>\n				<span class=\"icon-bar\"></span>\n				<span class=\"icon-bar\"></span>\n				<span class=\"icon-bar\"></span>\n			</button>\n			<a class=\"navbar-brand\" href=\"#home\">TagProcess</a>\n		</div>\n		<div class=\"collapse navbar-collapse\" id=\"nav-lnks\">\n			<ul class=\"nav navbar-nav\"></ul>\n		</div>\n	</div>\n</nav>\n";
-  });
-},{"handlebars/runtime":24}],15:[function(require,module,exports){
-var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
-  this.compilerInfo = [4,'>= 1.0.0'];
-helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
-  var buffer = "", stack1, helper, functionType="function", escapeExpression=this.escapeExpression;
-
-
-  buffer += "<a href=\"";
-  if (helper = helpers.href) { stack1 = helper.call(depth0, {hash:{},data:data}); }
-  else { helper = (depth0 && depth0.href); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
-  buffer += escapeExpression(stack1)
-    + "\">";
-  if (helper = helpers.name) { stack1 = helper.call(depth0, {hash:{},data:data}); }
-  else { helper = (depth0 && depth0.name); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
-  buffer += escapeExpression(stack1)
-    + "</a>";
-  return buffer;
-  });
-},{"handlebars/runtime":24}],16:[function(require,module,exports){
 //     Backbone.js 1.1.1
 
 //     (c) 2010-2014 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
@@ -2001,7 +1609,7 @@ helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
 
 }));
 
-},{"jquery":25,"underscore":17}],17:[function(require,module,exports){
+},{"jquery":10,"underscore":2}],2:[function(require,module,exports){
 //     Underscore.js 1.6.0
 //     http://underscorejs.org
 //     (c) 2009-2014 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
@@ -3346,7 +2954,7 @@ helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
   }
 }).call(this);
 
-},{}],18:[function(require,module,exports){
+},{}],3:[function(require,module,exports){
 "use strict";
 /*globals Handlebars: true */
 var base = require("./handlebars/base");
@@ -3379,7 +2987,7 @@ var Handlebars = create();
 Handlebars.create = create;
 
 exports["default"] = Handlebars;
-},{"./handlebars/base":19,"./handlebars/exception":20,"./handlebars/runtime":21,"./handlebars/safe-string":22,"./handlebars/utils":23}],19:[function(require,module,exports){
+},{"./handlebars/base":4,"./handlebars/exception":5,"./handlebars/runtime":6,"./handlebars/safe-string":7,"./handlebars/utils":8}],4:[function(require,module,exports){
 "use strict";
 var Utils = require("./utils");
 var Exception = require("./exception")["default"];
@@ -3560,7 +3168,7 @@ exports.log = log;var createFrame = function(object) {
   return obj;
 };
 exports.createFrame = createFrame;
-},{"./exception":20,"./utils":23}],20:[function(require,module,exports){
+},{"./exception":5,"./utils":8}],5:[function(require,module,exports){
 "use strict";
 
 var errorProps = ['description', 'fileName', 'lineNumber', 'message', 'name', 'number', 'stack'];
@@ -3589,7 +3197,7 @@ function Exception(message, node) {
 Exception.prototype = new Error();
 
 exports["default"] = Exception;
-},{}],21:[function(require,module,exports){
+},{}],6:[function(require,module,exports){
 "use strict";
 var Utils = require("./utils");
 var Exception = require("./exception")["default"];
@@ -3727,7 +3335,7 @@ exports.program = program;function invokePartial(partial, name, context, helpers
 exports.invokePartial = invokePartial;function noop() { return ""; }
 
 exports.noop = noop;
-},{"./base":19,"./exception":20,"./utils":23}],22:[function(require,module,exports){
+},{"./base":4,"./exception":5,"./utils":8}],7:[function(require,module,exports){
 "use strict";
 // Build out our basic SafeString type
 function SafeString(string) {
@@ -3739,7 +3347,7 @@ SafeString.prototype.toString = function() {
 };
 
 exports["default"] = SafeString;
-},{}],23:[function(require,module,exports){
+},{}],8:[function(require,module,exports){
 "use strict";
 /*jshint -W004 */
 var SafeString = require("./safe-string")["default"];
@@ -3816,12 +3424,12 @@ exports.escapeExpression = escapeExpression;function isEmpty(value) {
 }
 
 exports.isEmpty = isEmpty;
-},{"./safe-string":22}],24:[function(require,module,exports){
+},{"./safe-string":7}],9:[function(require,module,exports){
 // Create a simple path alias to allow browserify to resolve
 // the runtime on a supported path.
 module.exports = require('./dist/cjs/handlebars.runtime');
 
-},{"./dist/cjs/handlebars.runtime":18}],25:[function(require,module,exports){
+},{"./dist/cjs/handlebars.runtime":3}],10:[function(require,module,exports){
 /*!
  * jQuery JavaScript Library v2.1.0
  * http://jquery.com/
@@ -12934,6 +12542,470 @@ return jQuery;
 
 }));
 
-},{}],26:[function(require,module,exports){
-module.exports=require(17)
-},{}]},{},[11])
+},{}],11:[function(require,module,exports){
+module.exports=require(2)
+},{}],12:[function(require,module,exports){
+var Backbone = require('backbone');
+
+module.exports = {
+	View: Backbone.View.extend({
+		initialize: function () {
+			this.template = 'RANDOM TEMPLATE';
+		},
+		render: function () {
+			this.$el.empty().append(this.template);
+			return this;
+		}
+	})
+};
+
+},{"backbone":1}],13:[function(require,module,exports){
+module.exports=require(12)
+},{"backbone":1}],14:[function(require,module,exports){
+module.exports=require(12)
+},{"backbone":1}],15:[function(require,module,exports){
+var $ = require('jquery'),
+	Backbone = require('backbone'),
+	FooterTemplate = require('../../templates/footer.hbs');
+
+module.exports = {
+	View: Backbone.View.extend({
+		id: 'footer',
+		className: 'footer',
+		tagName: 'footer',
+		initialize: function () {
+			this.template = FooterTemplate();
+		},
+		render: function () {
+			this.$el.empty().append(this.template);
+
+            return this;
+		}
+	})
+};
+
+},{"../../templates/footer.hbs":28,"backbone":1,"jquery":10}],16:[function(require,module,exports){
+var $ = require('jquery'),
+	Backbone = require('backbone'),
+	HeaderTemplate = require('../../templates/headerTemplate.hbs');
+
+module.exports = {
+	View: Backbone.View.extend({
+        tagName: 'header',
+        id: 'header',
+        className: 'page-header',
+		initialize: function () {
+			this.template = HeaderTemplate();
+		},
+		render: function () {
+			var template = this.template;
+			this.$el.empty().append(template);
+
+            return this;
+		}
+	})
+};
+
+},{"../../templates/headerTemplate.hbs":29,"backbone":1,"jquery":10}],17:[function(require,module,exports){
+var Backbone = require('backbone');
+'use strict';
+
+module.exports = {
+    View: Backbone.View.extend({
+        initialize: function () {
+            this.template = 'HOME PAGE CONTENT';
+        },
+        render: function () {
+            this.$el.empty().append(this.template);
+
+            return this;
+        }
+    })
+};
+
+},{"backbone":1}],18:[function(require,module,exports){
+var Backbone = require('backbone'),
+	LoginTemplate = require('../../templates/login.hbs');
+
+module.exports = {
+	View: Backbone.View.extend({
+		initialize: function () {
+			this.template = LoginTemplate();
+		},
+		render: function () {
+			this.$el.empty().append(this.template);
+			return this;
+		}
+	})
+};
+
+},{"../../templates/login.hbs":30,"backbone":1}],19:[function(require,module,exports){
+var $ = require('jquery'),
+    _ = require('underscore'),
+	Backbone = require('backbone'),
+	TagProcess = require('../tagprocess'),
+	NavBarTemplate = require('../../templates/navbar.hbs'),
+    NavButton = require('./navbutton');
+
+module.exports = {
+    Collection: Backbone.Collection.extend({
+        model: NavButton.Model
+    }),
+	View: Backbone.View.extend({
+        tagName: 'div',
+        className: '',
+        id: 'navbar',
+        template: NavBarTemplate,
+		initialize: function () {
+            this.collection = new module.exports.Collection(TagProcess.locations);
+            this.listenTo(TagProcess.vent, 'domchange:page', this.setActive);
+		},
+		render: function () {
+            var that = this;
+			this.$el.empty().append(this.template());
+            _.each(this.collection.models, function (item) {
+                that.renderButton(item);
+            }, this);
+
+            return this;
+		},
+        renderButton: function (item) {
+            var buttonView = new NavButton.View({
+                model: item
+            });
+            this.$('.navbar-nav').append(buttonView.render().el);
+        },
+        setActive: function (options) {
+            // Optimization needed. See tabNavigation.js
+            _.each(this.collection.models, function (model) {
+                model.set('active', model.get('href') === options.hash);
+            });
+        }
+	})
+};
+
+},{"../../templates/navbar.hbs":31,"../tagprocess":24,"./navbutton":20,"backbone":1,"jquery":10,"underscore":11}],20:[function(require,module,exports){
+var $ = require('jquery'),
+    Backbone = require('backbone'),
+    ButtonTemplate = require('../../templates/navbutton.hbs');
+
+module.exports = (function () {
+    'use strict';
+    return {
+        Model: Backbone.Model.extend({
+            defaults: {
+                active: false
+            }
+        }),
+        View: Backbone.View.extend({
+            tagName: "li",
+            className: "",
+            template: ButtonTemplate,
+            initialize: function () {
+                this.listenTo(this.model, 'change:active', this.setActive);
+            },
+            render: function () {
+                this.$el.html(this.template(this.model.toJSON())).toggleClass('active', this.model.get('active'));
+                return this;
+            },
+            setActive: function () {
+                $(this.el).toggleClass('active', this.model.get('active'));
+            }
+        })
+    }
+}());
+
+},{"../../templates/navbutton.hbs":32,"backbone":1,"jquery":10}],21:[function(require,module,exports){
+var Backbone = require('backbone');
+
+module.exports = {
+    View: Backbone.View.extend({
+        initialize: function () {
+            this.template = 'SERVICES';
+        },
+        render: function () {
+            this.$el.empty().append(this.template);
+
+            return this;
+        }
+    })
+};
+},{"backbone":1}],22:[function(require,module,exports){
+module.exports=require(12)
+},{"backbone":1}],23:[function(require,module,exports){
+var Backbone = require('backbone'),
+	TagProcess = require('./tagprocess'),
+    _ = require('underscore');
+
+module.exports = (function () {
+	'use strict';
+	var Router = Backbone.Router.extend({
+		routes: {
+			''			    : 'showIndex',
+			'home'		    : 'showIndex',
+			'services'		: 'showServices',
+			'technology'	: 'showTechnology',
+			'aboutus'		: 'showAboutUs',
+			'contactus'		: 'showContactUs',
+			'login'			: 'showLogin',
+			'client'		: 'showClient'
+		},
+		initialize: function () {
+			this.viewTarget = '#content';
+			this.viewManager = new TagProcess.ViewManager({'selector': this.viewTarget});
+		},
+		showIndex: function () {
+            var view = require('./modules/home');
+			this.show({hash: '#home', title: 'Home', view: new view.View()});
+		},
+		showServices: function () {
+			var view = require('./modules/services');
+			this.show({hash: '#services', title: 'Services', view: new view.View()});
+		},
+		showTechnology: function () {
+			var view = require('./modules/technology');
+			this.show({hash: '#technology', title: 'Technology', view: new view.View()});
+		},
+		showAboutUs: function () {
+			var view = require('./modules/aboutus');
+			this.show({hash: '#aboutus', title: 'About Us', view: new view.View()});
+		},
+		showContactUs: function () {
+			var view = require('./modules/contactus');
+			this.show({hash: '#contactus', title: 'Contact Us', view: new view.View()});
+		},
+		showLogin: function () {
+			var view = require('./modules/login');
+			this.show({hash: '#login', title: 'Log In', view: new view.View()});
+		},
+		showClient: function () {
+			var view = require('./modules/client');
+			this.show({hash: '#client', title: 'Client', view: new view.View()});
+		},
+		show: function (options) {
+			var that = this,
+                settings = _.extend({
+				hash: undefined,
+				title: '',
+				view: undefined,
+				viewOptions: {}
+			}, options);
+            TagProcess.vent.trigger('domchange:page', settings);
+            if (settings.view instanceof Backbone.View) {
+				that.viewManager.showView(settings.view);
+			}
+			return this;
+		}
+	});
+	return {
+		initialize: function () {
+			TagProcess.router = new Router();
+			Backbone.history.start();
+		}
+	};
+}());
+
+},{"./modules/aboutus":12,"./modules/client":13,"./modules/contactus":14,"./modules/home":17,"./modules/login":18,"./modules/services":21,"./modules/technology":22,"./tagprocess":24,"backbone":1,"underscore":11}],24:[function(require,module,exports){
+var $ = require('jquery'),
+    ViewManager = require('./utilities/viewmanager'),
+    Vent = require('./utilities/vent');
+module.exports = {
+	ViewManager: ViewManager,
+	baseUrl: 'dev1.xertigo.net',
+    $doc: $(document),
+    title: $(document).attr('title'),
+    vent: Vent,
+	locations: [
+		{
+			'href': '#services',
+			'name': 'Services'
+		},
+		{
+			'href': '#technology',
+			'name': 'Technology'
+		},
+        {
+			'href': '#aboutus',
+			'name': 'About Us'
+		},
+        {
+			'href': '#contactus',
+			'name': 'Contact Us'
+		},
+        {
+            'href': '#login',
+            'name': 'Login'
+        },
+        {
+			'href': '#client',
+			'name': 'Client'
+		}
+	]
+};
+
+},{"./utilities/vent":25,"./utilities/viewmanager":26,"jquery":10}],25:[function(require,module,exports){
+var _ = require('underscore'),
+    Backbone = require('backbone');
+
+module.exports = (function () {
+    "use strict";
+    return _.extend({}, Backbone.Events);
+}());
+
+},{"backbone":1,"underscore":11}],26:[function(require,module,exports){
+var _ = require('underscore'),
+    $ = require('jquery'),
+	Backbone = require('backbone');
+module.exports = (function () {
+    'use strict';
+
+    _.extend(Backbone.View.prototype, {
+        addSubViews: function () {
+            if (!_.isArray(this.subViews)) {
+                this.subViews = [];
+            }
+            Array.prototype.push.apply(this.subViews, arguments);
+            return this;
+        },
+        // Zombie Prevention Part 1
+        // Add close function to Backbone.View to prevent "Zombies"
+        // Inspired by: Derick Bailey
+        // See: http://bit.ly/odAfKo
+        close: function () {
+            if (this.__closing) { return this; }
+            this.__closing = true;
+            if (this.beforeClose && _.isFunction(this.beforeClose)) {
+                this.beforeClose();
+            }
+            if (_.isArray(this.subViews)) {
+                _.each(this.subViews, function (subView) {
+                    if (_.isFunction(subView.close)) {
+                        subView.close();
+                    }
+                });
+            }
+            this.remove();
+            this.unbind();
+            this.__closing = false;
+            return this;
+        }
+    });
+    // Zombie Prevention Part 2
+    // Object to manage transitions between views
+    // Inspired by: Derick Bailey
+    // See: http://bit.ly/odAfKo
+    return function (options) {
+        var that = this,
+            allowed = ['selector'],
+            extender,
+            finish,
+            lastSelect;
+        that.selector = 'body';
+        that.$selector = undefined;
+        that.set = function (opts) { extender(opts); finish(); };
+        that.get = function (name) { return that[name]; };
+        that.showView = function (view) {
+            if (this.currentView) {
+                this.currentView.close();
+            }
+            that.$selector.html(view.render().el);
+            this.currentView = view;
+            return view;
+        };
+
+        // Self invoking function that extends this object
+        // with options passed to the constructor
+        extender = (function (opts) {
+            _.extend(that, _.pick(opts, allowed));
+        }(options));
+
+        // Self invoking function for final set up
+        // - Set '$selector' based on 'selector'
+        finish = (function () {
+            if ($.type(that.selector) === 'string' && that.selector !== lastSelect) {
+                that.$selector = $(that.selector);
+                lastSelect = that.selector;
+            }
+        }());
+    };
+}());
+
+},{"backbone":1,"jquery":10,"underscore":11}],27:[function(require,module,exports){
+var	$ = require('jquery'),
+	TagProcess = require('./js/tagprocess'),
+	Router = require('./js/router'),
+	Header = require('./js/modules/header'),
+	NavBar = require('./js/modules/navbar'),
+	Footer = require('./js/modules/footer'),
+	header = new Header.View(),
+	navbar = new NavBar.View(),
+	footer = new Footer.View();
+
+TagProcess.vent.on('domchange:page', function (options) {
+    if (options.title && options.title.trim() !== '') {
+        TagProcess.$doc.attr('title', TagProcess.title + ': ' + options.title);
+    } else {
+        TagProcess.$doc.attr('title', TagProcess.title);
+    }
+});
+
+$('#layout').prepend(navbar.render().$el)
+    .prepend(header.render().$el).parent()
+	.append(footer.render().$el);
+Router.initialize();
+
+},{"./js/modules/footer":15,"./js/modules/header":16,"./js/modules/navbar":19,"./js/router":23,"./js/tagprocess":24,"jquery":10}],28:[function(require,module,exports){
+var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
+  this.compilerInfo = [4,'>= 1.0.0'];
+helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
+  
+
+
+  return "<div class=\"container\">\n	<div class=\"text-center\">\n	    Copyright 2012 Tag Process LLC. All rights reserved<br>\n		<address>\n            3500 N State Road 7 Suite 430, Lauderdale Lakes, FL 33319 Call (561)899.0777 Fax (754)200.4423\n        </address>\n	</div>\n</div>\n";
+  });
+},{"handlebars/runtime":9}],29:[function(require,module,exports){
+var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
+  this.compilerInfo = [4,'>= 1.0.0'];
+helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
+  
+
+
+  return "<div class=\"container-fluid\" style=\"position: relative\">\n    <img class=\"col-md-4\" height=\"120px\" width=\"auto\" src=\"app/images/tag_logo.jpg\"/>\n    <p class=\"text-right col-md-8\" style=\"position: absolute; bottom: 0; right: 0;\">\n        <small id=\"login-message\">You're currently not logged in.</small>\n    </p>\n</div>\n";
+  });
+},{"handlebars/runtime":9}],30:[function(require,module,exports){
+var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
+  this.compilerInfo = [4,'>= 1.0.0'];
+helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
+  
+
+
+  return "<div id=\"loginbox\" style=\"margin-top:50px;\" class=\"mainbox col-md-6 col-md-offset-3 col-sm-8 col-sm-offset-2\">\n	<div class=\"panel panel-info\" >\n		<div class=\"panel-heading\">\n			<div class=\"panel-title\">Sign In</div>\n			<div style=\"float:right; font-size: 80%; position: relative; top:-10px\">\n				<a href=\"#\">Forgot password?</a>\n			</div>\n		</div>\n		<div style=\"padding-top:30px\" class=\"panel-body\">\n			<div style=\"display:none\" id=\"login-alert\" class=\"alert alert-danger col-sm-12\"></div>\n			<form id=\"loginform\" class=\"form-horizontal\" role=\"form\">\n				<div style=\"margin-bottom: 25px\" class=\"input-group\">\n					<span class=\"input-group-addon\"><i class=\"glyphicon glyphicon-user\"></i></span>\n					<input id=\"login-username\" type=\"text\" class=\"form-control\" name=\"username\" value=\"\" placeholder=\"username or email\">                                   \n				</div>\n				<div style=\"margin-bottom: 25px\" class=\"input-group\">\n					<span class=\"input-group-addon\"><i class=\"glyphicon glyphicon-lock\"></i></span>\n					<input id=\"login-password\" type=\"password\" class=\"form-control\" name=\"password\" placeholder=\"password\">\n				</div>\n				<div class=\"input-group\">\n					<div class=\"checkbox\">\n						<label>\n							<input id=\"login-remember\" type=\"checkbox\" name=\"remember\" value=\"1\"> Remember me\n						</label>\n					</div>\n				</div>\n				<div style=\"margin-top:10px\" class=\"form-group\">\n				<!-- Button -->\n					<div class=\"col-sm-12 controls\">\n						<a id=\"btn-login\" href=\"#\" class=\"btn btn-success\">Login  </a>\n						<a id=\"btn-fblogin\" href=\"#\" class=\"btn btn-primary\">Login with Facebook</a>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<div class=\"col-md-12 control\">\n						<div style=\"border-top: 1px solid#888; padding-top:15px; font-size:85%\" >\n							Don't have an account! \n							<a href=\"#\" onClick=\"$('#loginbox').hide(); $('#signupbox').show()\">Sign Up Here</a>\n						</div>\n					</div>\n				</div>\n			</form> \n		</div>                     \n	</div>  \n</div>\n";
+  });
+},{"handlebars/runtime":9}],31:[function(require,module,exports){
+var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
+  this.compilerInfo = [4,'>= 1.0.0'];
+helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
+  
+
+
+  return "<nav class=\"navbar navbar-default\" role=\"navigation\">\n	<div class=\"container-fluid\">\n		<div class=\"navbar-header\">\n			<button type=\"button\" class=\"navbar-toggle\" data-toggle=\"collapse\" data-target=\"#nav-links\">\n				<span class=\"sr-only\">Toggle Navigation</span>\n				<span class=\"icon-bar\"></span>\n				<span class=\"icon-bar\"></span>\n				<span class=\"icon-bar\"></span>\n			</button>\n			<a class=\"navbar-brand\" href=\"#home\">TagProcess</a>\n		</div>\n		<div class=\"collapse navbar-collapse\" id=\"nav-lnks\">\n			<ul class=\"nav navbar-nav\"></ul>\n		</div>\n	</div>\n</nav>\n";
+  });
+},{"handlebars/runtime":9}],32:[function(require,module,exports){
+var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
+  this.compilerInfo = [4,'>= 1.0.0'];
+helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
+  var buffer = "", stack1, helper, functionType="function", escapeExpression=this.escapeExpression;
+
+
+  buffer += "<a href=\"";
+  if (helper = helpers.href) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.href); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "\">";
+  if (helper = helpers.name) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.name); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "</a>";
+  return buffer;
+  });
+},{"handlebars/runtime":9}]},{},[27])

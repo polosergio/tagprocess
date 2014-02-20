@@ -8,16 +8,44 @@ module.exports = (function () {
 		routes: {
 			''			    : 'showIndex',
 			'home'		    : 'showIndex',
-			'services'		: 'showServices'
+			'services'		: 'showServices',
+			'technology'	: 'showTechnology',
+			'aboutus'		: 'showAboutUs',
+			'contactus'		: 'showContactUs',
+			'login'			: 'showLogin',
+			'client'		: 'showClient'
+		},
+		initialize: function () {
+			this.viewTarget = '#content';
+			this.viewManager = new TagProcess.ViewManager({'selector': this.viewTarget});
 		},
 		showIndex: function () {
             var view = require('./modules/home');
 			this.show({hash: '#home', title: 'Home', view: new view.View()});
 		},
-<<<<<<< HEAD
 		showServices: function () {
 			var view = require('./modules/services');
 			this.show({hash: '#services', title: 'Services', view: new view.View()});
+		},
+		showTechnology: function () {
+			var view = require('./modules/technology');
+			this.show({hash: '#technology', title: 'Technology', view: new view.View()});
+		},
+		showAboutUs: function () {
+			var view = require('./modules/aboutus');
+			this.show({hash: '#aboutus', title: 'About Us', view: new view.View()});
+		},
+		showContactUs: function () {
+			var view = require('./modules/contactus');
+			this.show({hash: '#contactus', title: 'Contact Us', view: new view.View()});
+		},
+		showLogin: function () {
+			var view = require('./modules/login');
+			this.show({hash: '#login', title: 'Log In', view: new view.View()});
+		},
+		showClient: function () {
+			var view = require('./modules/client');
+			this.show({hash: '#client', title: 'Client', view: new view.View()});
 		},
 		show: function (options) {
 			var that = this,
@@ -32,10 +60,6 @@ module.exports = (function () {
 				that.viewManager.showView(settings.view);
 			}
 			return this;
-=======
-		showTest: function () {
-			console.log('test');
->>>>>>> parent of 8b1ab45... Adds draft version of viewmanager
 		}
 	});
 	return {
