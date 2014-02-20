@@ -1,39 +1,41 @@
 var Backbone = require('backbone'),
-	TagProcess = require('./tagprocess');
+	TagProcess = require('./tagprocess'),
+    _ = require('underscore');
 
 module.exports = (function () {
 	'use strict';
 	var Router = Backbone.Router.extend({
 		routes: {
-			''			: 'showIndex',
-			'home'		: 'showIndex',
-			'test'		: 'showTest'
-		},
-		initialize: function () {
-			this.viewTarget = '#content';
-			this.viewManager = new TagProcess.ViewManager({'selector': this.viewTarget});
+			''			    : 'showIndex',
+			'home'		    : 'showIndex',
+			'services'		: 'showServices'
 		},
 		showIndex: function () {
-			console.log('index');
+            var view = require('./modules/home');
+			this.show({hash: '#home', title: 'Home', view: new view.View()});
 		},
-		showTest: function () {
-			console.log('test');
+<<<<<<< HEAD
+		showServices: function () {
+			var view = require('./modules/services');
+			this.show({hash: '#services', title: 'Services', view: new view.View()});
 		},
 		show: function (options) {
-			var settings = _.extend({
+			var that = this,
+                settings = _.extend({
 				hash: undefined,
 				title: '',
 				view: undefined,
 				viewOptions: {}
 			}, options);
-
-			if (_.isString(settings.view)) {
-				var myView = require(settings.view);
-				that.viewManager.showView(myView);
-			} else if (settings.view instanceof Backbone.View) {
+            TagProcess.vent.trigger('domchange:page', settings);
+            if (settings.view instanceof Backbone.View) {
 				that.viewManager.showView(settings.view);
 			}
 			return this;
+=======
+		showTest: function () {
+			console.log('test');
+>>>>>>> parent of 8b1ab45... Adds draft version of viewmanager
 		}
 	});
 	return {
