@@ -12,7 +12,7 @@ module.exports = {
     }),
 	View: Backbone.View.extend({
         tagName: 'div',
-        className: '',
+        className: 'container',
         id: 'navbar',
         template: NavBarTemplate,
 		initialize: function () {

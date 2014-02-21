@@ -27829,22 +27829,42 @@ module.exports = (function () {
 }());
 
 },{"../models/user":15,"../tagprocess":30,"./constants.js":19,"backbone":1,"cookie-cutter":3,"jquery":13,"jquery-ui-browserify":12,"underscore":14}],18:[function(require,module,exports){
-var Backbone = require('backbone'),
+var _ = require('underscore'),
+	Backbone = require('backbone'),
     ClientTemplate = require('../../templates/client.hbs');
 
-module.exports = {
-	View: Backbone.View.extend({
-		initialize: function () {
-			this.template = ClientTemplate();
-		},
-		render: function () {
-			this.$el.empty().append(this.template);
-			return this;
-		}
-	})
-};
+module.exports = (function () {
+	'use strict';
+	var exports = {};
+	_.extend(exports, {
+		Collection: Backbone.Collection.extend({
+			url: '/tagproc/api/jobs',
+			parse: function (response) {
+				return response;
+			}
+		}),
+		View: Backbone.View.extend({
+			initialize: function () {
+				this.template = ClientTemplate;
+				this.collection = new exports.Collection();
+				this.listenTo(this.collection, 'sync', this.render);
+				this.collection.fetch();
+			},
+			render: function () {
+				var data = this.collection.toJSON(),
+					payload = {
+					items: _.isEmpty(data) ? null : data
+				};
+				console.log(payload);
+				this.$el.empty().append(this.template(payload));
+				return this;
+			}
+		})
+	});
+	return exports;
+}());
 
-},{"../../templates/client.hbs":36,"backbone":1}],19:[function(require,module,exports){
+},{"../../templates/client.hbs":36,"backbone":1,"underscore":14}],19:[function(require,module,exports){
 module.exports = {
 	COOKIE: {
 		AUTH: 'user'
@@ -27902,7 +27922,7 @@ module.exports = {
 	View: Backbone.View.extend({
         tagName: 'header',
         id: 'header',
-        className: 'page-header',
+        className: 'page-header container',
 		initialize: function () {
 			this.template = HeaderTemplate();
 		},
@@ -28029,7 +28049,7 @@ module.exports = {
     }),
 	View: Backbone.View.extend({
         tagName: 'div',
-        className: '',
+        className: 'container',
         id: 'navbar',
         template: NavBarTemplate,
 		initialize: function () {
@@ -30330,10 +30350,66 @@ helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
 var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
   this.compilerInfo = [4,'>= 1.0.0'];
 helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
+  var buffer = "", stack1, functionType="function", escapeExpression=this.escapeExpression, self=this;
+
+function program1(depth0,data) {
   
+  var buffer = "", stack1;
+  buffer += "\n<div class=\"container-fluid\">\n	<div class=\"row\">\n		<form class=\"form-inline\" role=\"form\">\n			<div class=\"form-group\">\n				<div class=\"input-group col-md-6\">\n					<span class=\"input-group-addon\">\n						<i class=\"glyphicon glyphicon-search\"></i>\n					</span>\n					<input type=\"text\" class=\"form-control\" placeholder=\"Search\">\n					<span class=\"input-group-btn\">\n						<button class=\"btn btn-default\" id=\"search\" type=\"submit\">Search</button>\n					</span>\n				</div>\n			</div>\n		</form><br>\n	</div>\n	<div class=\"row\">\n		<table class=\"table table-bordered table-responsive table-condensed table-hover table-striped\">\n			<thead>\n				<tr>\n					<th>Job #</th>\n					<th>Account</th>\n					<th>Reference</th>\n					<th>To Serve On</th>\n					<th>Court Date</th>\n					<th>Completed</th>\n					<th>Type of Service</th>\n					<th>Date Received</th>\n				</tr>\n			</thead>\n			<tbody>\n			";
+  stack1 = helpers.each.call(depth0, (depth0 && depth0.items), {hash:{},inverse:self.noop,fn:self.program(2, program2, data),data:data});
+  if(stack1 || stack1 === 0) { buffer += stack1; }
+  buffer += "\n			</tbody>\n		</table>\n	</div>\n</div>\n";
+  return buffer;
+  }
+function program2(depth0,data) {
+  
+  var buffer = "", stack1, helper;
+  buffer += "\n				<tr>\n					<td><a href=\"#client/";
+  if (helper = helpers.jobnumber) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.jobnumber); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "\">";
+  if (helper = helpers.jobnumber) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.jobnumber); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "</a></td>\n					<td>";
+  if (helper = helpers.account) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.account); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "</td>\n					<td></td>\n					<td>";
+  if (helper = helpers.served_person) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.served_person); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "</td>\n					<td>";
+  if (helper = helpers.date_court) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.date_court); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "</td>\n					<td>";
+  if (helper = helpers.date_served) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.date_served); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "</td>\n					<td>";
+  if (helper = helpers.served_documents) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.served_documents); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "</td>\n					<td>";
+  if (helper = helpers.date_received) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.date_received); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "</td>\n				</tr>\n			";
+  return buffer;
+  }
 
+function program4(depth0,data) {
+  
+  
+  return "\n<div class=\"container-fluid\">\n    <div class=\"row text-center\">\n		<div class=\"well well-lg\">\n			<span class=\"glyphicon glyphicon-ban-circle glyphicon-big-alert\"></span>\n			<p class=\"text-danger\">You do not have the required access right now.</p>\n		</div>\n	</div>\n</div>\n";
+  }
 
-  return "<div class=\"container-fluid\">\n    <div class=\"row text-center\">\n        <span class=\"glyphicon glyphicon-ban-circle glyphicon-big-alert\"></span>\n        <p class=\"text-danger\">You do not have the required access right now.</p>\n    </div>\n</div>";
+  stack1 = helpers['if'].call(depth0, (depth0 && depth0.items), {hash:{},inverse:self.program(4, program4, data),fn:self.program(1, program1, data),data:data});
+  if(stack1 || stack1 === 0) { buffer += stack1; }
+  buffer += "\n";
+  return buffer;
   });
 },{"handlebars/runtime":10}],37:[function(require,module,exports){
 var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {

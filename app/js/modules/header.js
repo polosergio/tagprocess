@@ -6,7 +6,7 @@ module.exports = {
 	View: Backbone.View.extend({
         tagName: 'header',
         id: 'header',
-        className: 'page-header',
+        className: 'page-header container',
 		initialize: function () {
 			this.template = HeaderTemplate();
 		},
