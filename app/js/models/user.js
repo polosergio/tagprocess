@@ -1,7 +1,7 @@
 var _ = require('underscore'),
 	Backbone = require('backbone');
 
-module.export = (function () {
+module.exports = (function () {
 	'use strict';
 	return Backbone.Model.extend({
         defaults: {

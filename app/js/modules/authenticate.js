@@ -3,6 +3,7 @@ var _ = require('underscore'),
 	$ = jQuery = require('jquery'),
 	CONST = require('./constants.js'),
 	cookie = require('cookie-cutter'),
+    //User = require('../utilities/viewmanager');
 	User = require('../models/user');
 
 require('jquery-ui-browserify');

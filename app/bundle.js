@@ -2,7 +2,7 @@
 var _ = require('underscore'),
 	Backbone = require('backbone');
 
-module.export = (function () {
+module.exports = (function () {
 	'use strict';
 	return Backbone.Model.extend({
         defaults: {
@@ -40,6 +40,7 @@ var _ = require('underscore'),
 	$ = jQuery = require('jquery'),
 	CONST = require('./constants.js'),
 	cookie = require('cookie-cutter'),
+    //User = require('../utilities/viewmanager');
 	User = require('../models/user');
 
 require('jquery-ui-browserify');
