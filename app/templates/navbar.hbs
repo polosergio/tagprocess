@@ -10,8 +10,22 @@
 			<a class="navbar-brand" href="#home">TagProcess</a>
 		</div>
 		<div class="collapse navbar-collapse" id="nav-links">
-			<button type="button" onclick="location.href='#login'" class="btn btn-default navbar-btn navbar-right">Sign In</button>
-			<ul class="nav navbar-nav"></ul>
+			<ul class="nav navbar-nav" id="nav-ul"></ul>
+			<ul class="nav navbar-nav navbar-right">
+				<button type="button" onclick="location.href='#login'" class="btn btn-default navbar-btn">Sign In</button>
+				<li class="dropdown hide" id="user-dropdown">
+					<a href="#" class="dropdown-toggle" data-toggle="dropdown">
+						<span class="glyphicon glyphicon-user"></span>
+						<span id="name-text"> User</span>
+						<b class="caret"></b>
+					</a>
+					<ul class="dropdown-menu">
+						<li>
+							<a href="#" id="logout"><span class="glyphicon glyphicon-log-out"></span> Log Out...</a>
+						</li>
+					</ul>
+				</li>
+			</ul>
 		</div>
 	</div>
 </nav>

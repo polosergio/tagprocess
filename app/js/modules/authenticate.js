@@ -3,7 +3,6 @@ var _ = require('underscore'),
 	$ = jQuery = require('jquery'),
 	CONST = require('./constants.js'),
 	cookie = require('cookie-cutter'),
-    //User = require('../utilities/viewmanager');
 	User = require('../models/user');
 
 require('jquery-ui-browserify');
@@ -16,32 +15,34 @@ module.exports = (function () {
 
 		updateSignInMessage: function (message) {
 			$('#login-message').html(message).effect('highlight', 2000);
+			return this;
 		},
 
 		_doSignIn: function (options) {
 			var _this = this,
 				defaults = { url: '/tagproc/api/login', type: 'POST', contentType: 'application/json', processData: false },
-				settings = _.extend(defaults, options);
+				settings = _.extend(defaults, options),
+				TagProcess = require('../tagprocess');
 			return $
 				.ajax(settings)
 				.done(
 					function (response, status, xhr) {
 						_this.signedIn = true;
+						_this.updateSignInMessage('');
 						_this.user = new User(response.data);
-						Backbone.trigger('signInSuccess', response, status, xhr);
+						TagProcess.vent.trigger('signInSuccess', response, status, xhr);
 					}
 				)
 				.fail(
 					function (xhr, status, error) {
-						Backbone.trigger('signInError', xhr, status, error);
-                        }
-                    )
-                    .always(
-                        function (xhr, status) {
-                            Backbone.trigger('signInComplete', xhr, status);
-                        }
-                    )
-                ;
+						TagProcess.vent.trigger('signInError', xhr, status, error);
+                    }
+				)
+                .always(
+                    function (xhr, status) {
+                        TagProcess.vent.trigger('signInComplete', xhr, status);
+                    }
+                );
             },
 
             signIn: function (username, password) {
@@ -66,7 +67,8 @@ module.exports = (function () {
             },
 
             signOut: function () {
-                var _this = this;
+                var _this = this,
+					TagProcess = require('../tagprocess');
                 return $
                     .ajax({
                         url: '/tagproc/api/logout',
@@ -75,17 +77,17 @@ module.exports = (function () {
                     .done(
                         function () {
                             _this.forgetLogin();
-                            Backbone.trigger('signOutSuccess');
+                            TagProcess.vent.trigger('signOutSuccess');
                         }
                     )
                     .fail(
                         function (response, status) {
-                            Backbone.trigger('signOutError', status);
+                            TagProcess.vent.trigger('signOutError', status);
                         }
                     )
                     .always(
                         function () {
-                            Backbone.trigger('signOutComplete');
+                            TagProcess.vent.trigger('signOutComplete');
                         }
                     )
                 ;

@@ -18,6 +18,11 @@ module.exports = {
 		initialize: function () {
             this.collection = new module.exports.Collection(TagProcess.locations);
             this.listenTo(TagProcess.vent, 'domchange:page', this.setActive);
+			this.listenTo(TagProcess.vent, 'signInSuccess', this.toggleUserDropdown);
+			this.listenTo(TagProcess.vent, 'signOutSuccess', this.toggleUserDropdown);
+		},
+		events: {
+			'click #logout': 'logout'
 		},
 		render: function () {
             var that = this;
@@ -32,13 +37,22 @@ module.exports = {
             var buttonView = new NavButton.View({
                 model: item
             });
-            this.$('.navbar-nav').append(buttonView.render().el);
+            this.$('#nav-ul').append(buttonView.render().el);
         },
         setActive: function (options) {
             // Optimization needed. See tabNavigation.js
             _.each(this.collection.models, function (model) {
                 model.set('active', model.get('href') === options.hash);
             });
-        }
+        },
+		toggleUserDropdown: function (data) {
+			var text = _.isEmpty(data) || _.isUndefined(data) ? '' : data.data.name;
+			this.$('#name-text').html(text);
+			this.$('#user-dropdown').toggleClass('hide').siblings().toggleClass('hide');
+		},
+		logout: function () {
+			TagProcess.Auth.signOut();
+			TagProcess.Auth.updateSignInMessage('You\'re currently not logged in');
+		}
 	})
 };
