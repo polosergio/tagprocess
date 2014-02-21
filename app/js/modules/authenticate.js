@@ -19,7 +19,7 @@ module.exports = (function () {
 
 		_doSignIn: function (options) {
 			var _this = this,
-				defaults = { url: '/login', type: 'POST', contentType: 'application/json', processData: false },
+				defaults = { url: '/tagproc/api/login', type: 'POST', contentType: 'application/json', processData: false },
 				settings = _.extend(defaults, options);
 			return $
 				.ajax(settings)
@@ -68,7 +68,7 @@ module.exports = (function () {
                 var _this = this;
                 return $
                     .ajax({
-                        url: '/logout',
+                        url: '/tagproc/api/logout',
                         type: 'get'
                     })
                     .done(
