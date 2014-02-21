@@ -1,6 +1,10 @@
 body {
 	padding-bottom: 40px;
 }
+span.glyphicon-big-alert {
+    font-size: 10em;
+    color: red;
+}
 .footer {
 	position: fixed;
 	left: 0;

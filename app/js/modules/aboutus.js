@@ -1,9 +1,10 @@
-var Backbone = require('backbone');
+var Backbone = require('backbone'),
+    AboutUsTemplate = require('../../templates/aboutus.hbs');
 
 module.exports = {
 	View: Backbone.View.extend({
 		initialize: function () {
-			this.template = 'RANDOM TEMPLATE';
+			this.template = AboutUsTemplate();
 		},
 		render: function () {
 			this.$el.empty().append(this.template);
