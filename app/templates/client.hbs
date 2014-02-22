@@ -1,15 +1,20 @@
 {{#if items}}
 <div class="container-fluid">
 	<div class="row">
-		<form class="form-inline" role="form">
-			<div class="form-group">
-				<div class="input-group col-md-6">
+		<form class="form-horizontal" role="form">
+			<div class="form-group col-md-4">
+				<div class="input-group">
 					<span class="input-group-addon">
 						<i class="glyphicon glyphicon-search"></i>
 					</span>
-					<input type="text" class="form-control" placeholder="Search">
+					<input id="search" type="text" class="form-control" placeholder="Search" value="{{form.q}}">
 					<span class="input-group-btn">
-						<button class="btn btn-default" id="search" type="submit">Search</button>
+						<button class="btn btn-default dropdown-toggle" data-toggle="dropdown" type="button">{{#if form.searchby}} {{form.searchby}}  {{else}} Search By {{/if}}<span class="caret"></span></button>
+						<ul class="dropdown-menu pull-right" id="searchby">
+							<li><a href="#" data-value="jobnumber">Job Number</a></li>
+							<li><a href="#" data-value="client">Client</a></li>
+							<li><a href="#" data-value="case">Case</a></li>
+						</ul>
 					</span>
 				</div>
 			</div>
