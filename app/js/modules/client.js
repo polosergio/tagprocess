@@ -1,6 +1,5 @@
 var _ = require('underscore'),
 	$ = require('jquery'),
-	TagProcess = require('../tagprocess'),
 	Backbone = require('backbone'),
 	Sidebar = require('./sidebar'),
     ClientTemplate = require('../../templates/client.hbs');
@@ -56,7 +55,6 @@ module.exports = (function () {
 					payload = {
 					items: _.isEmpty(data) ? null : data,
 					form: helpers.parseFormParams(this.collection.params),
-					locations: TagProcess.sidebar,
                     no_access: _.isUndefined(this.collection.status) || this.collection.status === 401
 				};
 				this.$el.empty().append(this.template(payload));

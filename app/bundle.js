@@ -27723,7 +27723,7 @@ module.exports = {
 	})
 };
 
-},{"../../templates/aboutus.hbs":37,"backbone":1}],17:[function(require,module,exports){
+},{"../../templates/aboutus.hbs":39,"backbone":1}],17:[function(require,module,exports){
 var _ = require('underscore'),
 	Backbone = require('backbone'),
 	$ = jQuery = require('jquery'),
@@ -27828,10 +27828,9 @@ module.exports = (function () {
 	};
 }());
 
-},{"../models/user":15,"../tagprocess":31,"./constants.js":19,"backbone":1,"cookie-cutter":3,"jquery":13,"jquery-ui-browserify":12,"underscore":14}],18:[function(require,module,exports){
+},{"../models/user":15,"../tagprocess":33,"./constants.js":19,"backbone":1,"cookie-cutter":3,"jquery":13,"jquery-ui-browserify":12,"underscore":14}],18:[function(require,module,exports){
 var _ = require('underscore'),
 	$ = require('jquery'),
-	TagProcess = require('../tagprocess'),
 	Backbone = require('backbone'),
 	Sidebar = require('./sidebar'),
     ClientTemplate = require('../../templates/client.hbs');
@@ -27887,7 +27886,6 @@ module.exports = (function () {
 					payload = {
 					items: _.isEmpty(data) ? null : data,
 					form: helpers.parseFormParams(this.collection.params),
-					locations: TagProcess.sidebar,
                     no_access: _.isUndefined(this.collection.status) || this.collection.status === 401
 				};
 				this.$el.empty().append(this.template(payload));
@@ -27923,7 +27921,7 @@ module.exports = (function () {
 	return exports;
 }());
 
-},{"../../templates/client.hbs":38,"../tagprocess":31,"./sidebar":28,"backbone":1,"jquery":13,"underscore":14}],19:[function(require,module,exports){
+},{"../../templates/client.hbs":40,"./sidebar":30,"backbone":1,"jquery":13,"underscore":14}],19:[function(require,module,exports){
 module.exports = {
 	COOKIE: {
 		AUTH: 'user'
@@ -27973,7 +27971,7 @@ module.exports = {
 	})
 };
 
-},{"../../templates/contactus.hbs":39,"../utilities/helpers":32,"backbone":1}],21:[function(require,module,exports){
+},{"../../templates/contactus.hbs":41,"../utilities/helpers":34,"backbone":1}],21:[function(require,module,exports){
 var $ = require('jquery'),
 	Backbone = require('backbone'),
 	FooterTemplate = require('../../templates/footer.hbs');
@@ -27994,7 +27992,7 @@ module.exports = {
 	})
 };
 
-},{"../../templates/footer.hbs":40,"backbone":1,"jquery":13}],22:[function(require,module,exports){
+},{"../../templates/footer.hbs":42,"backbone":1,"jquery":13}],22:[function(require,module,exports){
 var $ = require('jquery'),
 	Backbone = require('backbone'),
 	HeaderTemplate = require('../../templates/header.hbs');
@@ -28016,7 +28014,7 @@ module.exports = {
 	})
 };
 
-},{"../../templates/header.hbs":41,"backbone":1,"jquery":13}],23:[function(require,module,exports){
+},{"../../templates/header.hbs":43,"backbone":1,"jquery":13}],23:[function(require,module,exports){
 var Backbone = require('backbone'),
 	HomeTemplate = require('../../templates/home.hbs');
 
@@ -28034,7 +28032,7 @@ module.exports = {
     })
 };
 
-},{"../../templates/home.hbs":42,"backbone":1}],24:[function(require,module,exports){
+},{"../../templates/home.hbs":44,"backbone":1}],24:[function(require,module,exports){
 var Backbone = require('backbone'),
 	TagProcess = require('../tagprocess'),
 	LoginTemplate = require('../../templates/login.hbs');
@@ -28115,7 +28113,7 @@ module.exports = {
 	})
 };
 
-},{"../../templates/login.hbs":43,"../tagprocess":31,"backbone":1}],25:[function(require,module,exports){
+},{"../../templates/login.hbs":45,"../tagprocess":33,"backbone":1}],25:[function(require,module,exports){
 var $ = jQuery = require('jquery'),
 	_ = require('underscore'),
 	Backbone = require('backbone'),
@@ -28175,7 +28173,7 @@ module.exports = {
 	})
 };
 
-},{"../../libs/bootstrap/bootstrap.js":35,"../../templates/navbar.hbs":44,"../tagprocess":31,"./navbutton":26,"backbone":1,"jquery":13,"underscore":14}],26:[function(require,module,exports){
+},{"../../libs/bootstrap/bootstrap.js":37,"../../templates/navbar.hbs":46,"../tagprocess":33,"./navbutton":26,"backbone":1,"jquery":13,"underscore":14}],26:[function(require,module,exports){
 var $ = require('jquery'),
     Backbone = require('backbone'),
     ButtonTemplate = require('../../templates/navbutton.hbs');
@@ -28206,7 +28204,118 @@ module.exports = (function () {
     }
 }());
 
-},{"../../templates/navbutton.hbs":45,"backbone":1,"jquery":13}],27:[function(require,module,exports){
+},{"../../templates/navbutton.hbs":47,"backbone":1,"jquery":13}],27:[function(require,module,exports){
+var _ = require('underscore'),
+	$ = require('jquery'),
+	Backbone = require('backbone'),
+	Sidebar = require('./sidebar'),
+    NewClientTemplate = require('../../templates/newclient.hbs'),
+	Helpers = require('../utilities/helpers');
+
+module.exports = (function () {
+	'use strict';
+	var exports = {};
+	_.extend(exports, {
+		View: Backbone.View.extend({
+			initialize: function () {
+                var that = this;
+				this.template = NewClientTemplate();
+				this.sidebar = new Sidebar.View({active: '#newclient'});
+			},
+			events: {
+				'submit form': 'submit'
+			},
+			render: function () {
+				this.$el.empty().append(this.template);
+				this.$('.sidebar').html(this.sidebar.render().$el);
+				return this;
+			},
+			submit: function (event) {
+				event.preventDefault();
+				var $form = $(event.currentTarget),
+					data = Helpers.serializeObject($form.serializeArray()),
+					$alert = $form.find('.alert');
+				//PENDING CREATE NEW CLIENT API
+				/*
+				$.ajax({
+					url: '/tagproc/api/newclient',
+					type: 'POST',
+					data: data,
+					success: function (response) {
+						console.log(response);
+						$alert.removeClass('hide alert-danger').addClass('alert-success').html('Client Created');
+						$form[0].reset();
+					},
+					error: function (e) {
+						$alert.removeClass('hide alert-success').addClass('alert-danger').html(e.statusText);
+					}
+				});
+				*/
+			   $alert.removeClass('hide').html('Pending create new client api');
+			}
+		})
+	});
+	return exports;
+}());
+
+
+},{"../../templates/newclient.hbs":48,"../utilities/helpers":34,"./sidebar":30,"backbone":1,"jquery":13,"underscore":14}],28:[function(require,module,exports){
+var _ = require('underscore'),
+	$ = require('jquery'),
+	Backbone = require('backbone'),
+	Sidebar = require('./sidebar'),
+    NewClientTemplate = require('../../templates/newserver.hbs'),
+	Helpers = require('../utilities/helpers');
+
+module.exports = (function () {
+	'use strict';
+	var exports = {};
+	_.extend(exports, {
+		View: Backbone.View.extend({
+			initialize: function () {
+                var that = this;
+				this.template = NewClientTemplate();
+				this.sidebar = new Sidebar.View({active: '#newserver'});
+			},
+			events: {
+				'submit form': 'submit'
+			},
+			render: function () {
+				this.$el.empty().append(this.template);
+				this.$('.sidebar').html(this.sidebar.render().$el);
+				return this;
+			},
+			submit: function (event) {
+				event.preventDefault();
+				var $form = $(event.currentTarget),
+					data = Helpers.serializeObject($form.serializeArray()),
+					$alert = $form.find('.alert');
+				//PENDING CREATE NEW CLIENT API
+				/*
+				$.ajax({
+					url: '/tagproc/api/newclient',
+					type: 'POST',
+					data: data,
+					success: function (response) {
+						console.log(response);
+						$alert.removeClass('hide alert-danger').addClass('alert-success').html('Client Created');
+						$form[0].reset();
+					},
+					error: function (e) {
+						$alert.removeClass('hide alert-success').addClass('alert-danger').html(e.statusText);
+					}
+				});
+				*/
+			   $alert.removeClass('hide').html('Pending create new client api');
+			}
+		})
+	});
+	return exports;
+}());
+
+
+
+},{"../../templates/newserver.hbs":49,"../utilities/helpers":34,"./sidebar":30,"backbone":1,"jquery":13,"underscore":14}],29:[function(require,module,exports){
 var Backbone = require('backbone'),
     ServicesTemplate = require('../../templates/services.hbs');
 
@@ -28222,7 +28331,7 @@ module.exports = {
         }
     })
 };
-},{"../../templates/services.hbs":46,"backbone":1}],28:[function(require,module,exports){
+},{"../../templates/services.hbs":50,"backbone":1}],30:[function(require,module,exports){
 var _ = require('underscore'),
 	Backbone = require('backbone'),
 	TagProcess = require('../tagprocess'),
@@ -28258,7 +28367,7 @@ module.exports = (function () {
 	return exports;
 }());
 
-},{"../../templates/sidebar.hbs":47,"../tagprocess":31,"backbone":1,"underscore":14}],29:[function(require,module,exports){
+},{"../../templates/sidebar.hbs":51,"../tagprocess":33,"backbone":1,"underscore":14}],31:[function(require,module,exports){
 var Backbone = require('backbone'),
     TechnologyTemplate = require('../../templates/technology.hbs');
 
@@ -28274,7 +28383,7 @@ module.exports = {
 	})
 };
 
-},{"../../templates/technology.hbs":48,"backbone":1}],30:[function(require,module,exports){
+},{"../../templates/technology.hbs":52,"backbone":1}],32:[function(require,module,exports){
 var Backbone = require('backbone'),
 	TagProcess = require('./tagprocess'),
     _ = require('underscore');
@@ -28290,7 +28399,9 @@ module.exports = (function () {
 			'aboutus'		: 'showAboutUs',
 			'contactus'		: 'showContactUs',
 			'login'			: 'showLogin',
-			'client'		: 'showClient'
+			'client'		: 'showClient',
+			'newclient'		: 'showNewClient',
+			'newserver'		: 'showNewServer'
 		},
 		initialize: function () {
 			this.viewTarget = '#content';
@@ -28324,6 +28435,14 @@ module.exports = (function () {
 			var view = require('./modules/client');
 			this.show({hash: '#client', title: 'Client', view: new view.View()});
 		},
+		showNewClient: function () {
+			var view = require('./modules/newclient');
+			this.show({hash: '#newclient', title: 'New Client', view: new view.View()});
+		},
+		showNewServer: function () {
+			var view = require('./modules/newserver');
+			this.show({hash: '#newserver', title: 'New Server', view: new view.View()});
+		},
 		show: function (options) {
 			var that = this,
                 settings = _.extend({
@@ -28347,7 +28466,7 @@ module.exports = (function () {
 	};
 }());
 
-},{"./modules/aboutus":16,"./modules/client":18,"./modules/contactus":20,"./modules/home":23,"./modules/login":24,"./modules/services":27,"./modules/technology":29,"./tagprocess":31,"backbone":1,"underscore":14}],31:[function(require,module,exports){
+},{"./modules/aboutus":16,"./modules/client":18,"./modules/contactus":20,"./modules/home":23,"./modules/login":24,"./modules/newclient":27,"./modules/newserver":28,"./modules/services":29,"./modules/technology":31,"./tagprocess":33,"backbone":1,"underscore":14}],33:[function(require,module,exports){
 var $ = require('jquery'),
 	Backbone = require('backbone')
     ViewManager = require('./utilities/viewmanager'),
@@ -28399,7 +28518,7 @@ module.exports = {
 			'name': 'New Client'
 		},
 		{
-			'href': '#',
+			'href': '#newserver',
 			'active': false,
 			'name': 'New Server'
 		},
@@ -28426,7 +28545,7 @@ module.exports = {
 	])
 };
 
-},{"./modules/authenticate":17,"./utilities/vent":33,"./utilities/viewmanager":34,"backbone":1,"jquery":13}],32:[function(require,module,exports){
+},{"./modules/authenticate":17,"./utilities/vent":35,"./utilities/viewmanager":36,"backbone":1,"jquery":13}],34:[function(require,module,exports){
 var _ = require('underscore');
 
 module.exports = {
@@ -28446,7 +28565,7 @@ module.exports = {
 	}
 };
 
-},{"underscore":14}],33:[function(require,module,exports){
+},{"underscore":14}],35:[function(require,module,exports){
 var _ = require('underscore'),
     Backbone = require('backbone');
 
@@ -28455,7 +28574,7 @@ module.exports = (function () {
     return _.extend({}, Backbone.Events);
 }());
 
-},{"backbone":1,"underscore":14}],34:[function(require,module,exports){
+},{"backbone":1,"underscore":14}],36:[function(require,module,exports){
 var _ = require('underscore'),
     $ = require('jquery'),
 	Backbone = require('backbone');
@@ -28533,7 +28652,7 @@ module.exports = (function () {
     };
 }());
 
-},{"backbone":1,"jquery":13,"underscore":14}],35:[function(require,module,exports){
+},{"backbone":1,"jquery":13,"underscore":14}],37:[function(require,module,exports){
 /*!
  * Bootstrap v3.1.1 (http://getbootstrap.com)
  * Copyright 2011-2014 Twitter, Inc.
@@ -30486,7 +30605,7 @@ if (typeof jQuery === 'undefined') { throw new Error('Bootstrap\'s JavaScript re
 
 }(jQuery);
 
-},{}],36:[function(require,module,exports){
+},{}],38:[function(require,module,exports){
 var	$ = require('jquery'),
 	TagProcess = require('./js/tagprocess'),
 	Router = require('./js/router'),
@@ -30517,7 +30636,7 @@ $('#layout').prepend(navbar.render().$el)
 	.append(footer.render().$el);
 Router.initialize();
 
-},{"./js/modules/footer":21,"./js/modules/header":22,"./js/modules/navbar":25,"./js/router":30,"./js/tagprocess":31,"jquery":13}],37:[function(require,module,exports){
+},{"./js/modules/footer":21,"./js/modules/header":22,"./js/modules/navbar":25,"./js/router":32,"./js/tagprocess":33,"jquery":13}],39:[function(require,module,exports){
 var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
   this.compilerInfo = [4,'>= 1.0.0'];
 helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
@@ -30526,7 +30645,7 @@ helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
 
   return "<div id=\"about\" class=\"container-fluid\">\n    <div class=\"row\">\n        <div class=\"col-md-12\">\n            <h2>About us</h2>\n            <h3>We look Forward To The Opportunity To Impress You!</h3>\n            <p>TAG PROCESS  philosophy and the flexibility needed to meet the needs of our clients and partners requires us to continually pursue accuracy, speed, and responsiveness.<br/><br/>\n                Our clients are assured of the integrity of our service. Our managed network of Process Servers is experienced, highly skilled, trained, and licensed, ensuring legally defendable service of process time and again.<br/><br/>\n                We pride ourselves on the highest level of customer service and stride each day to remain one of the best process serving companies in the state of Florida. <br/><br/>\n                We have extensive experience in state-of-the-art networking, technology infrastructure and business growth strategies. We can design a step-by-step, cost-effective plan for you to achieve optimum ongoing productivity for your company.</p>\n        </div>\n    </div>\n</div>\n";
   });
-},{"handlebars/runtime":10}],38:[function(require,module,exports){
+},{"handlebars/runtime":10}],40:[function(require,module,exports){
 var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
   this.compilerInfo = [4,'>= 1.0.0'];
 helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
@@ -30541,12 +30660,12 @@ function program1(depth0,data) {
 function program3(depth0,data) {
   
   var buffer = "", stack1;
-  buffer += "\n<div class=\"container-fluid\">\n	<div class=\"row\">\n		<div class=\"col-md-2 sidebar\"></div>\n		<div class=\"col-md-10\">\n			<div class=\"row\">\n				<form class=\"form-horizontal\" role=\"form\">\n					<div class=\"form-group col-md-4\">\n						<div class=\"input-group\">\n							<span class=\"input-group-addon\">\n								<i class=\"glyphicon glyphicon-search\"></i>\n							</span>\n							<input id=\"search\" type=\"text\" class=\"form-control\" placeholder=\"Search\" value=\""
+  buffer += "\n<div class=\"container-fluid\">\n	<div class=\"row\">\n		<div class=\"col-md-2 sidebar\"></div>\n		<div class=\"col-md-10\">\n			<div class=\"row\">\n				<form class=\"form-horizontal col-sm-8\" role=\"form\">\n					<div class=\"form-group\">\n						<div class=\"input-group\">\n							<span class=\"input-group-addon\">\n								<i class=\"glyphicon glyphicon-search\"></i>\n							</span>\n							<input id=\"search\" type=\"text\" class=\"form-control\" placeholder=\"Search\" value=\""
     + escapeExpression(((stack1 = ((stack1 = (depth0 && depth0.form)),stack1 == null || stack1 === false ? stack1 : stack1.q)),typeof stack1 === functionType ? stack1.apply(depth0) : stack1))
     + "\" AUTOFOCUS>\n							<span class=\"input-group-btn\">\n								<button class=\"btn btn-default dropdown-toggle\" data-toggle=\"dropdown\" type=\"button\">\n									<span id=\"search-by-text\">";
   stack1 = helpers['if'].call(depth0, ((stack1 = (depth0 && depth0.form)),stack1 == null || stack1 === false ? stack1 : stack1.searchby), {hash:{},inverse:self.program(6, program6, data),fn:self.program(4, program4, data),data:data});
   if(stack1 || stack1 === 0) { buffer += stack1; }
-  buffer += "</span>\n									<span class=\"caret\"></span>\n								</button>\n								<ul class=\"dropdown-menu pull-right\" id=\"searchby\">\n									<li><a href=\"#\" data-value=\"jobnumber\">Job Number</a></li>\n									<li><a href=\"#\" data-value=\"account\">Client</a></li>\n									<li><a href=\"#\" data-value=\"casenumber\">Case</a></li>\n								</ul>\n							</span>\n						</div>\n					</div>\n				</form>\n				<div class=\"pull-right\" style=\"font-size: 24px;\">\n					<a href=\"#\" class=\"switch-page\"  data-offset=\"-10\" title=\"Previous\">\n						<span class=\"glyphicon glyphicon-chevron-left\"></span>\n					</a>\n					<a href=\"#\" class=\"switch-page\" data-offset=\"10\" title=\"Next\">\n						<span class=\"glyphicon glyphicon-chevron-right\"></span>\n					</a>\n				</div>\n				<br>\n			</div>\n			<div class=\"row\">\n				<table class=\"table table-bordered table-responsive table-condensed table-hover table-striped\">\n					<thead>\n						<tr>\n							<th>Job #</th>\n							<th>Account</th>\n							<th>Reference</th>\n							<th>To Serve On</th>\n							<th>Court Date</th>\n							<th>Completed</th>\n							<th>Type of Service</th>\n							<th>Date Received</th>\n						</tr>\n					</thead>\n					<tbody>\n					";
+  buffer += "</span>\n									<span class=\"caret\"></span>\n								</button>\n								<ul class=\"dropdown-menu pull-right\" id=\"searchby\">\n									<li><a href=\"#\" data-value=\"jobnumber\">Job Number</a></li>\n									<li><a href=\"#\" data-value=\"account\">Client</a></li>\n									<li><a href=\"#\" data-value=\"casenumber\">Case</a></li>\n								</ul>\n							</span>\n						</div>\n					</div>\n				</form>\n				<div class=\"text-right col-sm-4\" style=\"font-size: 24px;\">\n					<a href=\"#\" class=\"switch-page\"  data-offset=\"-10\" title=\"Previous\">\n						<span class=\"glyphicon glyphicon-chevron-left\"></span>\n					</a>\n					<a href=\"#\" class=\"switch-page\" data-offset=\"10\" title=\"Next\">\n						<span class=\"glyphicon glyphicon-chevron-right\"></span>\n					</a>\n				</div>\n				<br>\n			</div>\n			<div class=\"row\">\n				<table class=\"table table-bordered table-responsive table-condensed table-hover table-striped\">\n					<thead>\n						<tr>\n							<th>Job #</th>\n							<th>Account</th>\n							<th>Reference</th>\n							<th>To Serve On</th>\n							<th>Court Date</th>\n							<th>Completed</th>\n							<th>Type of Service</th>\n							<th>Date Received</th>\n						</tr>\n					</thead>\n					<tbody>\n					";
   stack1 = helpers['if'].call(depth0, (depth0 && depth0.items), {hash:{},inverse:self.program(11, program11, data),fn:self.program(8, program8, data),data:data});
   if(stack1 || stack1 === 0) { buffer += stack1; }
   buffer += "\n					</tbody>\n				</table>\n			</div>\n		</div>\n	</div>\n</div>\n";
@@ -30626,7 +30745,7 @@ function program11(depth0,data) {
   buffer += "\n";
   return buffer;
   });
-},{"handlebars/runtime":10}],39:[function(require,module,exports){
+},{"handlebars/runtime":10}],41:[function(require,module,exports){
 var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
   this.compilerInfo = [4,'>= 1.0.0'];
 helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
@@ -30635,7 +30754,7 @@ helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
 
   return "<div id=\"contact\" class=\"container-fluid\">\n    <div class=\"row\">\n        <div class=\"col-md-6\">\n            <h2 style=\"margin-top: 0px;\">Contact Us\n                <small> Send us an e-mail </small>\n            </h2>\n            <form class=\"form-horizontal\" method=\"post\" action=\"contactus.php\" role=\"form\">\n                <div class=\"form-group\">\n                    <label for=\"name\" class=\"col-sm-2 control-label\">Name:</label>\n                    <div class=\"col-sm-10\">\n                        <input class=\"form-control\" name=\"name\" id=\"name\" type=\"text\" placeholder=\"Name\" required/>\n                    </div>\n                </div>\n                <div class=\"form-group\">\n                    <label for=\"phone\" class=\"col-sm-2 control-label\">Phone #:</label>\n                    <div class=\"col-sm-10\">\n                        <input class=\"form-control\" name=\"phone\" id=\"phone\" type=\"tel\" placeholder=\"Eg. (410) 555-5555\" pattern=\"^(?:\\(\\d{3}\\)|\\d{3})[- ]?\\d{3}[- ]?\\d{4}$\"/>\n                    </div>\n                </div>\n                <div class=\"form-group\">\n                    <label for='email' class=\"col-sm-2 control-label\">E-mail:</label>\n                    <div class=\"col-sm-10\">\n                        <input name='email' id='email' type=\"email\" class=\"form-control\" placeholder=\"E-mail\" required/>\n                    </div>\n                </div>\n                <div class=\"form-group\">\n                    <label for='subject' class=\"col-sm-2 control-label\">Subject:</label>\n                    <div class=\"col-sm-10\">\n                        <input name='subject' id='subject' type='text' class=\"form-control\" placeholder=\"Subject\" required/>\n                    </div>\n                </div>\n                <div class=\"form-group\">\n                    <label for='message' class=\"col-sm-2 control-label\">Message:</label>\n                    <div class=\"col-sm-10\">\n                        <textarea name='message' id='message' class=\"form-control\" placeholder=\"Message\" required></textarea>\n                    </div>\n                </div>\n				<div class=\"alert alert-danger hide col-sm-offset-2 col-sm-10\"></div>\n                <div class=\"form-group\">\n                    <div class=\"col-sm-offset-2 col-sm-10\">\n                        <button type=\"submit\" class=\"btn btn-default btn-block\">\n                            Send <span class=\"glyphicon glyphicon-send\"></span>\n                        </button>\n                    </div>\n                </div>\n            </form>\n        </div>\n        <div class=\"col-md-6\">\n            <address>\n                  <strong>TagProcess, LLC.</strong><br>\n                  7128  NW 49TH ST.<br>\n                  LAUDERHILL, FL 33319<br>\n                  <abbr title=\"Phone\">P:</abbr> (561) 899-0777<br>\n                  <abbr title=\"Fax\">F:</abbr> (754) 200-4423\n            </address>\n            <address>\n                  <strong>Gary Tomlinson</strong><br>\n                  <a href=\"mailto:#\">INFO@TAGPROCESSLLC.com</a>\n            </address>\n        </div>\n    </div>\n</div>\n";
   });
-},{"handlebars/runtime":10}],40:[function(require,module,exports){
+},{"handlebars/runtime":10}],42:[function(require,module,exports){
 var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
   this.compilerInfo = [4,'>= 1.0.0'];
 helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
@@ -30644,7 +30763,7 @@ helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
 
   return "<div class=\"container\">\n	<div class=\"text-center\">\n	    Copyright 2012 Tag Process LLC. All rights reserved<br>\n		<address>\n            3500 N State Road 7 Suite 430, Lauderdale Lakes, FL 33319 Call (561)899.0777 Fax (754)200.4423\n        </address>\n	</div>\n</div>\n";
   });
-},{"handlebars/runtime":10}],41:[function(require,module,exports){
+},{"handlebars/runtime":10}],43:[function(require,module,exports){
 var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
   this.compilerInfo = [4,'>= 1.0.0'];
 helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
@@ -30653,7 +30772,7 @@ helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
 
   return "<div class=\"container-fluid\" style=\"position: relative\">\n    <img class=\"img-responsive\"  src=\"app/images/tag_logo.jpg\"/>\n    <p class=\"text-right col-md-8\" style=\"position: absolute; bottom: 0; right: 0; margin-bottom: 0px;\">\n        <small id=\"login-message\">You're currently not logged in.</small>\n    </p>\n</div>\n";
   });
-},{"handlebars/runtime":10}],42:[function(require,module,exports){
+},{"handlebars/runtime":10}],44:[function(require,module,exports){
 var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
   this.compilerInfo = [4,'>= 1.0.0'];
 helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
@@ -30662,7 +30781,7 @@ helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
 
   return "<div class=\"container-fluid\">\n	<div class=\"row\">\n		<div class=\"col-md-6\">\n			<img class=\"img-rounded img-responsive pull-left\" src=\"app/images/header_img1.jpg\">\n			<h3 style=\"margin-top: 0px;\">We have over 11 years of experience in the process serving.</h3>\n		</div>\n		<div class=\"col-md-6\">                                                                                                                                                                                                                                              \n			<h3 style=\"margin-top: 0px;\">Changing the way of process serving</h3>                                                                                                                                                                                            \n			<h3>GREAT CUSTOMER SERVICE</h3>                                                                                                                                                                                                         \n			<p class=\"text-info\">With over 11 years of experience, TAG Process Service llc<br>                                                                                                                                                       \n				We specialize in serving all documents. Through our technology <br>\n				Which establish us as the leader in the process industry.</p>                                                                                                                                                                                                                                      \n		</div>\n	</div>\n	<hr>\n	<div class=\"row\">\n		<div class=\"col-md-6\">                                                                                                                                                                                                                                              \n			<img class=\"img-rounded img-responsive pull-left\" src=\"app/images/technology.png\">                                                                                                                                                                              \n			<h3 style=\"margin-top: 0px;\">We are the leaders in Technology in the Process Serving Industry.</h3>                                                                                                                                                             \n		</div>  \n		<div class=\"col-md-6\">\n			<img class=\"img-rounded img-response pull-right\" src=\"app/images/ts_logo.jpg\">\n			<h3 style=\"margin-top: 0px;\">We are looking forward to working with you.</h3>\n			<p class=\"text-info\">For more information on our technology click <a href=\"#aboutus\">About Us</a> </p>\n			<p class=\"text-info\">Here is a complete company directory <br>\n				Or contact us via email by completing the <br>\n				<a href=\"#contactus\">contact us</a> form. </p>\n		</div>\n	</div>\n</div>\n";
   });
-},{"handlebars/runtime":10}],43:[function(require,module,exports){
+},{"handlebars/runtime":10}],45:[function(require,module,exports){
 var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
   this.compilerInfo = [4,'>= 1.0.0'];
 helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
@@ -30671,7 +30790,7 @@ helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
 
   return "<div id=\"loginbox\" class=\"col-md-6 col-md-offset-3 col-sm-8 col-sm-offset-2\">\n	<div class=\"panel panel-info\" >\n		<div class=\"panel-heading\">\n			<div class=\"panel-title\">Sign In</div>\n		</div>\n		<div class=\"panel-body\">\n			<div id=\"login-alert\" class=\"alert alert-danger hide col-sm-12\"></div>\n			<form id=\"loginform\" class=\"form-horizontal\" role=\"form\">\n				<div class=\"form-group col-sm-12\">\n					<div class=\"input-group\">\n						<span class=\"input-group-addon\"><i class=\"glyphicon glyphicon-user\"></i></span>\n						<input id=\"username\" type=\"text\" class=\"form-control\" name=\"username\" value=\"\" placeholder=\"username\" required>                                   \n					</div>\n				</div>\n				<div class=\"form-group col-sm-12\">\n					<div class=\"input-group\">\n						<span class=\"input-group-addon\"><i class=\"glyphicon glyphicon-lock\"></i></span>\n						<input id=\"password\" type=\"password\" class=\"form-control\" name=\"password\" placeholder=\"password\" required>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<div class=\"col-sm-12 controls\">\n						<button id=\"btn-login\" class=\"btn btn-default btn-block\" type=\"submit\">Login  </a>\n					</div>\n				</div>\n			</form> \n		</div>                     \n	</div>  \n</div>\n";
   });
-},{"handlebars/runtime":10}],44:[function(require,module,exports){
+},{"handlebars/runtime":10}],46:[function(require,module,exports){
 var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
   this.compilerInfo = [4,'>= 1.0.0'];
 helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
@@ -30680,7 +30799,7 @@ helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
 
   return "<nav class=\"navbar navbar-default\" role=\"navigation\">\n	<div class=\"container-fluid\">\n		<div class=\"navbar-header\">\n			<button type=\"button\" class=\"navbar-toggle\" data-toggle=\"collapse\" data-target=\"#nav-links\">\n				<span class=\"sr-only\">Toggle Navigation</span>\n				<span class=\"icon-bar\"></span>\n				<span class=\"icon-bar\"></span>\n				<span class=\"icon-bar\"></span>\n			</button>\n			<a class=\"navbar-brand\" href=\"#home\">TagProcess</a>\n		</div>\n		<div class=\"collapse navbar-collapse\" id=\"nav-links\">\n			<ul class=\"nav navbar-nav\" id=\"nav-ul\"></ul>\n			<ul class=\"nav navbar-nav navbar-right\">\n				<button type=\"button\" onclick=\"location.href='#login'\" class=\"btn btn-default navbar-btn\">Sign In</button>\n				<li class=\"dropdown hide\" id=\"user-dropdown\">\n					<a href=\"#\" class=\"dropdown-toggle\" data-toggle=\"dropdown\">\n						<span class=\"glyphicon glyphicon-user\"></span>\n						<span id=\"name-text\"> User</span>\n						<b class=\"caret\"></b>\n					</a>\n					<ul class=\"dropdown-menu\">\n						<li>\n							<a href=\"#\" id=\"logout\"><span class=\"glyphicon glyphicon-log-out\"></span> Log Out...</a>\n						</li>\n					</ul>\n				</li>\n			</ul>\n		</div>\n	</div>\n</nav>\n";
   });
-},{"handlebars/runtime":10}],45:[function(require,module,exports){
+},{"handlebars/runtime":10}],47:[function(require,module,exports){
 var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
   this.compilerInfo = [4,'>= 1.0.0'];
 helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
@@ -30698,7 +30817,25 @@ helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
     + "</a>";
   return buffer;
   });
-},{"handlebars/runtime":10}],46:[function(require,module,exports){
+},{"handlebars/runtime":10}],48:[function(require,module,exports){
+var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
+  this.compilerInfo = [4,'>= 1.0.0'];
+helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
+  
+
+
+  return "<div class=\"container-fluid\">\n	<div class=\"row\">\n		<div class=\"col-md-2 sidebar\"></div>\n		<div class=\"col-md-10\">\n			<form class=\"form-horizontal\">\n				<div class=\"form-group\">\n					<label for=\"client_username\" class=\"col-sm-2 control-label\">Username</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"client_username\" name=\"client_username\" placeholder=\"Client Username\" required>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"client_password\" class=\"col-sm-2 control-label\">Password</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"client_password\" name=\"client_password\" placeholder=\"Client Password\" required>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"client_account\" class=\"col-sm-2 control-label\">Account Name</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"client_account\" name=\"client_account\" placeholder=\"Client's Account Name\" required>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"client_phone\" class=\"col-sm-2 control-label\">Phone</label>\n					<div class=\"col-sm-10\">\n						<input type=\"tel\" class=\"form-control\" id=\"client_phone\" name=\"client_phone\" placeholder=\"Client's Phone #\">\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"client_fax\" class=\"col-sm-2 control-label\">Fax</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"client_fax\" name=\"client_fax\" placeholder=\"Client's Fax #\">\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"client_email\" class=\"col-sm-2 control-label\">E-mail</label>\n					<div class=\"col-sm-10\">\n						<input type=\"email\" class=\"form-control\" id=\"client_email\" name=\"client_email\" placeholder=\"E-mail\">\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"client_address\" class=\"col-sm-2 control-label\">Address</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"client_address\" name=\"client_address\" placeholder=\"Client's Address\" required>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"client_city\" class=\"col-sm-2 control-label\">City</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"client_city\" name=\"client_city\" placeholder=\"City\" required>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"client_state\" class=\"col-sm-2 control-label\">State</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"client_state\" name=\"client_state\" placeholder=\"State\" required>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"client_zip\" class=\"col-sm-2 control-label\">Zip</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"client_zip\" name=\"client_zip\" placeholder=\"ZIP Code\" required>\n					</div>\n				</div>\n				<div class=\"alert alert-danger hide col-sm-offset-2 col-sm-10\"></div>\n				<div class=\"form-group\">\n					<div class=\"col-sm-offset-2 col-sm-10\">\n						<button type=\"submit\" class=\"btn btn-default btn-block\">Submit</button>\n					</div>\n				</div>\n			</form>\n		</div>\n	</div>\n</div>\n";
+  });
+},{"handlebars/runtime":10}],49:[function(require,module,exports){
+var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
+  this.compilerInfo = [4,'>= 1.0.0'];
+helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
+  
+
+
+  return "<div class=\"container-fluid\">\n	<div class=\"row\">\n		<div class=\"col-md-2 sidebar\"></div>\n		<div class=\"col-md-10\">\n			<form class=\"form-horizontal\">\n				<div class=\"form-group\">\n				<!-- \n				server_fname\n				server_lname\n				server_type { Certified Process Server, Special Process Server, Court Officer }\n				server_id\n				server_county\n				server_phone\n				server_address\n				-->\n					<label for=\"server_fname\" class=\"col-sm-2 control-label\">First Name</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"server_fname\" name=\"server_fname\" placeholder=\"Server First Name\" required>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"server_lname\" class=\"col-sm-2 control-label\">Last Name</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"server_lname\" name=\"server_lname\" placeholder=\"Server Last Name\" required>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"server_type\" class=\"col-sm-2 control-label\">Server Type</label>\n					<div class=\"col-sm-10\">\n						<select type=\"text\" class=\"form-control\" id=\"server_type\" name=\"server_type\" required>\n							<option value=\"\">Please select one...</option>\n							<option>Certified Process Server</option>\n							<option>Special Process Server</option>\n							<option>Court Officer</option>\n						</select>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"server_id\" class=\"col-sm-2 control-label\">Server ID #</label>\n					<div class=\"col-sm-10\">\n						<input type=\"tel\" class=\"form-control\" id=\"server_id\" name=\"server_id\" placeholder=\"Server's ID #\" required>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"server_county\" class=\"col-sm-2 control-label\">County</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"server_county\" name=\"server_county\" placeholder=\"County\">\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"server_phone\" class=\"col-sm-2 control-label\">Phone #</label>\n					<div class=\"col-sm-10\">\n						<input type=\"tel\" class=\"form-control\" id=\"server_phone\" name=\"server_phone\" placeholder=\"Phone #\">\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"server_address\" class=\"col-sm-2 control-label\">Address</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"server_address\" name=\"server_address\" placeholder=\"Server's Address\" required>\n					</div>\n				</div>\n				<div class=\"alert alert-danger hide col-sm-offset-2 col-sm-10\"></div>\n				<div class=\"form-group\">\n					<div class=\"col-sm-offset-2 col-sm-10\">\n						<button type=\"submit\" class=\"btn btn-default btn-block\">Submit</button>\n					</div>\n				</div>\n			</form>\n		</div>\n	</div>\n</div>\n";
+  });
+},{"handlebars/runtime":10}],50:[function(require,module,exports){
 var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
   this.compilerInfo = [4,'>= 1.0.0'];
 helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
@@ -30707,7 +30844,7 @@ helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
 
   return "<div id=\"services\" class=\"container-fluid\">\n        <div class=\"row\">\n            <div class=\"col-md-8\">\n                <h2>TAG PROCESS SERVICES LLC</h2>\n                <p>Our competitors may offer numerous services, both related and unrelated to the service of process, TAG PROCESS flat rate pricing include many of the services you currently pay extra for with other process serving companies.</p>\n                <h2>Our Price Includes:</h2>\n                <ul>\n                    <li>Picking up documents at your office</li>\n                    <li>Issuing documents at respective courts</li>\n                    <li>Effecting service</li>\n                    <li>Skip trace bad addresses*</li>\n                    <li>File return of service with respective court</li>\n                </ul>\n            </div>\n            <div class=\"col-md-4 text-right\">\n                <img class=\"img-rounded img-responsive pull-left\" src=\"app/images/android.jpg\" style=\"height: 160px;\"></img>\n                <p class=\"text-info\">The technology we have is designed to save our clients time and money. <a href=\"#contactus\">Contact us</a> for more information and your 1st two jobs are FREE.</p>\n            </div>\n        </div>\n        <h2>In Addition, Our Clients Enjoy:</h2>\n        <h3>THE MOST COMPREHENSIVE WEBSITE</h3>\n        <p>Featuring real-time information on every paper</p>\n        <h3>PHOTOGRAPHIC, GPS COORDINATES, DATE AND TIME STAMPED EVIDENCE</h3>\n        <p>Every attempt and serves available for viewing and printing at all times.</p>\n        <h3>UNIFIED CALENDAR</h3>\n        <p>See and print your pretrial/deposition calendar for any range of dates you select or export the entire calendar along with case and court information needed to manage appearances and outside counsel.</p>\n        <h3>SKIP TRACING</h3>\n        <p>By using our exclusive skip trace queue, clients can give feedback on any paper that's in our system requiring a skip trace. Also have full control of number of skips attempts and allowed on address before \"Non- Serving.\"</p>\n        <h3>VIEW AND PRINT AFFIDAVIT OF SERVICE</h3>\n        <p>Copies of affidavits always available for download.</p>\n        <h3>SEARCH AND REPORT</h3>\n        <p>Search and reports feature allows our clients to search our database. Which allows our clients to give feed back on specific report with the requested information in the format you select.</p>\n        <h3>DOWNLOAD CENTER</h3>\n        <p>Our daily reports are delivered in the format needed, which allows our clients to view and manage their files. Which can then be imported into your collection software allowing you to update your files instantly.</p>\n        <h3>INSTANT COMMUNICATION</h3>\n        <p>By Sending an instant message directly to the desktop of your account manager for immediate action.</p>\n        <h3>EASY FILE ACCESS</h3>\n        <p>View cases and court information on current files</p>\n</div>\n";
   });
-},{"handlebars/runtime":10}],47:[function(require,module,exports){
+},{"handlebars/runtime":10}],51:[function(require,module,exports){
 var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
   this.compilerInfo = [4,'>= 1.0.0'];
 helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
@@ -30742,7 +30879,7 @@ function program2(depth0,data) {
   buffer += "\n</ul>\n";
   return buffer;
   });
-},{"handlebars/runtime":10}],48:[function(require,module,exports){
+},{"handlebars/runtime":10}],52:[function(require,module,exports){
 var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
   this.compilerInfo = [4,'>= 1.0.0'];
 helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
@@ -30751,4 +30888,4 @@ helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
 
   return "<div id=\"about\" class=\"container-fluid\">\n    <div class=\"row\">\n        <div class=\"col-md-6\">\n            <h2>Technology</h2>\n            <h3>Now available on Android and iPhone!</h3>\n            <h4>TAG Serve makes Tag Process number 1 in the country</h4>\n            <p>Can your process serving company show you proof of service using a time-stamped picture? Or do you have to call them and wait for them to give you a response on what the status is? With our new software Tag Serve, clients will no longer have to wait on status since it's updated real-time and you have 24 hour access!</p>\n        </div>\n        <div class=\"col-md-6\">\n            <img class=\"img-rounded img-responsive\" src=\"app/images/network.jpg\"></img>\n        </div>\n    </div>\n</div>";
   });
-},{"handlebars/runtime":10}]},{},[36])
+},{"handlebars/runtime":10}]},{},[38])

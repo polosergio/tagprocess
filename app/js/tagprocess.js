@@ -49,7 +49,7 @@ module.exports = {
 			'name': 'New Client'
 		},
 		{
-			'href': '#',
+			'href': '#newserver',
 			'active': false,
 			'name': 'New Server'
 		},
