@@ -1,4 +1,5 @@
 var $ = require('jquery'),
+	Backbone = require('backbone')
     ViewManager = require('./utilities/viewmanager'),
     Vent = require('./utilities/vent'),
 	Authenticate = require('./modules/authenticate');
@@ -30,5 +31,47 @@ module.exports = {
 			'href': '#client',
 			'name': 'Client'
 		}
-	]
+	],
+	sidebar: new Backbone.Collection([
+		{
+			'href': '#client',
+			'active': false,
+			'name': 'Jobs'
+		},
+		{
+			'href': '#',
+			'active': false,
+			'name': 'New Case'
+		},
+		{
+			'href': '#newclient',
+			'active': false,
+			'name': 'New Client'
+		},
+		{
+			'href': '#',
+			'active': false,
+			'name': 'New Server'
+		},
+		{
+			'href': '#',
+			'active': false,
+			'name': 'New Employee'
+		},
+		{
+			'href': '#',
+			'active': false,
+			'name': 'Client Statement'
+		},
+		{
+			'href': '#',
+			'active': false,
+			'name': 'Server Report'
+		},
+		{
+			'href': '#',
+			'active': false,
+			'name': 'Client Receivables Report'
+		}
+	])
 };

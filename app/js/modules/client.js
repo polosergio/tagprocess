@@ -1,6 +1,8 @@
 var _ = require('underscore'),
 	$ = require('jquery'),
+	TagProcess = require('../tagprocess'),
 	Backbone = require('backbone'),
+	Sidebar = require('./sidebar'),
     ClientTemplate = require('../../templates/client.hbs');
 
 module.exports = (function () {
@@ -26,6 +28,7 @@ module.exports = (function () {
                 var that = this;
 				this.template = ClientTemplate;
 				this.collection = new exports.Collection();
+				this.sidebar = new Sidebar.View({active: '#client'});
 				delete this.collection.params.q;
 				delete this.collection.params.searchby;
 				this.listenTo(this.collection, 'sync', this.render);
@@ -42,9 +45,12 @@ module.exports = (function () {
 					payload = {
 					items: _.isEmpty(data) ? null : data,
 					form: this.collection.params,
+					active: 'jobs',
+					locations: TagProcess.sidebar,
                     no_access: _.isUndefined(this.collection.status) || this.collection.status === 401
 				};
 				this.$el.empty().append(this.template(payload));
+				this.$('.sidebar').html(this.sidebar.render().$el);
 				this.$('.switch-page').tooltip();
 				return this;
 			},
