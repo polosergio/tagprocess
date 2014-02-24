@@ -27838,7 +27838,18 @@ var _ = require('underscore'),
 
 module.exports = (function () {
 	'use strict';
-	var exports = {};
+	var exports = {},
+		helpers = {
+			parseFormParams: function (params) {
+				var options = {
+					'account': 'Client',
+					'casenumber': 'Case',
+					'jobnumber': 'Job Number'
+				}, result = _.clone(params);
+				result.searchby = options[params.searchby];
+				return result;
+			}
+		};
 	_.extend(exports, {
 		Collection: Backbone.Collection.extend({
 			params: {
@@ -27875,8 +27886,7 @@ module.exports = (function () {
 				var data = this.collection.toJSON(),
 					payload = {
 					items: _.isEmpty(data) ? null : data,
-					form: this.collection.params,
-					active: 'jobs',
+					form: helpers.parseFormParams(this.collection.params),
 					locations: TagProcess.sidebar,
                     no_access: _.isUndefined(this.collection.status) || this.collection.status === 401
 				};
@@ -27889,7 +27899,7 @@ module.exports = (function () {
 				event.preventDefault();
 				var $target = $(event.currentTarget),
 					$button = $target.parents('ul').siblings();
-				$button.html($target.html());
+				$button.find('#search-by-text').html($target.html());
 				this.collection.params.searchby = $target.data('value');
 			},
             debouncedSearch: _.debounce(function (event) {
@@ -30533,10 +30543,10 @@ function program3(depth0,data) {
   var buffer = "", stack1;
   buffer += "\n<div class=\"container-fluid\">\n	<div class=\"row\">\n		<div class=\"col-md-2 sidebar\"></div>\n		<div class=\"col-md-10\">\n			<div class=\"row\">\n				<form class=\"form-horizontal\" role=\"form\">\n					<div class=\"form-group col-md-4\">\n						<div class=\"input-group\">\n							<span class=\"input-group-addon\">\n								<i class=\"glyphicon glyphicon-search\"></i>\n							</span>\n							<input id=\"search\" type=\"text\" class=\"form-control\" placeholder=\"Search\" value=\""
     + escapeExpression(((stack1 = ((stack1 = (depth0 && depth0.form)),stack1 == null || stack1 === false ? stack1 : stack1.q)),typeof stack1 === functionType ? stack1.apply(depth0) : stack1))
-    + "\" AUTOFOCUS>\n							<span class=\"input-group-btn\">\n								<button class=\"btn btn-default dropdown-toggle\" data-toggle=\"dropdown\" type=\"button\">";
+    + "\" AUTOFOCUS>\n							<span class=\"input-group-btn\">\n								<button class=\"btn btn-default dropdown-toggle\" data-toggle=\"dropdown\" type=\"button\">\n									<span id=\"search-by-text\">";
   stack1 = helpers['if'].call(depth0, ((stack1 = (depth0 && depth0.form)),stack1 == null || stack1 === false ? stack1 : stack1.searchby), {hash:{},inverse:self.program(6, program6, data),fn:self.program(4, program4, data),data:data});
   if(stack1 || stack1 === 0) { buffer += stack1; }
-  buffer += "<span class=\"caret\"></span></button>\n								<ul class=\"dropdown-menu pull-right\" id=\"searchby\">\n									<li><a href=\"#\" data-value=\"jobnumber\">Job Number</a></li>\n									<li><a href=\"#\" data-value=\"account\">Client</a></li>\n									<li><a href=\"#\" data-value=\"casenumber\">Case</a></li>\n								</ul>\n							</span>\n						</div>\n					</div>\n				</form>\n				<div class=\"pull-right\" style=\"font-size: 24px;\">\n					<a href=\"#\" class=\"switch-page\"  data-offset=\"-10\" title=\"Previous\">\n						<span class=\"glyphicon glyphicon-chevron-left\"></span>\n					</a>\n					<a href=\"#\" class=\"switch-page\" data-offset=\"10\" title=\"Next\">\n						<span class=\"glyphicon glyphicon-chevron-right\"></span>\n					</a>\n				</div>\n				<br>\n			</div>\n			<div class=\"row\">\n				<table class=\"table table-bordered table-responsive table-condensed table-hover table-striped\">\n					<thead>\n						<tr>\n							<th>Job #</th>\n							<th>Account</th>\n							<th>Reference</th>\n							<th>To Serve On</th>\n							<th>Court Date</th>\n							<th>Completed</th>\n							<th>Type of Service</th>\n							<th>Date Received</th>\n						</tr>\n					</thead>\n					<tbody>\n					";
+  buffer += "</span>\n									<span class=\"caret\"></span>\n								</button>\n								<ul class=\"dropdown-menu pull-right\" id=\"searchby\">\n									<li><a href=\"#\" data-value=\"jobnumber\">Job Number</a></li>\n									<li><a href=\"#\" data-value=\"account\">Client</a></li>\n									<li><a href=\"#\" data-value=\"casenumber\">Case</a></li>\n								</ul>\n							</span>\n						</div>\n					</div>\n				</form>\n				<div class=\"pull-right\" style=\"font-size: 24px;\">\n					<a href=\"#\" class=\"switch-page\"  data-offset=\"-10\" title=\"Previous\">\n						<span class=\"glyphicon glyphicon-chevron-left\"></span>\n					</a>\n					<a href=\"#\" class=\"switch-page\" data-offset=\"10\" title=\"Next\">\n						<span class=\"glyphicon glyphicon-chevron-right\"></span>\n					</a>\n				</div>\n				<br>\n			</div>\n			<div class=\"row\">\n				<table class=\"table table-bordered table-responsive table-condensed table-hover table-striped\">\n					<thead>\n						<tr>\n							<th>Job #</th>\n							<th>Account</th>\n							<th>Reference</th>\n							<th>To Serve On</th>\n							<th>Court Date</th>\n							<th>Completed</th>\n							<th>Type of Service</th>\n							<th>Date Received</th>\n						</tr>\n					</thead>\n					<tbody>\n					";
   stack1 = helpers['if'].call(depth0, (depth0 && depth0.items), {hash:{},inverse:self.program(11, program11, data),fn:self.program(8, program8, data),data:data});
   if(stack1 || stack1 === 0) { buffer += stack1; }
   buffer += "\n					</tbody>\n				</table>\n			</div>\n		</div>\n	</div>\n</div>\n";

@@ -7,7 +7,18 @@ var _ = require('underscore'),
 
 module.exports = (function () {
 	'use strict';
-	var exports = {};
+	var exports = {},
+		helpers = {
+			parseFormParams: function (params) {
+				var options = {
+					'account': 'Client',
+					'casenumber': 'Case',
+					'jobnumber': 'Job Number'
+				}, result = _.clone(params);
+				result.searchby = options[params.searchby];
+				return result;
+			}
+		};
 	_.extend(exports, {
 		Collection: Backbone.Collection.extend({
 			params: {
@@ -44,8 +55,7 @@ module.exports = (function () {
 				var data = this.collection.toJSON(),
 					payload = {
 					items: _.isEmpty(data) ? null : data,
-					form: this.collection.params,
-					active: 'jobs',
+					form: helpers.parseFormParams(this.collection.params),
 					locations: TagProcess.sidebar,
                     no_access: _.isUndefined(this.collection.status) || this.collection.status === 401
 				};
@@ -58,7 +68,7 @@ module.exports = (function () {
 				event.preventDefault();
 				var $target = $(event.currentTarget),
 					$button = $target.parents('ul').siblings();
-				$button.html($target.html());
+				$button.find('#search-by-text').html($target.html());
 				this.collection.params.searchby = $target.data('value');
 			},
             debouncedSearch: _.debounce(function (event) {

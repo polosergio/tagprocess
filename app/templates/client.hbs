@@ -21,7 +21,10 @@
 							</span>
 							<input id="search" type="text" class="form-control" placeholder="Search" value="{{form.q}}" AUTOFOCUS>
 							<span class="input-group-btn">
-								<button class="btn btn-default dropdown-toggle" data-toggle="dropdown" type="button">{{#if form.searchby}} {{form.searchby}}  {{else}} Search By {{/if}}<span class="caret"></span></button>
+								<button class="btn btn-default dropdown-toggle" data-toggle="dropdown" type="button">
+									<span id="search-by-text">{{#if form.searchby}} {{form.searchby}}  {{else}} Search By {{/if}}</span>
+									<span class="caret"></span>
+								</button>
 								<ul class="dropdown-menu pull-right" id="searchby">
 									<li><a href="#" data-value="jobnumber">Job Number</a></li>
 									<li><a href="#" data-value="account">Client</a></li>
