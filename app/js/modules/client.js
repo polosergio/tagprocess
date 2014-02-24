@@ -32,9 +32,10 @@ module.exports = (function () {
 				this.collection.fetch();
 			},
 			events: {
-				'click #searchby a': 'setSearchBy',
-				'keyup #search': 'debouncedSearch',
-                'submit form': 'search'
+				'click #searchby a'				: 'setSearchBy',
+				'keyup #search'					: 'debouncedSearch',
+                'submit form'					: 'search',
+				'click .switch-page'			: 'switchPage'
 			},
 			render: function () {
 				var data = this.collection.toJSON(),
@@ -44,6 +45,7 @@ module.exports = (function () {
                     no_access: _.isUndefined(this.collection.status) || this.collection.status === 401
 				};
 				this.$el.empty().append(this.template(payload));
+				this.$('.switch-page').tooltip();
 				return this;
 			},
 			setSearchBy: function (event) {
@@ -58,8 +60,15 @@ module.exports = (function () {
             }, 1000),
 			search: function (event) {
                 event.preventDefault();
+				this.collection.params.offset = 0;
 				this.collection.params.q = this.$('#search').val();
 				this.collection.params.searchby = this.collection.params.searchby ? this.collection.params.searchby : 'jobnumber';
+				this.collection.fetch();
+			},
+			switchPage: function (event) {
+				event.preventDefault();
+				var offset = parseInt($(event.currentTarget).data('offset'), 10);
+				this.collection.params.offset = this.collection.params.offset + offset >= 0 ? this.collection.params.offset + offset : 0;
 				this.collection.fetch();
 			}
 		})
