@@ -1,4 +1,13 @@
-{{#if items}}
+{{#if no_access}}
+<div class="container-fluid">
+    <div class="row text-center">
+		<div class="well well-lg">
+			<span class="glyphicon glyphicon-ban-circle glyphicon-big-alert"></span>
+			<p class="text-danger">You do not have the required access right now.</p>
+		</div>
+	</div>
+</div>
+{{else}}
 <div class="container-fluid">
 	<div class="row">
 		<form class="form-horizontal" role="form">
@@ -7,13 +16,13 @@
 					<span class="input-group-addon">
 						<i class="glyphicon glyphicon-search"></i>
 					</span>
-					<input id="search" type="text" class="form-control" placeholder="Search" value="{{form.q}}">
+					<input id="search" type="text" class="form-control" placeholder="Search" value="{{form.q}}" AUTOFOCUS>
 					<span class="input-group-btn">
 						<button class="btn btn-default dropdown-toggle" data-toggle="dropdown" type="button">{{#if form.searchby}} {{form.searchby}}  {{else}} Search By {{/if}}<span class="caret"></span></button>
 						<ul class="dropdown-menu pull-right" id="searchby">
 							<li><a href="#" data-value="jobnumber">Job Number</a></li>
-							<li><a href="#" data-value="client">Client</a></li>
-							<li><a href="#" data-value="case">Case</a></li>
+							<li><a href="#" data-value="account">Client</a></li>
+							<li><a href="#" data-value="casenumber">Case</a></li>
 						</ul>
 					</span>
 				</div>
@@ -35,29 +44,26 @@
 				</tr>
 			</thead>
 			<tbody>
-			{{#each items}}
-				<tr>
-					<td><a href="#client/{{jobnumber}}">{{jobnumber}}</a></td>
-					<td>{{account}}</td>
-					<td></td>
-					<td>{{served_person}}</td>
-					<td>{{date_court}}</td>
-					<td>{{date_served}}</td>
-					<td>{{served_documents}}</td>
-					<td>{{date_received}}</td>
-				</tr>
-			{{/each}}
+			{{#if items}}
+                {{#each items}}
+                    <tr>
+                        <td><a href="#client/{{jobnumber}}">{{jobnumber}}</a></td>
+                        <td>{{account}}</td>
+                        <td></td>
+                        <td>{{served_person}}</td>
+                        <td>{{date_court}}</td>
+                        <td>{{date_served}}</td>
+                        <td>{{served_documents}}</td>
+                        <td>{{date_received}}</td>
+                    </tr>
+                {{/each}}
+            {{else}}
+                <tr>
+                    <td colspan="8"><em>No Jobs found.</em></td>
+                </tr>
+            {{/if}}
 			</tbody>
 		</table>
-	</div>
-</div>
-{{else}}
-<div class="container-fluid">
-    <div class="row text-center">
-		<div class="well well-lg">
-			<span class="glyphicon glyphicon-ban-circle glyphicon-big-alert"></span>
-			<p class="text-danger">You do not have the required access right now.</p>
-		</div>
 	</div>
 </div>
 {{/if}}
