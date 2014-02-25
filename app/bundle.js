@@ -30665,10 +30665,10 @@ function program3(depth0,data) {
     + "\" AUTOFOCUS>\n							<span class=\"input-group-btn\">\n								<button class=\"btn btn-default dropdown-toggle\" data-toggle=\"dropdown\" type=\"button\">\n									<span id=\"search-by-text\">";
   stack1 = helpers['if'].call(depth0, ((stack1 = (depth0 && depth0.form)),stack1 == null || stack1 === false ? stack1 : stack1.searchby), {hash:{},inverse:self.program(6, program6, data),fn:self.program(4, program4, data),data:data});
   if(stack1 || stack1 === 0) { buffer += stack1; }
-  buffer += "</span>\n									<span class=\"caret\"></span>\n								</button>\n								<ul class=\"dropdown-menu pull-right\" id=\"searchby\">\n									<li><a href=\"#\" data-value=\"jobnumber\">Job Number</a></li>\n									<li><a href=\"#\" data-value=\"account\">Client</a></li>\n									<li><a href=\"#\" data-value=\"casenumber\">Case</a></li>\n								</ul>\n							</span>\n						</div>\n					</div>\n				</form>\n				<div class=\"text-right col-sm-4\" style=\"font-size: 24px;\">\n					<a href=\"#\" class=\"switch-page\"  data-offset=\"-10\" title=\"Previous\">\n						<span class=\"glyphicon glyphicon-chevron-left\"></span>\n					</a>\n					<a href=\"#\" class=\"switch-page\" data-offset=\"10\" title=\"Next\">\n						<span class=\"glyphicon glyphicon-chevron-right\"></span>\n					</a>\n				</div>\n				<br>\n			</div>\n			<div class=\"row\">\n				<table class=\"table table-bordered table-responsive table-condensed table-hover table-striped\">\n					<thead>\n						<tr>\n							<th>Job #</th>\n							<th>Account</th>\n							<th>Reference</th>\n							<th>To Serve On</th>\n							<th>Court Date</th>\n							<th>Completed</th>\n							<th>Type of Service</th>\n							<th>Date Received</th>\n						</tr>\n					</thead>\n					<tbody>\n					";
+  buffer += "</span>\n									<span class=\"caret\"></span>\n								</button>\n								<ul class=\"dropdown-menu pull-right\" id=\"searchby\">\n									<li><a href=\"#\" data-value=\"jobnumber\">Job Number</a></li>\n									<li><a href=\"#\" data-value=\"account\">Client</a></li>\n									<li><a href=\"#\" data-value=\"casenumber\">Case</a></li>\n								</ul>\n							</span>\n						</div>\n					</div>\n				</form>\n				<div class=\"text-right col-sm-4\" style=\"font-size: 24px;\">\n					<a href=\"#\" class=\"switch-page\"  data-offset=\"-10\" title=\"Previous\">\n						<span class=\"glyphicon glyphicon-chevron-left\"></span>\n					</a>\n					<a href=\"#\" class=\"switch-page\" data-offset=\"10\" title=\"Next\">\n						<span class=\"glyphicon glyphicon-chevron-right\"></span>\n					</a>\n				</div>\n				<br>\n			</div>\n			<div class=\"row\">\n				<div class=\"table-responsive\">\n					<table class=\"table table-bordered table-condensed table-hover table-striped\">\n						<thead>\n							<tr>\n								<th>Job #</th>\n								<th>Account</th>\n								<th>Reference</th>\n								<th>To Serve On</th>\n								<th>Court Date</th>\n								<th>Completed</th>\n								<th>Type of Service</th>\n								<th>Date Received</th>\n							</tr>\n						</thead>\n						<tbody>\n						";
   stack1 = helpers['if'].call(depth0, (depth0 && depth0.items), {hash:{},inverse:self.program(11, program11, data),fn:self.program(8, program8, data),data:data});
   if(stack1 || stack1 === 0) { buffer += stack1; }
-  buffer += "\n					</tbody>\n				</table>\n			</div>\n		</div>\n	</div>\n</div>\n";
+  buffer += "\n						</tbody>\n					</table>\n				</div>\n			</div>\n		</div>\n	</div>\n</div>\n";
   return buffer;
   }
 function program4(depth0,data) {
@@ -30689,16 +30689,16 @@ function program6(depth0,data) {
 function program8(depth0,data) {
   
   var buffer = "", stack1;
-  buffer += "\n						";
+  buffer += "\n							";
   stack1 = helpers.each.call(depth0, (depth0 && depth0.items), {hash:{},inverse:self.noop,fn:self.program(9, program9, data),data:data});
   if(stack1 || stack1 === 0) { buffer += stack1; }
-  buffer += "\n					";
+  buffer += "\n						";
   return buffer;
   }
 function program9(depth0,data) {
   
   var buffer = "", stack1, helper;
-  buffer += "\n							<tr>\n								<td><a href=\"#client/";
+  buffer += "\n								<tr>\n									<td><a href=\"#client/";
   if (helper = helpers.jobnumber) { stack1 = helper.call(depth0, {hash:{},data:data}); }
   else { helper = (depth0 && depth0.jobnumber); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
   buffer += escapeExpression(stack1)
@@ -30706,38 +30706,38 @@ function program9(depth0,data) {
   if (helper = helpers.jobnumber) { stack1 = helper.call(depth0, {hash:{},data:data}); }
   else { helper = (depth0 && depth0.jobnumber); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
   buffer += escapeExpression(stack1)
-    + "</a></td>\n								<td>";
+    + "</a></td>\n									<td>";
   if (helper = helpers.account) { stack1 = helper.call(depth0, {hash:{},data:data}); }
   else { helper = (depth0 && depth0.account); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
   buffer += escapeExpression(stack1)
-    + "</td>\n								<td></td>\n								<td>";
+    + "</td>\n									<td></td>\n									<td>";
   if (helper = helpers.served_party) { stack1 = helper.call(depth0, {hash:{},data:data}); }
   else { helper = (depth0 && depth0.served_party); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
   buffer += escapeExpression(stack1)
-    + "</td>\n								<td>";
+    + "</td>\n									<td>";
   if (helper = helpers.date_court) { stack1 = helper.call(depth0, {hash:{},data:data}); }
   else { helper = (depth0 && depth0.date_court); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
   buffer += escapeExpression(stack1)
-    + "</td>\n								<td>";
+    + "</td>\n									<td>";
   if (helper = helpers.date_served) { stack1 = helper.call(depth0, {hash:{},data:data}); }
   else { helper = (depth0 && depth0.date_served); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
   buffer += escapeExpression(stack1)
-    + "</td>\n								<td>";
+    + "</td>\n									<td>";
   if (helper = helpers.served_documents) { stack1 = helper.call(depth0, {hash:{},data:data}); }
   else { helper = (depth0 && depth0.served_documents); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
   buffer += escapeExpression(stack1)
-    + "</td>\n								<td>";
+    + "</td>\n									<td>";
   if (helper = helpers.date_received) { stack1 = helper.call(depth0, {hash:{},data:data}); }
   else { helper = (depth0 && depth0.date_received); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
   buffer += escapeExpression(stack1)
-    + "</td>\n							</tr>\n						";
+    + "</td>\n								</tr>\n							";
   return buffer;
   }
 
 function program11(depth0,data) {
   
   
-  return "\n						<tr>\n							<td colspan=\"8\"><em>No Jobs found.</em></td>\n						</tr>\n					";
+  return "\n							<tr>\n								<td colspan=\"8\"><em>No Jobs found.</em></td>\n							</tr>\n						";
   }
 
   stack1 = helpers['if'].call(depth0, (depth0 && depth0.no_access), {hash:{},inverse:self.program(3, program3, data),fn:self.program(1, program1, data),data:data});
