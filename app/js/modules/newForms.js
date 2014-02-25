@@ -7,7 +7,22 @@ require('../../libs/selectize/js/standalone/selectize.js');
 
 module.exports = (function (){
     'use strict';
-    var exports = {};
+    var exports = {},
+		helpers = {
+			setFormat: function (item, escape) {
+				return '<div>' + escape(item.firstname + ' ' + item.lastname + ': ' + item.uniqueid + ' - ' + item.county)  + '</div>';
+			},
+		};
+
+	_.extend(helpers, {
+		customOptionRender: {
+			'server': {
+				'option': helpers.setFormat,
+				'item': helpers.setFormat
+			}
+		}
+	});
+
     _.extend(exports, {
         View: Backbone.View.extend({
             forms: {
@@ -35,14 +50,14 @@ module.exports = (function (){
 				return this;
 			},
             initInputs: function () {
-				var $select = this.$('select'),
-					options = $select.data();
-				if (!_.isUndefined(options)) {
-					console.log(options.field);
-					$select.selectize({
-						valueField: options.field || 'value',
-						labelField: options.field || 'text',
-						searchField: options.field || 'text',
+				var $select = this.$('select');
+				$select.each(function () {
+					var options = $(this).data() || {},
+						that = this;
+					$(this).selectize({
+						valueField: options.value || 'value',
+						labelField: options.label || 'text',
+						searchField: options.search.split(',') || 'text',
 						preload: true,
 						create: false,
 						load: function (query, callback) {
@@ -60,9 +75,10 @@ module.exports = (function (){
 							} else {
 								callback();
 							}
-						}
+						},
+						render: helpers.customOptionRender[that.name]
 					});
-				}
+				});
             },
 			submit: function (event) {
 				event.preventDefault();
