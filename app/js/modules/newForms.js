@@ -35,7 +35,34 @@ module.exports = (function (){
 				return this;
 			},
             initInputs: function () {
-                this.$('select').selectize();
+				var $select = this.$('select'),
+					options = $select.data();
+				if (!_.isUndefined(options)) {
+					console.log(options.field);
+					$select.selectize({
+						valueField: options.field || 'value',
+						labelField: options.field || 'text',
+						searchField: options.field || 'text',
+						preload: true,
+						create: false,
+						load: function (query, callback) {
+							if (options.url) {
+								$.ajax({
+									url: options.url,
+									type: 'GET',
+									success: function (response) {
+										callback(response);
+									},
+									error: function (e) {
+										console.log('error', e);
+									}
+								});
+							} else {
+								callback();
+							}
+						}
+					});
+				}
             },
 			submit: function (event) {
 				event.preventDefault();
