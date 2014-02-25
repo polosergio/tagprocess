@@ -6,7 +6,7 @@
 			    <div class="form-group">
 					<label for="account" class="col-sm-2 control-label">Account Responsible</label>
 					<div class="col-sm-10">
-						<select type="text" class="form-control" id="account" name="account" data-value="accountname" data-label="accountname" data-search="accountname" data-url="/tagproc/api/accounts" required>
+						<select class="form-control" id="account" name="account" data-value="accountname" data-label="accountname" data-search="accountname" data-url="/tagproc/api/accounts" required>
 							<option value="">Please select one...</option>
 						</select>
 					</div>
@@ -73,6 +73,76 @@
 						<input type="text" class="form-control" id="plaintiff" name="plaintiff" placeholder="Plaintiff">
 					</div>
 				</div>
+				<div class="form-group">
+					<label for="defendant" class="col-sm-2 control-label">Defendant</label>
+					<div class="col-sm-10">
+						<input type="text" class="form-control" id="defendant" name="defendant" placeholder="Defendant">
+					</div>
+				</div>
+				<div class="form-group">
+					<label for="attorney" class="col-sm-2 control-label">Attorney</label>
+					<div class="col-sm-10">
+						<select class="form-control" id="attorney" name="attorney" data-value="attorney" data-label="attorney" data-search="attorney" data-url="/tagproc/api/attorneys" required>
+							<option value="">Please select one...</option>
+						</select>
+					</div>
+				</div>
+				<div class="form-group">
+					<label for="state" class="col-sm-2 control-label">State</label>
+					<div class="col-sm-10">
+						<input type="text" class="form-control" id="state" name="state" placeholder="State">
+					</div>
+				</div>
+				<div class="form-group">
+					<label for="county" class="col-sm-2 control-label">County</label>
+					<div class="col-sm-10">
+						<input type="text" class="form-control" id="county" name="county" placeholder="County">
+					</div>
+				</div>
+				<div class="form-group">
+					<label for="courttype" class="col-sm-2 control-label">Type of Court</label>
+					<div class="col-sm-10">
+						<select class="form-control" id="courttype" name="courttype" data-value="value" data-search="text" data-label="text">
+							<option value="">Please select one...</option>
+							<option>Circuit</option>
+							<option>Family</option>
+							<option>County</option>
+							<option>District</option>
+						</select>
+					</div>
+				</div>
+				<!--
+				<div class="form-group">
+					<label for="defendant" class="col-sm-2 control-label">Defendant</label>
+					<div class="col-sm-10">
+						<input type="text" class="form-control" id="defendant" name="defendant" placeholder="Defendant">
+					</div>
+				</div>
+				<div class="form-group">
+					<label for="plaintiff" class="col-sm-2 control-label">Plaintiff</label>
+					<div class="col-sm-10">
+						<input type="text" class="form-control" id="plaintiff" name="plaintiff" placeholder="Plaintiff">
+					</div>
+				</div>
+				<div class="form-group">
+					<label for="defendant" class="col-sm-2 control-label">Defendant</label>
+					<div class="col-sm-10">
+						<input type="text" class="form-control" id="defendant" name="defendant" placeholder="Defendant">
+					</div>
+				</div>
+				<div class="form-group">
+					<label for="plaintiff" class="col-sm-2 control-label">Plaintiff</label>
+					<div class="col-sm-10">
+						<input type="text" class="form-control" id="plaintiff" name="plaintiff" placeholder="Plaintiff">
+					</div>
+				</div>
+				<div class="form-group">
+					<label for="defendant" class="col-sm-2 control-label">Defendant</label>
+					<div class="col-sm-10">
+						<input type="text" class="form-control" id="defendant" name="defendant" placeholder="Defendant">
+					</div>
+				</div>
+				-->
 				<div class="alert alert-danger hide col-sm-offset-2 col-sm-10"></div>
 				<div class="form-group">
 					<div class="col-sm-offset-2 col-sm-10">
