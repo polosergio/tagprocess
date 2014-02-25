@@ -15,7 +15,8 @@ module.exports = (function () {
 			'login'			: 'showLogin',
 			'client'		: 'showClient',
 			'newclient'		: 'showNewClient',
-			'newserver'		: 'showNewServer'
+			'newserver'		: 'showNewServer',
+            'forms/:form'   : 'showForm'
 		},
 		initialize: function () {
 			this.viewTarget = '#content';
@@ -49,14 +50,10 @@ module.exports = (function () {
 			var view = require('./modules/client');
 			this.show({hash: '#client', title: 'Client', view: new view.View()});
 		},
-		showNewClient: function () {
-			var view = require('./modules/newclient');
-			this.show({hash: '#newclient', title: 'New Client', view: new view.View()});
-		},
-		showNewServer: function () {
-			var view = require('./modules/newserver');
-			this.show({hash: '#newserver', title: 'New Server', view: new view.View()});
-		},
+        showForm: function (form) {
+            var view = require('./modules/newForms');
+            this.show({hash: '#newserver', title: 'New ' + form, view: new view.View({form: form})});
+        },
 		show: function (options) {
 			var that = this,
                 settings = _.extend({

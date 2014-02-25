@@ -39,25 +39,30 @@ module.exports = {
 			'name': 'Jobs'
 		},
 		{
-			'href': '#',
+			'href': '#forms/case',
 			'active': false,
 			'name': 'New Case'
 		},
 		{
-			'href': '#newclient',
+			'href': '#forms/client',
 			'active': false,
 			'name': 'New Client'
 		},
 		{
-			'href': '#newserver',
+			'href': '#forms/server',
 			'active': false,
 			'name': 'New Server'
 		},
 		{
-			'href': '#',
+			'href': '#forms/employee',
 			'active': false,
 			'name': 'New Employee'
 		},
+        {
+            'href': '#forms/attorney',
+            'active': false,
+            'name': 'New Attorney'
+        },
 		{
 			'href': '#',
 			'active': false,

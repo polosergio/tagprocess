@@ -2,17 +2,8 @@
 	<div class="row">
 		<div class="col-md-2 sidebar"></div>
 		<div class="col-md-10">
-			<form class="form-horizontal">
+			<form class="form-horizontal" data-url="/tagproc/api/server">
 				<div class="form-group">
-				<!-- 
-				server_fname
-				server_lname
-				server_type { Certified Process Server, Special Process Server, Court Officer }
-				server_id
-				server_county
-				server_phone
-				server_address
-				-->
 					<label for="server_fname" class="col-sm-2 control-label">First Name</label>
 					<div class="col-sm-10">
 						<input type="text" class="form-control" id="server_fname" name="server_fname" placeholder="Server First Name" required>
@@ -29,9 +20,9 @@
 					<div class="col-sm-10">
 						<select type="text" class="form-control" id="server_type" name="server_type" required>
 							<option value="">Please select one...</option>
-							<option>Certified Process Server</option>
-							<option>Special Process Server</option>
-							<option>Court Officer</option>
+							<option value="Certified Process Server">Certified Process Server</option>
+							<option value="Special Process Server">Special Process Server</option>
+							<option value="Court Officer">Court Officer</option>
 						</select>
 					</div>
 				</div>

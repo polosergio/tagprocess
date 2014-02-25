@@ -2,7 +2,7 @@ var _ = require('underscore'),
 	$ = require('jquery'),
 	Backbone = require('backbone'),
 	Sidebar = require('./sidebar'),
-    ClientTemplate = require('../../templates/client.hbs');
+    ClientTemplate = require('../../templates/jobs.hbs');
 
 module.exports = (function () {
 	'use strict';
