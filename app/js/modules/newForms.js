@@ -57,7 +57,7 @@ module.exports = (function (){
 					$(this).selectize({
 						valueField: options.value || 'value',
 						labelField: options.label || 'text',
-						searchField: options.search.split(',') || 'text',
+						searchField: options.search ? options.search.split(',') : 'text',
 						preload: true,
 						create: false,
 						load: function (query, callback) {

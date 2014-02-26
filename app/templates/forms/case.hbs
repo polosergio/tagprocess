@@ -102,47 +102,43 @@
 				<div class="form-group">
 					<label for="courttype" class="col-sm-2 control-label">Type of Court</label>
 					<div class="col-sm-10">
-						<select class="form-control" id="courttype" name="courttype" data-value="value" data-search="text" data-label="text">
+						<select class="form-control" id="courttype" name="courttype" data-value="value" data-search="text" data-label="text" required>
 							<option value="">Please select one...</option>
-							<option>Circuit</option>
-							<option>Family</option>
-							<option>County</option>
-							<option>District</option>
+							<option value="Circuit">Circuit</option>
+							<option value="Family">Family</option>
+							<option value="County">County</option>
+							<option value="District">District</option>
 						</select>
 					</div>
 				</div>
-				<!--
+				<h3>Invoice Details</h3>
 				<div class="form-group">
-					<label for="defendant" class="col-sm-2 control-label">Defendant</label>
+					<label for="amount" class="col-sm-2 control-label">Amount</label>
 					<div class="col-sm-10">
-						<input type="text" class="form-control" id="defendant" name="defendant" placeholder="Defendant">
+						<input type="number" class="form-control" id="amount" name="amount" placeholder="Amount">
 					</div>
 				</div>
 				<div class="form-group">
-					<label for="plaintiff" class="col-sm-2 control-label">Plaintiff</label>
+					<label for="itemname" class="col-sm-2 control-label">Name</label>
 					<div class="col-sm-10">
-						<input type="text" class="form-control" id="plaintiff" name="plaintiff" placeholder="Plaintiff">
+						<select class="form-control" id="itemname" name="itemname">
+                            <option value="">Please select one...</option>
+                            <option>SUMMON</option>
+                            <option>SUBPOENA</option>
+                            <option>MANUAL INVOICE</option>
+                            <option>COURIER</option>
+                            <option>SKIP TRACE</option>
+                            <option>STAKEOUT</option>
+                            <option>DEFAULT</option>
+						</select>
 					</div>
 				</div>
 				<div class="form-group">
-					<label for="defendant" class="col-sm-2 control-label">Defendant</label>
+					<label for="itemdescription" class="col-sm-2 control-label">Description</label>
 					<div class="col-sm-10">
-						<input type="text" class="form-control" id="defendant" name="defendant" placeholder="Defendant">
+						<textarea class="form-control" id="itemdescription" name="itemdescription" placeholder="Description"></textarea>
 					</div>
 				</div>
-				<div class="form-group">
-					<label for="plaintiff" class="col-sm-2 control-label">Plaintiff</label>
-					<div class="col-sm-10">
-						<input type="text" class="form-control" id="plaintiff" name="plaintiff" placeholder="Plaintiff">
-					</div>
-				</div>
-				<div class="form-group">
-					<label for="defendant" class="col-sm-2 control-label">Defendant</label>
-					<div class="col-sm-10">
-						<input type="text" class="form-control" id="defendant" name="defendant" placeholder="Defendant">
-					</div>
-				</div>
-				-->
 				<div class="alert alert-danger hide col-sm-offset-2 col-sm-10"></div>
 				<div class="form-group">
 					<div class="col-sm-offset-2 col-sm-10">
