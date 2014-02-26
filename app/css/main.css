@@ -17,3 +17,6 @@ span.glyphicon-big-alert {
 	display: block;
 	height: 40px;
 }
+.noOverflow {
+    overflow: hidden;
+}

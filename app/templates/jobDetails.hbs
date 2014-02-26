@@ -1,0 +1,32 @@
+<div class="container-fluid">
+    <div class="row">
+        <div class="table-responsive col-md-10">
+            <table class="table table-bordered table-condensed table-hover table-striped">
+                <tbody>
+                {{#each job}}
+                    <tr>
+                        <th>{{#parse @key}}{{/parse}}</th>
+                        <td>
+                            <div class="col-md-10 col-xs-10 noOverflow">{{#if this.value}} {{this.value}} {{else}} N/A {{/if}}</div>
+                            <form class="form-inline col-md-10 col-xs-10 hide" role="form">
+                                <div class="form-group col-md-10 col-xs-10">
+                                    <div class="input-group col-md-12 col-xs-12">
+                                        <label class="sr-only" for="{{@key}}">{{#parse @key}}{{/parse}}</label>
+                                        <input class="form-control" type="text" name="{{@key}}" id="{{@key}}" value="{{this.value}}">
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-default">
+                                    <span class="glyphicon glyphicon-floppy-disk"></span>
+                                </button>
+                            </form>
+                            {{#if this.editable}}
+                                <a href="#" class="edit col-md-2 col-xs-2 text-right"><span class="glyphicon glyphicon-pencil" style="color: goldenrod;"></span></a>
+                            {{/if}}
+                        </td>
+                    </tr>
+                {{/each}}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

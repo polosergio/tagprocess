@@ -14,8 +14,7 @@ module.exports = (function () {
 			'contactus'		: 'showContactUs',
 			'login'			: 'showLogin',
 			'client'		: 'showClient',
-			'newclient'		: 'showNewClient',
-			'newserver'		: 'showNewServer',
+            'jobs/:id'      : 'showClientID',
             'forms/:form'   : 'showForm'
 		},
 		initialize: function () {
@@ -50,9 +49,13 @@ module.exports = (function () {
 			var view = require('./modules/client');
 			this.show({hash: '#client', title: 'Client', view: new view.View()});
 		},
+        showClientID: function (id) {
+            var view = require('./modules/jobDetails');
+            this.show({hash: '#client', title: 'Job Details', view: new view.View({id: id})})
+        },
         showForm: function (form) {
             var view = require('./modules/newForms');
-            this.show({hash: '#newserver', title: 'New ' + form, view: new view.View({form: form})});
+            this.show({hash: '#client', title: 'New ' + form, view: new view.View({form: form})});
         },
 		show: function (options) {
 			var that = this,

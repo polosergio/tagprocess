@@ -11,7 +11,7 @@ module.exports = (function (){
 		helpers = {
 			setFormat: function (item, escape) {
 				return '<div>' + escape(item.firstname + ' ' + item.lastname + ': ' + item.uniqueid + ' - ' + item.county)  + '</div>';
-			},
+			}
 		};
 
 	_.extend(helpers, {
@@ -44,7 +44,7 @@ module.exports = (function (){
 				'submit form': 'submit'
 			},
 			render: function () {
-				this.$el.empty().append(this.template);
+				this.$el.empty().append(this.template());
 				this.$('.sidebar').html(this.sidebar.render().$el);
                 this.initInputs();
 				return this;
