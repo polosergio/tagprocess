@@ -28038,10 +28038,9 @@ var _ = require('underscore'),
     Backbone = require('backbone'),
     JoBDetailsTemplate = require('../../templates/jobDetails.hbs'),
     Handlebars = require('handlebars/runtime').default,
-	Notify = require('../utilities/notify');
-Handlebars.registerHelper('parse', function (name) {
-    return name.replace('_', ' ').toUpperCase();
-});
+	Notify = require('../utilities/notify'),
+	Helpers = require('../utilities/helpers');
+
 module.exports = (function () {
     'use strict';
     var exports = {
@@ -28081,6 +28080,7 @@ module.exports = (function () {
         'servee_address': true,
         'comments': true
     };
+
     _.extend(helpers, {
         parseEditable: function (object) {
             var temp = {};
@@ -28088,9 +28088,23 @@ module.exports = (function () {
                 temp[key] = {value: value, editable: isEditable[key]};
             });
             return temp;
-        }
+        },
+		parseKey: function (name) {
+			return name.replace('_', ' ').toUpperCase();
+		},
+		parseAttachmentType: function (type) {
+			var validTypes = {
+				'doc': 'Documents',
+				'ros': 'Return of Service',
+				'completejob': 'Complete Job',
+				'courtreceipt': 'Court Receipt'
+			};
+			return validTypes[type];
+		}
     });
-    _.extend(exports, {
+	Handlebars.registerHelper('parse', helpers.parseKey);
+	Handlebars.registerHelper('parseAttachmentType', helpers.parseAttachmentType);
+	_.extend(exports, {
         View: Backbone.View.extend({
             initialize: function (options) {
                 this.id = options.id;
@@ -28106,27 +28120,43 @@ module.exports = (function () {
             render: function () {
                 var data = this.model.toJSON(),
                     payload = {
-                        job: helpers.parseEditable(data)
+                        job: _.omit(helpers.parseEditable(data), 'attachments'),
+						attachments: data.attachments || []
                     };
                 this.$el.empty().append(this.template(payload));
                 return this;
             },
             toggleEdit: function (event) {
-                event.preventDefault();
+                if (_.isFunction(event.preventDefault)) { event.preventDefault(); }
                 var $target = $(event.currentTarget);
                 $target.siblings().toggleClass('hide');
             },
             edit: function (event) {
                 event.preventDefault();
-				Notify.create({title: 'Saved', body: 'Field has been saved', tag: 'test'});
-                console.log(event);
+				var $form = $(event.currentTarget),
+					data = Helpers.serializeObject($form.serializeArray()),
+					key = Object.keys(data)[0],
+					value = data[key];
+				/*
+				 * TODO implement AJAX call to save fields
+				 $.ajax({
+					url: '/tagproc/api/job',
+					data: data,
+					type: 'POST',
+					success: function (response) {
+						console.log(response);
+					}
+				 });
+				* */
+				Notify.create({title: 'Saved', body: 'Field ' + helpers.parseKey(key) + ' has been updated to ' + value, tag: key, icon: 'app/images/save.png'});
+				this.toggleEdit({currentTarget: $form.siblings('a')});
             }
         })
     });
     return exports;
 }());
 
-},{"../../templates/jobDetails.hbs":51,"../utilities/notify":35,"backbone":1,"handlebars/runtime":10,"jquery":13,"underscore":14}],25:[function(require,module,exports){
+},{"../../templates/jobDetails.hbs":51,"../utilities/helpers":34,"../utilities/notify":35,"backbone":1,"handlebars/runtime":10,"jquery":13,"underscore":14}],25:[function(require,module,exports){
 var Backbone = require('backbone'),
 	TagProcess = require('../tagprocess'),
 	LoginTemplate = require('../../templates/login.hbs');
@@ -28673,6 +28703,7 @@ module.exports = (function () {
 	var exports = {};
 	_.extend(exports, {
 		enabled: false,
+		timeOut: 5000,
 		init: function (callback) {
 			if (!window.Notification) {
 				return;
@@ -28697,6 +28728,10 @@ module.exports = (function () {
 			} else {
 				exports.init(this.create.bind(this, options));
 			}
+			this._currentNotification.onshow = this.onShow.bind(this);
+		},
+		onShow: function (event) {
+			setTimeout(function () { event.currentTarget.close(); }, this.timeOut);
 		}
 	});
 	exports.init();
@@ -34258,10 +34293,40 @@ function program8(depth0,data) {
   return "\n                                <a href=\"#\" class=\"edit col-md-2 col-xs-2 text-right\"><span class=\"glyphicon glyphicon-pencil\" style=\"color: goldenrod;\"></span></a>\n                            ";
   }
 
+function program10(depth0,data) {
+  
+  var buffer = "", stack1;
+  buffer += "\n				<h3>Attachments</h3>\n				<table class=\"table table-bordered table-condensed table-hover table-striped\">\n					<thead>\n						<tr>\n							<th>Type</th>\n							<th>Name</th>\n						</tr>\n					</thead>\n					<tbody>\n					";
+  stack1 = helpers.each.call(depth0, (depth0 && depth0.attachments), {hash:{},inverse:self.noop,fn:self.program(11, program11, data),data:data});
+  if(stack1 || stack1 === 0) { buffer += stack1; }
+  buffer += "\n					</tbody>\n				</table>\n			";
+  return buffer;
+  }
+function program11(depth0,data) {
+  
+  var buffer = "", stack1, helper, options;
+  buffer += "\n						<tr>\n							<td>";
+  stack1 = (helper = helpers.parseAttachmentType || (depth0 && depth0.parseAttachmentType),options={hash:{},inverse:self.noop,fn:self.program(2, program2, data),data:data},helper ? helper.call(depth0, (depth0 && depth0.type), options) : helperMissing.call(depth0, "parseAttachmentType", (depth0 && depth0.type), options));
+  if(stack1 || stack1 === 0) { buffer += stack1; }
+  buffer += "</td>\n							<td><a href=\"/tagproc/";
+  if (helper = helpers.url) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.url); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "\" target=\"_blank\">";
+  if (helper = helpers.name) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.name); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "</a></td>\n						</tr>\n					";
+  return buffer;
+  }
+
   buffer += "<div class=\"container-fluid\">\n    <div class=\"row\">\n        <div class=\"table-responsive col-md-10\">\n            <table class=\"table table-bordered table-condensed table-hover table-striped\">\n                <tbody>\n                ";
   stack1 = helpers.each.call(depth0, (depth0 && depth0.job), {hash:{},inverse:self.noop,fn:self.program(1, program1, data),data:data});
   if(stack1 || stack1 === 0) { buffer += stack1; }
-  buffer += "\n                </tbody>\n            </table>\n        </div>\n    </div>\n</div>";
+  buffer += "\n                </tbody>\n            </table>\n			";
+  stack1 = helpers['if'].call(depth0, (depth0 && depth0.attachments), {hash:{},inverse:self.noop,fn:self.program(10, program10, data),data:data});
+  if(stack1 || stack1 === 0) { buffer += stack1; }
+  buffer += "\n        </div>\n    </div>\n</div>\n";
   return buffer;
   });
 },{"handlebars/runtime":10}],52:[function(require,module,exports){

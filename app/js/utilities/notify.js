@@ -5,6 +5,7 @@ module.exports = (function () {
 	var exports = {};
 	_.extend(exports, {
 		enabled: false,
+		timeOut: 5000,
 		init: function (callback) {
 			if (!window.Notification) {
 				return;
@@ -29,6 +30,10 @@ module.exports = (function () {
 			} else {
 				exports.init(this.create.bind(this, options));
 			}
+			this._currentNotification.onshow = this.onShow.bind(this);
+		},
+		onShow: function (event) {
+			setTimeout(function () { event.currentTarget.close(); }, this.timeOut);
 		}
 	});
 	exports.init();

@@ -27,6 +27,25 @@
                 {{/each}}
                 </tbody>
             </table>
+			{{#if attachments}}
+				<h3>Attachments</h3>
+				<table class="table table-bordered table-condensed table-hover table-striped">
+					<thead>
+						<tr>
+							<th>Type</th>
+							<th>Name</th>
+						</tr>
+					</thead>
+					<tbody>
+					{{#each attachments}}
+						<tr>
+							<td>{{#parseAttachmentType type}}{{/parseAttachmentType}}</td>
+							<td><a href="/tagproc/{{url}}" target="_blank">{{name}}</a></td>
+						</tr>
+					{{/each}}
+					</tbody>
+				</table>
+			{{/if}}
         </div>
     </div>
 </div>
