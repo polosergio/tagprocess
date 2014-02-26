@@ -2,7 +2,8 @@ var _ = require('underscore'),
     $ = jQuery = require('jquery'),
     Backbone = require('backbone'),
     JoBDetailsTemplate = require('../../templates/jobDetails.hbs'),
-    Handlebars = require('handlebars/runtime').default;
+    Handlebars = require('handlebars/runtime').default,
+	Notify = require('../utilities/notify');
 Handlebars.registerHelper('parse', function (name) {
     return name.replace('_', ' ').toUpperCase();
 });
@@ -72,7 +73,6 @@ module.exports = (function () {
                     payload = {
                         job: helpers.parseEditable(data)
                     };
-                console.log(payload.job);
                 this.$el.empty().append(this.template(payload));
                 return this;
             },
@@ -83,6 +83,7 @@ module.exports = (function () {
             },
             edit: function (event) {
                 event.preventDefault();
+				Notify.create({title: 'Saved', body: 'Field has been saved', tag: 'test'});
                 console.log(event);
             }
         })
