@@ -439,8 +439,8 @@ module.exports = (function () {
             },
             toggleEdit: function (event) {
                 if (_.isFunction(event.preventDefault)) { event.preventDefault(); }
-                var $target = $(event.currentTarget);
-                $target.siblings().toggleClass('hide').find('input').focus();
+                var $target = $(event.currentTarget).parents('td');
+                $target.children(':not(a)').toggleClass('hide').find('input').focus();
             },
             edit: function (event) {
                 event.preventDefault();
@@ -844,39 +844,39 @@ module.exports = (function () {
 		},
 		showIndex: function () {
             var view = require('./modules/home');
-			this.show({hash: '#home', title: 'Home', view: new view.View()});
+			this.show({hash: '#home', title: 'Home', view: new view.View(), viewOptions: {needsPermission: false}});
 		},
 		showServices: function () {
 			var view = require('./modules/services');
-			this.show({hash: '#services', title: 'Services', view: new view.View()});
+			this.show({hash: '#services', title: 'Services', view: new view.View(), viewOptions: {needsPermission: false}});
 		},
 		showTechnology: function () {
 			var view = require('./modules/technology');
-			this.show({hash: '#technology', title: 'Technology', view: new view.View()});
+			this.show({hash: '#technology', title: 'Technology', view: new view.View(), viewOptions: {needsPermission: false}});
 		},
 		showAboutUs: function () {
 			var view = require('./modules/aboutus');
-			this.show({hash: '#aboutus', title: 'About Us', view: new view.View()});
+			this.show({hash: '#aboutus', title: 'About Us', view: new view.View(), viewOptions: {needsPermission: false}});
 		},
 		showContactUs: function () {
 			var view = require('./modules/contactus');
-			this.show({hash: '#contactus', title: 'Contact Us', view: new view.View()});
+			this.show({hash: '#contactus', title: 'Contact Us', view: new view.View(), viewOptions: {needsPermission: false}});
 		},
 		showLogin: function () {
 			var view = require('./modules/login');
-			this.show({hash: '#login', title: 'Log In', view: new view.View()});
+			this.show({hash: '#login', title: 'Log In', view: new view.View(), viewOptions: {needsPermission: false}});
 		},
 		showClient: function () {
 			var view = require('./modules/client');
-			this.show({hash: '#client', title: 'Client', view: new view.View()});
+			this.show({hash: '#client', title: 'Client', view: new view.View(), viewOptions: {needsPermission: false}});
 		},
         showClientID: function (id) {
             var view = require('./modules/jobDetails');
-            this.show({hash: '#client', title: 'Job Details', view: new view.View({id: id})})
+            this.show({hash: '#client', title: 'Job Details', view: new view.View({id: id}), viewOptions: {needsPermission: true}})
         },
         showForm: function (form) {
             var view = require('./modules/newForms');
-            this.show({hash: '#client', title: 'New ' + form, view: new view.View({form: form})});
+            this.show({hash: '#client', title: 'New ' + form, view: new view.View({form: form}), viewOptions: {needsPermission: true}});
         },
 		show: function (options) {
 			var that = this,
@@ -886,6 +886,10 @@ module.exports = (function () {
 				view: undefined,
 				viewOptions: {}
 			}, options);
+            if (!TagProcess.Auth.signedIn && settings.viewOptions.needsPermission) {
+                this.navigate('login');
+                return;
+            }
             TagProcess.vent.trigger('domchange:page', settings);
             if (settings.view instanceof Backbone.View) {
 				that.viewManager.showView(settings.view);
@@ -6570,7 +6574,7 @@ function program1(depth0,data) {
     + escapeExpression(((stack1 = (data == null || data === false ? data : data.key)),typeof stack1 === functionType ? stack1.apply(depth0) : stack1))
     + "\" value=\""
     + escapeExpression(((stack1 = (depth0 && depth0.value)),typeof stack1 === functionType ? stack1.apply(depth0) : stack1))
-    + "\">\n                                    </div>\n                                </div>\n                                <button type=\"submit\" class=\"btn btn-default\">\n                                    <span class=\"glyphicon glyphicon-floppy-disk\"></span>\n                                </button>\n                            </form>\n                            ";
+    + "\">\n                                    </div>\n                                </div>\n                                <button type=\"submit\" class=\"btn btn-default\">\n                                    <span class=\"glyphicon glyphicon-floppy-disk\"></span>\n                                </button>\n                                <button type=\"button\" class=\"btn btn-default edit\">\n                                    <span class=\"glyphicon glyphicon-remove\"></span>\n                                </button>\n                            </form>\n                            ";
   stack1 = helpers['if'].call(depth0, (depth0 && depth0.editable), {hash:{},inverse:self.noop,fn:self.program(8, program8, data),data:data});
   if(stack1 || stack1 === 0) { buffer += stack1; }
   buffer += "\n                        </td>\n                    </tr>\n                ";

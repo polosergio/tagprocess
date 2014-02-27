@@ -93,8 +93,8 @@ module.exports = (function () {
             },
             toggleEdit: function (event) {
                 if (_.isFunction(event.preventDefault)) { event.preventDefault(); }
-                var $target = $(event.currentTarget);
-                $target.siblings().toggleClass('hide').find('input').focus();
+                var $target = $(event.currentTarget).parents('td');
+                $target.children(':not(a)').toggleClass('hide').find('input').focus();
             },
             edit: function (event) {
                 event.preventDefault();
