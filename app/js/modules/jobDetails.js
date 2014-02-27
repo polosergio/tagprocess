@@ -4,7 +4,8 @@ var _ = require('underscore'),
     JoBDetailsTemplate = require('../../templates/jobDetails.hbs'),
     Handlebars = require('handlebars/runtime').default,
 	Notify = require('../utilities/notify'),
-	Helpers = require('../utilities/helpers');
+	Helpers = require('../utilities/helpers'),
+	ServeDetails = require('./modals/serveDetails');
 
 module.exports = (function () {
     'use strict';
@@ -74,13 +75,15 @@ module.exports = (function () {
             initialize: function (options) {
                 this.id = options.id;
                 this.template = JoBDetailsTemplate;
+				this.details = new ServeDetails();
                 this.model = new exports.Model({jobnumber: this.id});
                 this.listenTo(this.model, 'sync', this.render);
                 this.model.fetch();
             },
             events: {
                 'click .edit': 'toggleEdit',
-                'submit form': 'edit'
+                'submit form': 'edit',
+				'click #viewDetails': 'openDetailsModal'
             },
             render: function () {
                 var data = this.model.toJSON(),
@@ -89,8 +92,13 @@ module.exports = (function () {
 						attachments: data.attachments || []
                     };
                 this.$el.empty().append(this.template(payload));
+				this.$('#tools').affix();
                 return this;
             },
+			openDetailsModal: function (event) {
+				event.preventDefault();
+				this.details.open();
+			},
             toggleEdit: function (event) {
                 if (_.isFunction(event.preventDefault)) { event.preventDefault(); }
                 var $target = $(event.currentTarget).parents('td');

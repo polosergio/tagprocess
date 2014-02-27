@@ -17,13 +17,14 @@ TagProcess.vent.on('domchange:page', function (options) {
     }
 });
 
+$('#layout').prepend(navbar.render().$el)
+    .prepend(header.render().$el).parent()
+	.append(footer.render().$el);
+
 var signInAttempt = TagProcess.Auth.rememberMeSignIn();
 if (signInAttempt !== false) {
 	deferred.userRequest = $.Deferred();
 	signInAttempt.always(deferred.userRequest.resolve);
 }
 
-$('#layout').prepend(navbar.render().$el)
-    .prepend(header.render().$el).parent()
-	.append(footer.render().$el);
 Router.initialize();

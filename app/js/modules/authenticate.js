@@ -20,7 +20,7 @@ module.exports = (function () {
 
 		_doSignIn: function (options) {
 			var _this = this,
-				defaults = { url: '/tagproc/api/login', type: 'POST', contentType: 'application/json', processData: false },
+				defaults = { url: '/tagproc/api/login', type: 'POST', contentType: 'application/json', processData: false, async: false },
 				settings = _.extend(defaults, options),
 				TagProcess = require('../tagprocess');
 			return $
