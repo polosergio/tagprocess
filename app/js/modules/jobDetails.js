@@ -10,7 +10,7 @@ module.exports = (function () {
     'use strict';
     var exports = {
         Model: Backbone.Model.extend({
-            baseUrl: '/tagproc/api/jobs',
+            baseUrl: '/tagproc/api/job',
             url: function () {
                 return this.baseUrl + '?' + $.param(this.toJSON());
             },
@@ -94,27 +94,26 @@ module.exports = (function () {
             toggleEdit: function (event) {
                 if (_.isFunction(event.preventDefault)) { event.preventDefault(); }
                 var $target = $(event.currentTarget);
-                $target.siblings().toggleClass('hide');
+                $target.siblings().toggleClass('hide').find('input').focus();
             },
             edit: function (event) {
                 event.preventDefault();
 				var $form = $(event.currentTarget),
 					data = Helpers.serializeObject($form.serializeArray()),
 					key = Object.keys(data)[0],
-					value = data[key];
-				/*
-				 * TODO implement AJAX call to save fields
+					value = data[key],
+                    that = this;
 				 $.ajax({
 					url: '/tagproc/api/job',
-					data: data,
+					data: _.extend(data, {jobnumber: that.model.get('jobnumber')}),
 					type: 'POST',
 					success: function (response) {
-						console.log(response);
+						var field = response[0].data;
+                        $form.siblings('div').html(field[key]);
+                        Notify.create({title: 'Saved', body: 'Field ' + helpers.parseKey(key) + ' has been updated to ' + value, tag: key, icon: 'app/images/save.png'});
+                        that.toggleEdit({currentTarget: $form.siblings('a')});
 					}
 				 });
-				* */
-				Notify.create({title: 'Saved', body: 'Field ' + helpers.parseKey(key) + ' has been updated to ' + value, tag: key, icon: 'app/images/save.png'});
-				this.toggleEdit({currentTarget: $form.siblings('a')});
             }
         })
     });
