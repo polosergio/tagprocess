@@ -75,7 +75,7 @@ module.exports = (function () {
             initialize: function (options) {
                 this.id = options.id;
                 this.template = JoBDetailsTemplate;
-				this.details = new ServeDetails();
+				this.details = new ServeDetails({id: this.id});
                 this.model = new exports.Model({jobnumber: this.id});
                 this.listenTo(this.model, 'sync', this.render);
                 this.model.fetch();
@@ -92,12 +92,11 @@ module.exports = (function () {
 						attachments: data.attachments || []
                     };
                 this.$el.empty().append(this.template(payload));
-				this.$('#tools').affix();
                 return this;
             },
 			openDetailsModal: function (event) {
 				event.preventDefault();
-				this.details.open();
+				this.$el.append(this.details.open().$el);
 			},
             toggleEdit: function (event) {
                 if (_.isFunction(event.preventDefault)) { event.preventDefault(); }

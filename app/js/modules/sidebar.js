@@ -8,6 +8,7 @@ module.exports = (function () {
 	var exports = {};
 	_.extend(exports, {
 		View: Backbone.View.extend({
+			id: 'sidebar',
 			template: SidebarTemplate,
 			initialize: function (options) {
 				this.collection = TagProcess.sidebar;

@@ -20,3 +20,8 @@ span.glyphicon-big-alert {
 .noOverflow {
     overflow: hidden;
 }
+.affix {
+	position: fixed;
+	top: 20px;
+}
+

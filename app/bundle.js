@@ -28110,7 +28110,7 @@ module.exports = (function () {
             initialize: function (options) {
                 this.id = options.id;
                 this.template = JoBDetailsTemplate;
-				this.details = new ServeDetails();
+				this.details = new ServeDetails({id: this.id});
                 this.model = new exports.Model({jobnumber: this.id});
                 this.listenTo(this.model, 'sync', this.render);
                 this.model.fetch();
@@ -28127,12 +28127,11 @@ module.exports = (function () {
 						attachments: data.attachments || []
                     };
                 this.$el.empty().append(this.template(payload));
-				this.$('#tools').affix();
                 return this;
             },
 			openDetailsModal: function (event) {
 				event.preventDefault();
-				this.details.open();
+				this.$el.append(this.details.open().$el);
 			},
             toggleEdit: function (event) {
                 if (_.isFunction(event.preventDefault)) { event.preventDefault(); }
@@ -28326,32 +28325,62 @@ module.exports = (function () {
 
 },{"../../../templates/modals/modal.hbs":56,"backbone":1,"underscore":14}],27:[function(require,module,exports){
 var Modal = require('./modal'),
-	ServeTemplate = require('../../../templates/modals/serveDetails.hbs'),
+	ListTemplate = require('../../../templates/modals/serveList.hbs'),
+	DetailsTemplate = require('../../../templates/modals/serveDetails.hbs'),
 	_ = require('underscore'),
 	Backbone = require('backbone');
 
 module.exports = (function () {
 	'use strict';
-	var exports = Backbone.View.extend({
-		template: ServeTemplate,
-		initialize: function () {
-			this.modal = new Modal();
-			this.model = new Backbone.Model({test: 'hi', example: 'world'});
-			this.render();
-		},
-		render: function () {
-			var data = this.model.toJSON();
-			this.modal.render().setContentHTML(this.template(data));
-			return this;
-		},
-		open: function () {
-			this.render().modal.open();
-		}
+	var Model = Backbone.Model.extend({
+			baseUrl: '/tagproc/api/serve_details',
+			url: function () {
+				return this.baseUrl + '?' + $.param(this.toJSON());
+			}
+		}),
+		exports = Backbone.View.extend({
+			template: ListTemplate,
+			detailsTemplate: DetailsTemplate,
+			initialize: function () {
+				this.modal = new Modal();
+				this.model = new Model({jobnumber: this.id});
+				this.listenTo(this.model, 'sync', this.render);
+				this.model.fetch();
+			},
+			events: {
+				'click .openDetails': 'openDetails',
+				'click .openList'	: 'openList'
+			},
+			render: function () {
+				var data = this.model.toJSON();
+				this.modal.render()
+					.setHeaderHTML('<h4>Details</h4>')
+					.setContentHTML(this.template(data));
+				this.$el.empty().append(this.modal.$el);
+				return this.delegateEvents();
+			},
+			open: function () {
+				this.render().modal.open();
+				return this;
+			},
+			openDetails: function (event) {
+				event.preventDefault();
+				var id = $(event.currentTarget).data('id'),
+					data = id ? _.findWhere(this.model.get('comments'), {id: id.toString()}) : this.model.get('serve');
+				this.modal.setContentHTML(this.detailsTemplate(data));
+				return this.delegateEvents();
+			},
+			openList: function (event) {
+				event.preventDefault();
+				var data = this.model.toJSON();
+				this.modal.setContentHTML(this.template(data));
+				return this.delegateEvents();
+			}
 	});
 	return exports;
 }());
 
-},{"../../../templates/modals/serveDetails.hbs":57,"./modal":26,"backbone":1,"underscore":14}],28:[function(require,module,exports){
+},{"../../../templates/modals/serveDetails.hbs":57,"../../../templates/modals/serveList.hbs":58,"./modal":26,"backbone":1,"underscore":14}],28:[function(require,module,exports){
 var $ = jQuery = require('jquery'),
 	_ = require('underscore'),
 	Backbone = require('backbone'),
@@ -28411,7 +28440,7 @@ module.exports = {
 	})
 };
 
-},{"../../libs/bootstrap/bootstrap.js":40,"../../templates/navbar.hbs":58,"../tagprocess":35,"./navbutton":29,"backbone":1,"jquery":13,"underscore":14}],29:[function(require,module,exports){
+},{"../../libs/bootstrap/bootstrap.js":40,"../../templates/navbar.hbs":59,"../tagprocess":35,"./navbutton":29,"backbone":1,"jquery":13,"underscore":14}],29:[function(require,module,exports){
 var $ = require('jquery'),
     Backbone = require('backbone'),
     ButtonTemplate = require('../../templates/navbutton.hbs');
@@ -28442,7 +28471,7 @@ module.exports = (function () {
     }
 }());
 
-},{"../../templates/navbutton.hbs":59,"backbone":1,"jquery":13}],30:[function(require,module,exports){
+},{"../../templates/navbutton.hbs":60,"backbone":1,"jquery":13}],30:[function(require,module,exports){
 var _ = require('underscore'),
     $ = jQuery = require('jquery'),
     Backbone = require('backbone'),
@@ -28570,7 +28599,7 @@ module.exports = {
         }
     })
 };
-},{"../../templates/services.hbs":60,"backbone":1}],32:[function(require,module,exports){
+},{"../../templates/services.hbs":61,"backbone":1}],32:[function(require,module,exports){
 var _ = require('underscore'),
 	Backbone = require('backbone'),
 	TagProcess = require('../tagprocess'),
@@ -28581,6 +28610,7 @@ module.exports = (function () {
 	var exports = {};
 	_.extend(exports, {
 		View: Backbone.View.extend({
+			id: 'sidebar',
 			template: SidebarTemplate,
 			initialize: function (options) {
 				this.collection = TagProcess.sidebar;
@@ -28606,7 +28636,7 @@ module.exports = (function () {
 	return exports;
 }());
 
-},{"../../templates/sidebar.hbs":61,"../tagprocess":35,"backbone":1,"underscore":14}],33:[function(require,module,exports){
+},{"../../templates/sidebar.hbs":62,"../tagprocess":35,"backbone":1,"underscore":14}],33:[function(require,module,exports){
 var Backbone = require('backbone'),
     TechnologyTemplate = require('../../templates/technology.hbs');
 
@@ -28622,7 +28652,7 @@ module.exports = {
 	})
 };
 
-},{"../../templates/technology.hbs":62,"backbone":1}],34:[function(require,module,exports){
+},{"../../templates/technology.hbs":63,"backbone":1}],34:[function(require,module,exports){
 var Backbone = require('backbone'),
 	TagProcess = require('./tagprocess'),
     _ = require('underscore');
@@ -34362,27 +34392,27 @@ helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
 function program1(depth0,data) {
   
   var buffer = "", stack1, helper, options;
-  buffer += "\n                    <tr>\n                        <th>";
+  buffer += "\n						<tr>\n							<th>";
   stack1 = (helper = helpers.parse || (depth0 && depth0.parse),options={hash:{},inverse:self.noop,fn:self.program(2, program2, data),data:data},helper ? helper.call(depth0, (data == null || data === false ? data : data.key), options) : helperMissing.call(depth0, "parse", (data == null || data === false ? data : data.key), options));
   if(stack1 || stack1 === 0) { buffer += stack1; }
-  buffer += "</th>\n                        <td>\n                            <div class=\"col-md-10 col-xs-10 noOverflow\">";
+  buffer += "</th>\n							<td>\n								<div class=\"col-md-10 col-xs-10 noOverflow\">";
   stack1 = helpers['if'].call(depth0, (depth0 && depth0.value), {hash:{},inverse:self.program(6, program6, data),fn:self.program(4, program4, data),data:data});
   if(stack1 || stack1 === 0) { buffer += stack1; }
-  buffer += "</div>\n                            <form class=\"form-inline col-md-10 col-xs-10 hide\" role=\"form\">\n                                <div class=\"form-group col-md-10 col-xs-10\">\n                                    <div class=\"input-group col-md-12 col-xs-12\">\n                                        <label class=\"sr-only\" for=\""
+  buffer += "</div>\n								<form class=\"form-inline col-md-10 col-xs-10 hide\" role=\"form\">\n									<div class=\"form-group col-md-10 col-xs-10\">\n										<div class=\"input-group col-md-12 col-xs-12\">\n											<label class=\"sr-only\" for=\""
     + escapeExpression(((stack1 = (data == null || data === false ? data : data.key)),typeof stack1 === functionType ? stack1.apply(depth0) : stack1))
     + "\">";
   stack1 = (helper = helpers.parse || (depth0 && depth0.parse),options={hash:{},inverse:self.noop,fn:self.program(2, program2, data),data:data},helper ? helper.call(depth0, (data == null || data === false ? data : data.key), options) : helperMissing.call(depth0, "parse", (data == null || data === false ? data : data.key), options));
   if(stack1 || stack1 === 0) { buffer += stack1; }
-  buffer += "</label>\n                                        <input class=\"form-control\" type=\"text\" name=\""
+  buffer += "</label>\n											<input class=\"form-control\" type=\"text\" name=\""
     + escapeExpression(((stack1 = (data == null || data === false ? data : data.key)),typeof stack1 === functionType ? stack1.apply(depth0) : stack1))
     + "\" id=\""
     + escapeExpression(((stack1 = (data == null || data === false ? data : data.key)),typeof stack1 === functionType ? stack1.apply(depth0) : stack1))
     + "\" value=\""
     + escapeExpression(((stack1 = (depth0 && depth0.value)),typeof stack1 === functionType ? stack1.apply(depth0) : stack1))
-    + "\">\n                                    </div>\n                                </div>\n                                <button type=\"submit\" class=\"btn btn-default\">\n                                    <span class=\"glyphicon glyphicon-floppy-disk\"></span>\n                                </button>\n                                <button type=\"button\" class=\"btn btn-default edit\">\n                                    <span class=\"glyphicon glyphicon-remove\"></span>\n                                </button>\n                            </form>\n                            ";
+    + "\">\n										</div>\n									</div>\n									<button type=\"submit\" class=\"btn btn-default\">\n										<span class=\"glyphicon glyphicon-floppy-disk\"></span>\n									</button>\n									<button type=\"button\" class=\"btn btn-default edit\">\n										<span class=\"glyphicon glyphicon-remove\"></span>\n									</button>\n								</form>\n								";
   stack1 = helpers['if'].call(depth0, (depth0 && depth0.editable), {hash:{},inverse:self.noop,fn:self.program(8, program8, data),data:data});
   if(stack1 || stack1 === 0) { buffer += stack1; }
-  buffer += "\n                        </td>\n                    </tr>\n                ";
+  buffer += "\n							</td>\n						</tr>\n					";
   return buffer;
   }
 function program2(depth0,data) {
@@ -34409,25 +34439,25 @@ function program6(depth0,data) {
 function program8(depth0,data) {
   
   
-  return "\n                                <a href=\"#\" class=\"edit col-md-2 col-xs-2 text-right\"><span class=\"glyphicon glyphicon-pencil\" style=\"color: goldenrod;\"></span></a>\n                            ";
+  return "\n									<a href=\"#\" class=\"edit col-md-2 col-xs-2 text-right\"><span class=\"glyphicon glyphicon-pencil\" style=\"color: goldenrod;\"></span></a>\n								";
   }
 
 function program10(depth0,data) {
   
   var buffer = "", stack1;
-  buffer += "\n				<h3>Attachments</h3>\n				<table class=\"table table-bordered table-condensed table-hover table-striped\">\n					<thead>\n						<tr>\n							<th>Type</th>\n							<th>Name</th>\n						</tr>\n					</thead>\n					<tbody>\n					";
+  buffer += "\n					<h3>Attachments</h3>\n					<table class=\"table table-bordered table-condensed table-hover table-striped\">\n						<thead>\n							<tr>\n								<th>Type</th>\n								<th>Name</th>\n							</tr>\n						</thead>\n						<tbody>\n						";
   stack1 = helpers.each.call(depth0, (depth0 && depth0.attachments), {hash:{},inverse:self.noop,fn:self.program(11, program11, data),data:data});
   if(stack1 || stack1 === 0) { buffer += stack1; }
-  buffer += "\n					</tbody>\n				</table>\n			";
+  buffer += "\n						</tbody>\n					</table>\n				";
   return buffer;
   }
 function program11(depth0,data) {
   
   var buffer = "", stack1, helper, options;
-  buffer += "\n						<tr>\n							<td>";
+  buffer += "\n							<tr>\n								<td>";
   stack1 = (helper = helpers.parseAttachmentType || (depth0 && depth0.parseAttachmentType),options={hash:{},inverse:self.noop,fn:self.program(2, program2, data),data:data},helper ? helper.call(depth0, (depth0 && depth0.type), options) : helperMissing.call(depth0, "parseAttachmentType", (depth0 && depth0.type), options));
   if(stack1 || stack1 === 0) { buffer += stack1; }
-  buffer += "</td>\n							<td><a href=\"/tagproc/";
+  buffer += "</td>\n								<td><a href=\"/tagproc/";
   if (helper = helpers.url) { stack1 = helper.call(depth0, {hash:{},data:data}); }
   else { helper = (depth0 && depth0.url); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
   buffer += escapeExpression(stack1)
@@ -34435,17 +34465,17 @@ function program11(depth0,data) {
   if (helper = helpers.name) { stack1 = helper.call(depth0, {hash:{},data:data}); }
   else { helper = (depth0 && depth0.name); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
   buffer += escapeExpression(stack1)
-    + "</a></td>\n						</tr>\n					";
+    + "</a></td>\n							</tr>\n						";
   return buffer;
   }
 
-  buffer += "<div class=\"container-fluid\">\n    <div class=\"row\">\n        <div class=\"table-responsive col-md-10\">\n            <table class=\"table table-bordered table-condensed table-hover table-striped\">\n                <tbody>\n                ";
+  buffer += "<div class=\"container-fluid\">\n    <div class=\"row\">\n		<div id=\"tools\" class=\"col-md-2\">\n			<ul class=\"nav nav-stacked nav-pills\">\n				<li><a href=\"#\" id=\"viewDetails\">Serve Details</a></li>\n			</ul>\n		</div>\n        <div class=\"col-md-10\">\n			<div class=\"row table-responsive\">\n				<table class=\"table table-bordered table-condensed table-hover table-striped\">\n					<tbody>\n					";
   stack1 = helpers.each.call(depth0, (depth0 && depth0.job), {hash:{},inverse:self.noop,fn:self.program(1, program1, data),data:data});
   if(stack1 || stack1 === 0) { buffer += stack1; }
-  buffer += "\n                </tbody>\n            </table>\n			";
+  buffer += "\n					</tbody>\n				</table>\n			</div>\n			<div class=\"row table-responsive\">\n				";
   stack1 = helpers['if'].call(depth0, (depth0 && depth0.attachments), {hash:{},inverse:self.noop,fn:self.program(10, program10, data),data:data});
   if(stack1 || stack1 === 0) { buffer += stack1; }
-  buffer += "\n        </div>\n    </div>\n</div>\n<div id=\"tools\" class=\"affix-top affix\" data-spy=\"affix\">\n	<ul class=\"nav\">\n		<li><a href=\"#\" id=\"viewDetails\">Serve Details</a></li>\n	</ul>\n</div>\n";
+  buffer += "\n			</div>\n        </div>\n    </div>\n</div>\n\n";
   return buffer;
   });
 },{"handlebars/runtime":10}],54:[function(require,module,exports){
@@ -34583,21 +34613,148 @@ helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
 var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
   this.compilerInfo = [4,'>= 1.0.0'];
 helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
-  var buffer = "", stack1, helper, functionType="function", escapeExpression=this.escapeExpression;
+  var buffer = "", stack1, functionType="function", escapeExpression=this.escapeExpression, self=this;
 
+function program1(depth0,data) {
+  
+  var buffer = "", stack1, helper;
+  buffer += "\n	<div class=\"row\">\n		<div class=\"table-responsive\">\n			<table class=\"table table-bordered table-condensed table-hover table-striped\">\n				<thead>\n					<tr>\n						<th>Date</th>\n						<th>Comment</th>\n						<th>Latitude</th>\n						<th>Longitude</th>\n					</tr>\n				</thead>\n				<tbody>\n					<tr>\n						<td>";
+  if (helper = helpers.date) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.date); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "</td>\n						<td>";
+  if (helper = helpers.comment) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.comment); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "</td>\n						<td>";
+  if (helper = helpers.latitude) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.latitude); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "</td>\n						<td>";
+  if (helper = helpers.longitude) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.longitude); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "</td>\n					</tr>\n				</tbody>\n			</table>\n		</div>\n	</div>\n	<div class=\"row\">\n		<img src=\"";
+  if (helper = helpers.street) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.street); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "\" class=\"img-responsive col-md-6\">\n		<img src=\"";
+  if (helper = helpers.satellite) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.satellite); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "\" class=\"img-responsive col-md-6\">\n	</div>\n	<div class=\"row\">\n		<img src=\"/tagproc/images/";
+  if (helper = helpers.image) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.image); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "\" class=\"img-responsive col-md-12\">\n	</div>\n";
+  return buffer;
+  }
 
-  buffer += "<div>";
-  if (helper = helpers.test) { stack1 = helper.call(depth0, {hash:{},data:data}); }
-  else { helper = (depth0 && depth0.test); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+function program3(depth0,data) {
+  
+  var buffer = "", stack1, helper;
+  buffer += "\n	<div class=\"row\">\n		<div class=\"col-md-6\">\n			<div class=\"table-responsive\">\n				<table class=\"table table-bordered table-condensed table-hover table-striped\">\n					<tbody>\n						<tr>\n							<th>Date</th>\n							<td>";
+  if (helper = helpers.timestamp) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.timestamp); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
   buffer += escapeExpression(stack1)
-    + "</div>\n<div>";
-  if (helper = helpers.example) { stack1 = helper.call(depth0, {hash:{},data:data}); }
-  else { helper = (depth0 && depth0.example); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+    + "</td>\n						</tr>\n						<tr>\n							<th>GPS Location</th>\n							<td>";
+  if (helper = helpers.latitude) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.latitude); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
   buffer += escapeExpression(stack1)
-    + "</div>\n";
+    + ", ";
+  if (helper = helpers.longitude) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.longitude); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "</td>\n						</tr>\n						<tr>\n							<th>Served On</th>\n							<td>";
+  if (helper = helpers.served_person) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.served_person); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "</td>\n						</tr>\n						<tr>\n							<th>Gender</th>\n							<td>";
+  if (helper = helpers.gender) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.gender); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "</td>\n						</tr>	\n						<tr>\n							<th>Age</th>\n							<td>";
+  if (helper = helpers.age) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.age); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "</td>\n						</tr>\n						<tr>\n							<th>Race</th>\n							<td>";
+  if (helper = helpers.race) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.race); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "</td>\n						</tr>\n						<tr>\n							<th>Height</th>\n							<td>";
+  if (helper = helpers.height) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.height); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "</td>\n						</tr>\n						<tr>\n							<th>Weight</th>\n							<td>";
+  if (helper = helpers.weight) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.weight); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "</td>\n						</tr>\n						<tr>\n							<th>Hair</th>\n							<td>";
+  if (helper = helpers.hair) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.hair); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "</td>\n						</tr>\n						<tr>\n							<th>Glasses</th>\n							<td>";
+  if (helper = helpers.glasses) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.glasses); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "</td>\n						</tr>\n					</tbody>\n				</table>\n			</div>\n		</div>	\n		<img src=\"/tagproc/images/";
+  if (helper = helpers.image) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.image); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "\" class=\"img-responsive col-md-6\">\n	</div>\n	<div class=\"row\">\n		<img src=\"";
+  if (helper = helpers.street) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.street); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "\" class=\"img-responsive col-md-6\">\n		<img src=\"";
+  if (helper = helpers.satellite) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.satellite); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "\" class=\"img-responsive col-md-6\">\n	</div>\n";
+  return buffer;
+  }
+
+  buffer += "<div class=\"container-fluid\">\n	<a href=\"#\" class=\"openList\"><span class=\"glyphicon glyphicon-arrow-left\"></span></a>\n";
+  stack1 = helpers['if'].call(depth0, (depth0 && depth0.comment), {hash:{},inverse:self.program(3, program3, data),fn:self.program(1, program1, data),data:data});
+  if(stack1 || stack1 === 0) { buffer += stack1; }
+  buffer += "\n</div>\n\n";
   return buffer;
   });
 },{"handlebars/runtime":10}],58:[function(require,module,exports){
+var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
+  this.compilerInfo = [4,'>= 1.0.0'];
+helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
+  var buffer = "", stack1, functionType="function", escapeExpression=this.escapeExpression, self=this;
+
+function program1(depth0,data) {
+  
+  var buffer = "", stack1, helper;
+  buffer += "\n					<tr>\n						<td>";
+  if (helper = helpers.date) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.date); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "</td>\n						<td>";
+  if (helper = helpers.image) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.image); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "</td>\n						<td>Comment</td>\n						<td class=\"text-right\">\n							<a href=\"#\" class=\"openDetails\" data-type=\"comment\" data-id=\"";
+  if (helper = helpers.id) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.id); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "\"><span class=\"glyphicon glyphicon-search\"></span></a>\n						</td>\n					</tr>\n					";
+  return buffer;
+  }
+
+  buffer += "<div class=\"container-fluid\">\n	<div class=\"row\">\n		<div class=\"table-responsive\">\n			<table class=\"table table-bordered table-condensed table-hover table-striped\">\n				<thead>\n					<tr>\n						<th>Date</th>\n						<th>Image Name</th>\n						<th>Type</th>\n						<th>Options</th>\n					</tr>\n				</thead>\n				<tbody>\n					<tr>\n						<td>"
+    + escapeExpression(((stack1 = ((stack1 = (depth0 && depth0.serve)),stack1 == null || stack1 === false ? stack1 : stack1.timestamp)),typeof stack1 === functionType ? stack1.apply(depth0) : stack1))
+    + "</td>\n						<td>"
+    + escapeExpression(((stack1 = ((stack1 = (depth0 && depth0.serve)),stack1 == null || stack1 === false ? stack1 : stack1.image)),typeof stack1 === functionType ? stack1.apply(depth0) : stack1))
+    + "</td>\n						<td>Serve</td>\n						<td class=\"text-right\">\n							<a href=\"#\" class=\"openDetails\" data-type=\"serve\"><span class=\"glyphicon glyphicon-search\"></span></a>\n						</td>\n					</tr>\n					";
+  stack1 = helpers.each.call(depth0, (depth0 && depth0.comments), {hash:{},inverse:self.noop,fn:self.program(1, program1, data),data:data});
+  if(stack1 || stack1 === 0) { buffer += stack1; }
+  buffer += "\n				</tbody>\n			</table>\n		</div>	\n	</div>\n</div>\n";
+  return buffer;
+  });
+},{"handlebars/runtime":10}],59:[function(require,module,exports){
 var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
   this.compilerInfo = [4,'>= 1.0.0'];
 helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
@@ -34606,7 +34763,7 @@ helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
 
   return "<nav class=\"navbar navbar-default\" role=\"navigation\">\n	<div class=\"container-fluid\">\n		<div class=\"navbar-header\">\n			<button type=\"button\" class=\"navbar-toggle\" data-toggle=\"collapse\" data-target=\"#nav-links\">\n				<span class=\"sr-only\">Toggle Navigation</span>\n				<span class=\"icon-bar\"></span>\n				<span class=\"icon-bar\"></span>\n				<span class=\"icon-bar\"></span>\n			</button>\n			<a class=\"navbar-brand\" href=\"#home\">TagProcess</a>\n		</div>\n		<div class=\"collapse navbar-collapse\" id=\"nav-links\">\n			<ul class=\"nav navbar-nav\" id=\"nav-ul\"></ul>\n			<ul class=\"nav navbar-nav navbar-right\">\n				<button type=\"button\" onclick=\"location.href='#login'\" class=\"btn btn-default navbar-btn\">Sign In</button>\n				<li class=\"dropdown hide\" id=\"user-dropdown\">\n					<a href=\"#\" class=\"dropdown-toggle\" data-toggle=\"dropdown\">\n						<span class=\"glyphicon glyphicon-user\"></span>\n						<span id=\"name-text\"> User</span>\n						<b class=\"caret\"></b>\n					</a>\n					<ul class=\"dropdown-menu\">\n						<li>\n							<a href=\"#\" id=\"logout\"><span class=\"glyphicon glyphicon-log-out\"></span> Log Out...</a>\n						</li>\n					</ul>\n				</li>\n			</ul>\n		</div>\n	</div>\n</nav>\n";
   });
-},{"handlebars/runtime":10}],59:[function(require,module,exports){
+},{"handlebars/runtime":10}],60:[function(require,module,exports){
 var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
   this.compilerInfo = [4,'>= 1.0.0'];
 helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
@@ -34624,7 +34781,7 @@ helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
     + "</a>";
   return buffer;
   });
-},{"handlebars/runtime":10}],60:[function(require,module,exports){
+},{"handlebars/runtime":10}],61:[function(require,module,exports){
 var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
   this.compilerInfo = [4,'>= 1.0.0'];
 helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
@@ -34633,7 +34790,7 @@ helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
 
   return "<div id=\"services\" class=\"container-fluid\">\n        <div class=\"row\">\n            <div class=\"col-md-8\">\n                <h2>TAG PROCESS SERVICES LLC</h2>\n                <p>Our competitors may offer numerous services, both related and unrelated to the service of process, TAG PROCESS flat rate pricing include many of the services you currently pay extra for with other process serving companies.</p>\n                <h2>Our Price Includes:</h2>\n                <ul>\n                    <li>Picking up documents at your office</li>\n                    <li>Issuing documents at respective courts</li>\n                    <li>Effecting service</li>\n                    <li>Skip trace bad addresses*</li>\n                    <li>File return of service with respective court</li>\n                </ul>\n            </div>\n            <div class=\"col-md-4 text-right\">\n                <img class=\"img-rounded img-responsive pull-left col-md-7 col-xs-12\" src=\"app/images/android.jpg\" style=\"height: 160px;\"></img>\n                <p class=\"text-info col-md-5 col-xs-12 text-left\">The technology we have is designed to save our clients time and money. <a href=\"#contactus\">Contact us</a> for more information and your 1st two jobs are FREE.</p>\n            </div>\n        </div>\n        <h2>In Addition, Our Clients Enjoy:</h2>\n        <h3>THE MOST COMPREHENSIVE WEBSITE</h3>\n        <p>Featuring real-time information on every paper</p>\n        <h3>PHOTOGRAPHIC, GPS COORDINATES, DATE AND TIME STAMPED EVIDENCE</h3>\n        <p>Every attempt and serves available for viewing and printing at all times.</p>\n        <h3>UNIFIED CALENDAR</h3>\n        <p>See and print your pretrial/deposition calendar for any range of dates you select or export the entire calendar along with case and court information needed to manage appearances and outside counsel.</p>\n        <h3>SKIP TRACING</h3>\n        <p>By using our exclusive skip trace queue, clients can give feedback on any paper that's in our system requiring a skip trace. Also have full control of number of skips attempts and allowed on address before \"Non- Serving.\"</p>\n        <h3>VIEW AND PRINT AFFIDAVIT OF SERVICE</h3>\n        <p>Copies of affidavits always available for download.</p>\n        <h3>SEARCH AND REPORT</h3>\n        <p>Search and reports feature allows our clients to search our database. Which allows our clients to give feed back on specific report with the requested information in the format you select.</p>\n        <h3>DOWNLOAD CENTER</h3>\n        <p>Our daily reports are delivered in the format needed, which allows our clients to view and manage their files. Which can then be imported into your collection software allowing you to update your files instantly.</p>\n        <h3>INSTANT COMMUNICATION</h3>\n        <p>By Sending an instant message directly to the desktop of your account manager for immediate action.</p>\n        <h3>EASY FILE ACCESS</h3>\n        <p>View cases and court information on current files</p>\n</div>\n";
   });
-},{"handlebars/runtime":10}],61:[function(require,module,exports){
+},{"handlebars/runtime":10}],62:[function(require,module,exports){
 var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
   this.compilerInfo = [4,'>= 1.0.0'];
 helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
@@ -34668,7 +34825,7 @@ function program2(depth0,data) {
   buffer += "\n</ul>\n";
   return buffer;
   });
-},{"handlebars/runtime":10}],62:[function(require,module,exports){
+},{"handlebars/runtime":10}],63:[function(require,module,exports){
 var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
   this.compilerInfo = [4,'>= 1.0.0'];
 helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
