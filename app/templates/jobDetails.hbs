@@ -3,6 +3,7 @@
 		<div id="tools" class="col-md-2">
 			<ul class="nav nav-stacked nav-pills">
 				<li><a href="#" id="viewDetails">Serve Details</a></li>
+				<li><a href="#" id="addComment">Add a Comment</a></li>
 			</ul>
 		</div>
         <div class="col-md-10">
@@ -14,7 +15,7 @@
 							<th>{{#parse @key}}{{/parse}}</th>
 							<td>
 								<div class="col-md-10 col-xs-10 noOverflow">{{#if this.value}} {{this.value}} {{else}} N/A {{/if}}</div>
-								<form class="form-inline col-md-10 col-xs-10 hide" role="form">
+								<form class="form-inline col-md-10 col-xs-10 hide formEdit" role="form">
 									<div class="form-group col-md-10 col-xs-10">
 										<div class="input-group col-md-12 col-xs-12">
 											<label class="sr-only" for="{{@key}}">{{#parse @key}}{{/parse}}</label>

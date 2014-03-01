@@ -2,10 +2,12 @@ var _ = require('underscore'),
     $ = jQuery = require('jquery'),
     Backbone = require('backbone'),
     JoBDetailsTemplate = require('../../templates/jobDetails.hbs'),
+    CommentFormTemplate = require('../../templates/forms/comment.hbs');
     Handlebars = require('handlebars/runtime').default,
 	Notify = require('../utilities/notify'),
 	Helpers = require('../utilities/helpers'),
-	ServeDetails = require('./modals/serveDetails');
+	ServeDetails = require('./modals/serveDetails'),
+    Modal = require('./modals/modal');
 
 module.exports = (function () {
     'use strict';
@@ -77,13 +79,15 @@ module.exports = (function () {
                 this.template = JoBDetailsTemplate;
 				this.details = new ServeDetails({id: this.id});
                 this.model = new exports.Model({jobnumber: this.id});
+                this.modal = new Modal({size: 'modal-sm', parentView: this});
                 this.listenTo(this.model, 'sync', this.render);
                 this.model.fetch();
             },
             events: {
                 'click .edit': 'toggleEdit',
-                'submit form': 'edit',
-				'click #viewDetails': 'openDetailsModal'
+                'submit .formEdit': 'submitEdit',
+				'click #viewDetails': 'openDetailsModal',
+                'click #addComment': 'openCommentModal'
             },
             render: function () {
                 var data = this.model.toJSON(),
@@ -98,12 +102,41 @@ module.exports = (function () {
 				event.preventDefault();
 				this.$el.append(this.details.open().$el);
 			},
+            openCommentModal: function (event) {
+                event.preventDefault();
+                this.modal.render()
+                    .setHeaderHTML('<h4>Add Comments</h4>')
+                    .setContentHTML(CommentFormTemplate())
+                    .addEvent('submit', '#commentForm', this.submitComment)
+                    .open();
+                return this;
+            },
+            submitComment: function (event) {
+                event.preventDefault();
+                var $form = $(event.currentTarget),
+                    modal = this,
+                    that = modal.parentView,
+                    data = {
+                        comments: $form.find('textarea').val(),
+                        jobnumber : that.id
+                    };
+                $.ajax({
+                    url: '/tagproc/api/comments',
+                    data: data,
+                    type: 'POST',
+                    success: function (response) {
+                        Notify.create({title: 'Added', body: 'Comment has been added.', icon: 'app/images/check.png'});
+                        that.details.model.fetch();
+                        modal.hide();
+                    }
+                });
+            },
             toggleEdit: function (event) {
                 if (_.isFunction(event.preventDefault)) { event.preventDefault(); }
                 var $target = $(event.currentTarget).parents('td');
                 $target.children(':not(a)').toggleClass('hide').find('input').focus();
             },
-            edit: function (event) {
+            submitEdit: function (event) {
                 event.preventDefault();
 				var $form = $(event.currentTarget),
 					data = Helpers.serializeObject($form.serializeArray()),

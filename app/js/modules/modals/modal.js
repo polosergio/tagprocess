@@ -1,15 +1,17 @@
 var _ = require('underscore'),
 	Backbone = require('backbone'),
+	Notify = require('../../utilities/notify'),
 	ModalTemplate = require('../../../templates/modals/modal.hbs');
 
 module.exports = (function () {
 	'use strict';
-	var validOptions = ['backdrop', 'keyboard', 'show', 'remote'];
+	var validOptions = ['backdrop', 'keyboard', 'show', 'remote', 'size', 'parentView'];
 	var exports =  Backbone.View.extend({
 		backdrop: true,
 		keyboard: true,
 		show: true,
 		remote: false,
+        size: 'modal-lg',
 		footerHTML: '<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>',
 		template:  ModalTemplate,
 		tagName: 'div',
@@ -29,10 +31,16 @@ module.exports = (function () {
 			'hidden.bs.modal': 'close'
 		},
 		render: function () {
-			this.$el.empty().append(this.template());
+			this.$el.empty().append(this.template({className: this.size}));
 			this.setFooterHTML(this.footerHTML);
 			return this;
 		},
+        addEvent: function (event, selector, callback) {
+            var events = {};
+            events[event + ' ' + selector] = callback;
+            _.extend(this.events, events);
+            return this.delegateEvents();
+        },
 		setHTML: function (selector, html) {
 			this.$(selector).empty().append(html);
 			return this;
@@ -58,12 +66,10 @@ module.exports = (function () {
 			return this;
 		},
 		close: function () {
-			if (!this.isClosed) {
-				if (this.isShown()) {
-					this.hide();
-					Backbone.View.prototype.close.apply(this, arguments);
-				}
-			}
+            if (this.isShown()) {
+                this.hide();
+                Backbone.View.prototype.close.apply(this, arguments);
+            }
 			return this;
 		},
 		open: function () {

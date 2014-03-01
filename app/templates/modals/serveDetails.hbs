@@ -28,7 +28,7 @@
 		<img src="{{satellite}}" class="img-responsive col-md-6">
 	</div>
 	<div class="row">
-		<img src="/tagproc/images/{{image}}" class="img-responsive col-md-12">
+	    {{#parseImageOrVideo image 'img-responsive col-md-12'}}{{/parseImageOrVideo}}
 	</div>
 {{else}}
 	<div class="row">
@@ -79,8 +79,8 @@
 					</tbody>
 				</table>
 			</div>
-		</div>	
-		<img src="/tagproc/images/{{image}}" class="img-responsive col-md-6">
+		</div>
+		{{#parseImageOrVideo image 'img-responsive col-md-6'}}{{/parseImageOrVideo}}
 	</div>
 	<div class="row">
 		<img src="{{street}}" class="img-responsive col-md-6">

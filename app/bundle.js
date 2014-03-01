@@ -1,4 +1,7225 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);throw new Error("Cannot find module '"+o+"'")}var f=n[o]={exports:{}};t[o][0].call(f.exports,function(e){var n=t[o][1][e];return s(n?n:e)},f,f.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+var _ = require('underscore'),
+	Backbone = require('backbone');
+
+module.exports = (function () {
+	'use strict';
+	return Backbone.Model.extend({
+        defaults: {
+            username: 'John Doe'
+        },
+		url: '/api/user',
+        parse: function (response) {
+            return _.result(response, 'data');
+		},
+        hasPermission: function (need) {
+            return _.indexOf(this.get('permissions'), need) !== -1;
+        }
+    });
+}());
+
+},{"backbone":51,"underscore":64}],2:[function(require,module,exports){
+var Backbone = require('backbone'),
+    AboutUsTemplate = require('../../templates/aboutus.hbs');
+
+module.exports = {
+	View: Backbone.View.extend({
+		initialize: function () {
+			this.template = AboutUsTemplate();
+		},
+		render: function () {
+			this.$el.empty().append(this.template);
+			return this;
+		}
+	})
+};
+
+},{"../../templates/aboutus.hbs":29,"backbone":51}],3:[function(require,module,exports){
+var _ = require('underscore'),
+	Backbone = require('backbone'),
+	$ = jQuery = require('jquery'),
+	CONST = require('./constants.js'),
+	cookie = require('cookie-cutter'),
+	User = require('../models/user');
+
+require('jquery-ui-browserify');
+
+module.exports = (function () {
+	return {
+		signedIn: false,
+
+		signInMessage: 'You\'re currently not logged in.',
+
+		updateSignInMessage: function (message) {
+			$('#login-message').html(message).effect('highlight', 2000);
+			return this;
+		},
+
+		_doSignIn: function (options) {
+			var _this = this,
+				defaults = { url: '/tagproc/api/login', type: 'POST', contentType: 'application/json', processData: false, async: false },
+				settings = _.extend(defaults, options),
+				TagProcess = require('../tagprocess');
+			return $
+				.ajax(settings)
+				.done(
+					function (response, status, xhr) {
+						_this.signedIn = true;
+						_this.updateSignInMessage('');
+						_this.user = new User(response.data);
+						TagProcess.vent.trigger('signInSuccess', response, status, xhr);
+					}
+				)
+				.fail(
+					function (xhr, status, error) {
+						TagProcess.vent.trigger('signInError', xhr, status, error);
+                    }
+				)
+                .always(
+                    function (xhr, status) {
+                        TagProcess.vent.trigger('signInComplete', xhr, status);
+                    }
+                );
+            },
+
+            signIn: function (username, password) {
+                return this._doSignIn({
+                    data: JSON.stringify({
+                        username: username,
+                        password: password
+                    })
+                });
+            },
+
+            rememberMeSignIn: function () {
+                if (cookie(CONST.COOKIE.AUTH)) {
+                    return this._doSignIn({
+                        data: JSON.stringify({
+                            uri: 42 // Preparing for future use case
+                        }),
+                        error: this.forgetLogin
+                    });
+                }
+                return false;
+            },
+
+            signOut: function () {
+                var _this = this,
+					TagProcess = require('../tagprocess');
+                return $
+                    .ajax({
+                        url: '/tagproc/api/logout',
+                        type: 'get'
+                    })
+                    .done(
+                        function () {
+                            _this.forgetLogin();
+                            TagProcess.vent.trigger('signOutSuccess');
+                        }
+                    )
+                    .fail(
+                        function (response, status) {
+                            TagProcess.vent.trigger('signOutError', status);
+                        }
+                    )
+                    .always(
+                        function () {
+                            TagProcess.vent.trigger('signOutComplete');
+                        }
+                    )
+                ;
+            },
+
+            forgetLogin: function () {
+                cookie.set(CONST.COOKIE.AUTH, {expires: new Date(0)});
+                this.signedIn = false;
+                this.user = null;
+                return this;
+            }
+	};
+}());
+
+},{"../models/user":1,"../tagprocess":21,"./constants.js":5,"backbone":51,"cookie-cutter":53,"jquery":63,"jquery-ui-browserify":62,"underscore":64}],4:[function(require,module,exports){
+var _ = require('underscore'),
+	$ = require('jquery'),
+	Backbone = require('backbone'),
+	Sidebar = require('./sidebar'),
+    ClientTemplate = require('../../templates/jobs.hbs');
+
+module.exports = (function () {
+	'use strict';
+	var exports = {},
+		helpers = {
+			parseFormParams: function (params) {
+				var options = {
+					'account': 'Client',
+					'casenumber': 'Case',
+					'jobnumber': 'Job Number'
+				}, result = _.clone(params);
+				result.searchby = options[params.searchby];
+				return result;
+			}
+		};
+	_.extend(exports, {
+		Collection: Backbone.Collection.extend({
+			params: {
+				count: 10,
+				offset: 0
+			},
+			baseUrl: '/tagproc/api/jobs',
+			url: function () {
+				return this.baseUrl + '?' + $.param(this.params);
+			},
+			parse: function (response, xhr) {
+                this.status = xhr.xhr.status;
+				return response;
+			}
+		}),
+		View: Backbone.View.extend({
+			initialize: function () {
+                var that = this;
+				this.template = ClientTemplate;
+				this.collection = new exports.Collection();
+				this.sidebar = new Sidebar.View({active: '#client'});
+				delete this.collection.params.q;
+				delete this.collection.params.searchby;
+				this.listenTo(this.collection, 'sync', this.render);
+				this.collection.fetch();
+			},
+			events: {
+				'click #searchby a'				: 'setSearchBy',
+				'keyup #search'					: 'debouncedSearch',
+                'submit form'					: 'search',
+				'click .switch-page'			: 'switchPage'
+			},
+			render: function () {
+				var data = this.collection.toJSON(),
+					payload = {
+					items: _.isEmpty(data) ? null : data,
+					form: helpers.parseFormParams(this.collection.params),
+                    no_access: _.isUndefined(this.collection.status) || this.collection.status === 401
+				};
+				this.$el.empty().append(this.template(payload));
+				this.$('.sidebar').html(this.sidebar.render().$el);
+				this.$('.switch-page').tooltip();
+				return this;
+			},
+			setSearchBy: function (event) {
+				event.preventDefault();
+				var $target = $(event.currentTarget),
+					$button = $target.parents('ul').siblings();
+				$button.find('#search-by-text').html($target.html());
+				this.collection.params.searchby = $target.data('value');
+			},
+            debouncedSearch: _.debounce(function (event) {
+                this.search(event);
+            }, 1000),
+			search: function (event) {
+                event.preventDefault();
+				this.collection.params.offset = 0;
+				this.collection.params.q = this.$('#search').val();
+				this.collection.params.searchby = this.collection.params.searchby ? this.collection.params.searchby : 'jobnumber';
+				this.collection.fetch();
+			},
+			switchPage: function (event) {
+				event.preventDefault();
+				var offset = parseInt($(event.currentTarget).data('offset'), 10);
+				this.collection.params.offset = this.collection.params.offset + offset >= 0 ? this.collection.params.offset + offset : 0;
+				this.collection.fetch();
+			}
+		})
+	});
+	return exports;
+}());
+
+},{"../../templates/jobs.hbs":41,"./sidebar":18,"backbone":51,"jquery":63,"underscore":64}],5:[function(require,module,exports){
+module.exports = {
+	COOKIE: {
+		AUTH: 'user'
+	},
+	KEYS: {
+		ENTER: 13,
+		ESCAPE: 27
+	},
+	THROTTLE: 400
+};
+
+},{}],6:[function(require,module,exports){
+var Backbone = require('backbone'),
+    ContactUsTemplate = require('../../templates/contactus.hbs'),
+	Helpers = require('../utilities/helpers');
+
+module.exports = {
+	View: Backbone.View.extend({
+		initialize: function () {
+			this.template = ContactUsTemplate();
+		},
+		events: {
+			'submit form' : 'submit'
+		},
+		render: function () {
+			this.$el.empty().append(this.template);
+			return this;
+		},
+		submit: function (event) {
+			event.preventDefault();
+			var $form = $(event.currentTarget),
+				data = Helpers.serializeObject($form.serializeArray()),
+				$alert = $form.find('.alert');
+			$.ajax({
+				url: '/tagproc/api/contact',
+				type: 'POST',
+				data: data,
+				success: function (response) {
+					$alert.removeClass('hide alert-danger').addClass('alert-success').html('Message sent.');
+					$form[0].reset();
+				},
+				error: function (e) {
+					$alert.removeClass('hide alert-success').addClass('alert-danger').html(e.statusText);
+				}
+			});
+		}
+	})
+};
+
+},{"../../templates/contactus.hbs":30,"../utilities/helpers":22,"backbone":51}],7:[function(require,module,exports){
+var $ = require('jquery'),
+	Backbone = require('backbone'),
+	FooterTemplate = require('../../templates/footer.hbs');
+
+module.exports = {
+	View: Backbone.View.extend({
+		id: 'footer',
+		className: 'footer',
+		tagName: 'footer',
+		initialize: function () {
+			this.template = FooterTemplate();
+		},
+		render: function () {
+			this.$el.empty().append(this.template);
+
+            return this;
+		}
+	})
+};
+
+},{"../../templates/footer.hbs":31,"backbone":51,"jquery":63}],8:[function(require,module,exports){
+var $ = require('jquery'),
+	Backbone = require('backbone'),
+	HeaderTemplate = require('../../templates/header.hbs');
+
+module.exports = {
+	View: Backbone.View.extend({
+        tagName: 'header',
+        id: 'header',
+        className: 'page-header container',
+		initialize: function () {
+			this.template = HeaderTemplate();
+		},
+		render: function () {
+			var template = this.template;
+			this.$el.empty().append(template);
+
+            return this;
+		}
+	})
+};
+
+},{"../../templates/header.hbs":38,"backbone":51,"jquery":63}],9:[function(require,module,exports){
+var Backbone = require('backbone'),
+	HomeTemplate = require('../../templates/home.hbs');
+
+'use strict';
+module.exports = {
+    View: Backbone.View.extend({
+        initialize: function () {
+            this.template = HomeTemplate();
+        },
+        render: function () {
+            this.$el.empty().append(this.template);
+
+            return this;
+        }
+    })
+};
+
+},{"../../templates/home.hbs":39,"backbone":51}],10:[function(require,module,exports){
+var _ = require('underscore'),
+    $ = jQuery = require('jquery'),
+    Backbone = require('backbone'),
+    JoBDetailsTemplate = require('../../templates/jobDetails.hbs'),
+    CommentFormTemplate = require('../../templates/forms/comment.hbs');
+    Handlebars = require('handlebars/runtime').default,
+	Notify = require('../utilities/notify'),
+	Helpers = require('../utilities/helpers'),
+	ServeDetails = require('./modals/serveDetails'),
+    Modal = require('./modals/modal');
+
+module.exports = (function () {
+    'use strict';
+    var exports = {
+        Model: Backbone.Model.extend({
+            baseUrl: '/tagproc/api/job',
+            url: function () {
+                return this.baseUrl + '?' + $.param(this.toJSON());
+            },
+            parse: function (response) {
+                return response[0];
+            }
+        })
+    }, helpers = {}, isEditable = {
+        'served_party': true,
+        'served_person': true,
+        'date_received': true,
+        'time_received': true,
+        'served_documents': true,
+        'date_court': true,
+        'casenumber': true,
+        'judge': true,
+        'plaintiff': true,
+        'defendant': true,
+        'attorney': true,
+        'date_casefiled': true,
+        'date_amendedfiled': true,
+        'state': true,
+        'county': true,
+        'court_type': true,
+        'serverid': true,
+        'date_served': true,
+        'time_served': true,
+        'method_service': true,
+        'detailed_service': true,
+        'service_address': true,
+        'servedon': true,
+        'servee_address': true,
+        'comments': true
+    };
+
+    _.extend(helpers, {
+        parseEditable: function (object) {
+            var temp = {};
+            _.each(object, function (value, key) {
+                temp[key] = {value: value, editable: isEditable[key]};
+            });
+            return temp;
+        },
+		parseKey: function (name) {
+			return name.replace('_', ' ').toUpperCase();
+		},
+		parseAttachmentType: function (type) {
+			var validTypes = {
+				'doc': 'Documents',
+				'ros': 'Return of Service',
+				'completejob': 'Complete Job',
+				'courtreceipt': 'Court Receipt'
+			};
+			return validTypes[type];
+		}
+    });
+	Handlebars.registerHelper('parse', helpers.parseKey);
+	Handlebars.registerHelper('parseAttachmentType', helpers.parseAttachmentType);
+	_.extend(exports, {
+        View: Backbone.View.extend({
+            initialize: function (options) {
+                this.id = options.id;
+                this.template = JoBDetailsTemplate;
+				this.details = new ServeDetails({id: this.id});
+                this.model = new exports.Model({jobnumber: this.id});
+                this.modal = new Modal({size: 'modal-sm', parentView: this});
+                this.listenTo(this.model, 'sync', this.render);
+                this.model.fetch();
+            },
+            events: {
+                'click .edit': 'toggleEdit',
+                'submit .formEdit': 'submitEdit',
+				'click #viewDetails': 'openDetailsModal',
+                'click #addComment': 'openCommentModal'
+            },
+            render: function () {
+                var data = this.model.toJSON(),
+                    payload = {
+                        job: _.omit(helpers.parseEditable(data), 'attachments'),
+						attachments: data.attachments || []
+                    };
+                this.$el.empty().append(this.template(payload));
+                return this;
+            },
+			openDetailsModal: function (event) {
+				event.preventDefault();
+				this.$el.append(this.details.open().$el);
+			},
+            openCommentModal: function (event) {
+                event.preventDefault();
+                this.modal.render()
+                    .setHeaderHTML('<h4>Add Comments</h4>')
+                    .setContentHTML(CommentFormTemplate())
+                    .addEvent('submit', '#commentForm', this.submitComment)
+                    .open();
+                return this;
+            },
+            submitComment: function (event) {
+                event.preventDefault();
+                var $form = $(event.currentTarget),
+                    modal = this,
+                    that = modal.parentView,
+                    data = {
+                        comments: $form.find('textarea').val(),
+                        jobnumber : that.id
+                    };
+                $.ajax({
+                    url: '/tagproc/api/comments',
+                    data: data,
+                    type: 'POST',
+                    success: function (response) {
+                        Notify.create({title: 'Added', body: 'Comment has been added.', icon: 'app/images/check.png'});
+                        that.details.model.fetch();
+                        modal.hide();
+                    }
+                });
+            },
+            toggleEdit: function (event) {
+                if (_.isFunction(event.preventDefault)) { event.preventDefault(); }
+                var $target = $(event.currentTarget).parents('td');
+                $target.children(':not(a)').toggleClass('hide').find('input').focus();
+            },
+            submitEdit: function (event) {
+                event.preventDefault();
+				var $form = $(event.currentTarget),
+					data = Helpers.serializeObject($form.serializeArray()),
+					key = Object.keys(data)[0],
+					value = data[key],
+                    that = this;
+				 $.ajax({
+					url: '/tagproc/api/job',
+					data: _.extend(data, {jobnumber: that.model.get('jobnumber')}),
+					type: 'POST',
+					success: function (response) {
+						var field = response[0].data;
+                        $form.siblings('div').html(field[key]);
+                        Notify.create({title: 'Saved', body: 'Field ' + helpers.parseKey(key) + ' has been updated to ' + value, tag: key, icon: 'app/images/save.png'});
+                        that.toggleEdit({currentTarget: $form.siblings('a')});
+					}
+				 });
+            }
+        })
+    });
+    return exports;
+}());
+
+},{"../../templates/forms/comment.hbs":35,"../../templates/jobDetails.hbs":40,"../utilities/helpers":22,"../utilities/notify":23,"./modals/modal":12,"./modals/serveDetails":13,"backbone":51,"handlebars/runtime":60,"jquery":63,"underscore":64}],11:[function(require,module,exports){
+var Backbone = require('backbone'),
+	TagProcess = require('../tagprocess'),
+	LoginTemplate = require('../../templates/login.hbs');
+
+module.exports = {
+	View: Backbone.View.extend({
+		initialize: function () {
+			this.template = LoginTemplate();
+			setTimeout(function () {
+				if (TagProcess.Auth.signedIn) {
+					TagProcess.Auth.updateSignInMessage(TagProcess.Auth.signInMessage);
+					Backbone.history.navigate('client', {trigger: true});
+				}
+			}, 0);
+		},
+		events: {
+			'submit form' : 'authenticate'
+		},
+		render: function () {
+			this.$el.empty().append(this.template);
+			return this;
+		},
+		renderError: function (error) {
+			this.$('.alert')
+				.toggleClass('hide', !error)
+				.html(error)
+			;
+			this.$(':valid')
+				.closest('.form-group')
+					.toggleClass('has-error', false)
+			;
+			this.$(':invalid')
+				.closest('.form-group')
+					.toggleClass('has-error', true)
+				.end()
+				.first()
+					.focus()
+			;
+			return this;
+		},
+		signIn: function (input) {
+			var view = this,
+				$button = this.$('button[type="submit"]').attr('disabled', true);
+			this.renderError();
+			TagProcess.Auth.forgetLogin().signIn(input.name, input.password).then(
+				function () {
+					var attemptedRoute = TagProcess.Auth.attemptedRoute;
+					if (attemptedRoute) {
+						Backbone.history.navigate(attemptedRoute, {trigger: true});
+						TagProcess.Auth.attemptedRoute = null;
+					} else {
+						Backbone.history.navigate('client', {trigger: true});
+					}
+				},
+				function (jqxhr, status, message) {
+					var loginResponse;
+					if (jqxhr.status === 401) {
+						loginResponse = 'Invalid username and/or password.';
+					} else {
+						loginResponse = message;
+					}
+					view.renderError(loginResponse);
+					$button.attr('disabled', false);
+					return this;
+				}
+			);
+			return this;
+		},
+		authenticate: function (event) {
+			event.preventDefault();
+			var inputs = {
+				name: this.$('#username').val(),
+				password: this.$('#password').val()
+			};
+			this.signIn(inputs);
+			return this;
+		}
+	})
+};
+
+},{"../../templates/login.hbs":42,"../tagprocess":21,"backbone":51}],12:[function(require,module,exports){
+var _ = require('underscore'),
+	Backbone = require('backbone'),
+	Notify = require('../../utilities/notify'),
+	ModalTemplate = require('../../../templates/modals/modal.hbs');
+
+module.exports = (function () {
+	'use strict';
+	var validOptions = ['backdrop', 'keyboard', 'show', 'remote', 'size', 'parentView'];
+	var exports =  Backbone.View.extend({
+		backdrop: true,
+		keyboard: true,
+		show: true,
+		remote: false,
+        size: 'modal-lg',
+		footerHTML: '<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>',
+		template:  ModalTemplate,
+		tagName: 'div',
+		className: 'modal fade',
+		attributes: {
+			'tabindex': '-1',
+			'role': 'dialog',
+			'aria-hidden': true,
+			'aria-labelledby': 'ServeDetails'
+		},
+		initialize: function (options) {
+			if (_.isObject(options)) {
+				_.extend(this, _.pick(options, validOptions));
+			}
+		},
+		events: {
+			'hidden.bs.modal': 'close'
+		},
+		render: function () {
+			this.$el.empty().append(this.template({className: this.size}));
+			this.setFooterHTML(this.footerHTML);
+			return this;
+		},
+        addEvent: function (event, selector, callback) {
+            var events = {};
+            events[event + ' ' + selector] = callback;
+            _.extend(this.events, events);
+            return this.delegateEvents();
+        },
+		setHTML: function (selector, html) {
+			this.$(selector).empty().append(html);
+			return this;
+		},
+		setContentHTML: function (html) {
+			this.setHTML('.modal-body', html);
+			return this;
+		},
+		setHeaderHTML: function (html) {
+			this.setHTML('.modal-header', html);
+			return this;
+		},
+		setFooterHTML: function (html) {
+			this.setHTML('.modal-footer', html);
+			return this;
+		},
+		isShown: function () {
+			var data = this.$el.data('bs.modal');
+			return _.isUndefined(data) ? false : data.isShown;
+		},
+		hide: function () {
+			this.$el.modal('hide');
+			return this;
+		},
+		close: function () {
+            if (this.isShown()) {
+                this.hide();
+                Backbone.View.prototype.close.apply(this, arguments);
+            }
+			return this;
+		},
+		open: function () {
+			if (!this.isShown()) {
+				this.$el.modal(_.pick(this, validOptions));
+			}
+			return this;
+		}
+	});
+
+	return exports;
+}());
+
+},{"../../../templates/modals/modal.hbs":43,"../../utilities/notify":23,"backbone":51,"underscore":64}],13:[function(require,module,exports){
+var Modal = require('./modal'),
+	ListTemplate = require('../../../templates/modals/serveList.hbs'),
+	DetailsTemplate = require('../../../templates/modals/serveDetails.hbs'),
+    Handlebars = require('handlebars/runtime').default,
+	_ = require('underscore'),
+	Backbone = require('backbone');
+
+
+Handlebars.registerHelper('parseImageOrVideo', function (image, className) {
+    var validExtensions = {
+            'jpg': 'image',
+            'jpeg': 'image',
+            'png': 'image',
+            'mp4': 'video',
+            'mov': 'video'
+        },
+        ext = image.split('.').pop().toLowerCase(),
+        result = validExtensions[ext], html = '';
+    if (result === 'image') {
+        html = '<img src="/tagproc/images/' + image +'" class="' + className + '">';
+    } else if (result === 'video') {
+        html = '<video controls="controls" class="' + className + '"><source src="/tagproc/videos/' + image + '"  type="video/mp4"/></video>';
+    }
+    return html;
+});
+module.exports = (function () {
+	'use strict';
+	var Model = Backbone.Model.extend({
+			baseUrl: '/tagproc/api/serve_details',
+			url: function () {
+				return this.baseUrl + '?' + $.param(_.pick(this.toJSON(), 'jobnumber'));
+			}
+		}),
+		exports = Backbone.View.extend({
+			template: ListTemplate,
+			detailsTemplate: DetailsTemplate,
+			initialize: function () {
+				this.modal = new Modal();
+				this.model = new Model({jobnumber: this.id});
+				this.listenTo(this.model, 'sync', this.render);
+				this.model.fetch();
+			},
+			events: {
+				'click .openDetails': 'openDetails',
+				'click .openList'	: 'openList'
+			},
+			render: function () {
+				var data = this.model.toJSON();
+				this.modal.render()
+					.setHeaderHTML('<h4>Details</h4>')
+					.setContentHTML(this.template(data));
+				this.$el.empty().append(this.modal.$el);
+				return this.delegateEvents();
+			},
+			open: function () {
+				this.render().modal.open();
+				return this;
+			},
+			openDetails: function (event) {
+				event.preventDefault();
+				var id = $(event.currentTarget).data('id'),
+					data = id ? _.findWhere(this.model.get('comments'), {id: id.toString()}) : this.model.get('serve');
+				this.modal.setContentHTML(this.detailsTemplate(data));
+				return this.delegateEvents();
+			},
+			openList: function (event) {
+				event.preventDefault();
+				var data = this.model.toJSON();
+				this.modal.setContentHTML(this.template(data));
+				return this.delegateEvents();
+			}
+	});
+	return exports;
+}());
+
+},{"../../../templates/modals/serveDetails.hbs":44,"../../../templates/modals/serveList.hbs":45,"./modal":12,"backbone":51,"handlebars/runtime":60,"underscore":64}],14:[function(require,module,exports){
+var $ = jQuery = require('jquery'),
+	_ = require('underscore'),
+	Backbone = require('backbone'),
+	TagProcess = require('../tagprocess'),
+	NavBarTemplate = require('../../templates/navbar.hbs'),
+    NavButton = require('./navbutton');
+
+require('../../libs/bootstrap/bootstrap.js');
+module.exports = {
+    Collection: Backbone.Collection.extend({
+        model: NavButton.Model
+    }),
+	View: Backbone.View.extend({
+        tagName: 'div',
+        className: 'container',
+        id: 'navbar',
+        template: NavBarTemplate,
+		initialize: function () {
+            this.collection = new module.exports.Collection(TagProcess.locations);
+            this.listenTo(TagProcess.vent, 'domchange:page', this.setActive);
+			this.listenTo(TagProcess.vent, 'signInSuccess', this.toggleUserDropdown);
+			this.listenTo(TagProcess.vent, 'signOutSuccess', this.toggleUserDropdown);
+		},
+		events: {
+			'click #logout': 'logout'
+		},
+		render: function () {
+            var that = this;
+			this.$el.empty().append(this.template());
+            _.each(this.collection.models, function (item) {
+                that.renderButton(item);
+            }, this);
+
+            return this;
+		},
+        renderButton: function (item) {
+            var buttonView = new NavButton.View({
+                model: item
+            });
+            this.$('#nav-ul').append(buttonView.render().el);
+        },
+        setActive: function (options) {
+            // Optimization needed. See tabNavigation.js
+            _.each(this.collection.models, function (model) {
+                model.set('active', model.get('href') === options.hash);
+            });
+        },
+		toggleUserDropdown: function (data) {
+			var text = _.isEmpty(data) || _.isUndefined(data) ? '' : data.data.name;
+			this.$('#name-text').html(text);
+			this.$('#user-dropdown').toggleClass('hide').siblings().toggleClass('hide');
+		},
+		logout: function () {
+			TagProcess.Auth.signOut();
+			TagProcess.Auth.updateSignInMessage('You\'re currently not logged in');
+		}
+	})
+};
+
+},{"../../libs/bootstrap/bootstrap.js":26,"../../templates/navbar.hbs":46,"../tagprocess":21,"./navbutton":15,"backbone":51,"jquery":63,"underscore":64}],15:[function(require,module,exports){
+var $ = require('jquery'),
+    Backbone = require('backbone'),
+    ButtonTemplate = require('../../templates/navbutton.hbs');
+
+module.exports = (function () {
+    'use strict';
+    return {
+        Model: Backbone.Model.extend({
+            defaults: {
+                active: false
+            }
+        }),
+        View: Backbone.View.extend({
+            tagName: "li",
+            className: "",
+            template: ButtonTemplate,
+            initialize: function () {
+                this.listenTo(this.model, 'change:active', this.setActive);
+            },
+            render: function () {
+                this.$el.html(this.template(this.model.toJSON())).toggleClass('active', this.model.get('active'));
+                return this;
+            },
+            setActive: function () {
+                $(this.el).toggleClass('active', this.model.get('active'));
+            }
+        })
+    }
+}());
+
+},{"../../templates/navbutton.hbs":47,"backbone":51,"jquery":63}],16:[function(require,module,exports){
+var _ = require('underscore'),
+    $ = jQuery = require('jquery'),
+    Backbone = require('backbone'),
+    Sidebar = require('./sidebar'),
+    Helpers = require('../utilities/helpers');
+require('../../libs/selectize/js/standalone/selectize.js');
+
+module.exports = (function (){
+    'use strict';
+    var exports = {},
+		helpers = {
+			setFormat: function (item, escape) {
+				return '<div>' + escape(item.firstname + ' ' + item.lastname + ': ' + item.uniqueid + ' - ' + item.county)  + '</div>';
+			}
+		};
+
+	_.extend(helpers, {
+		customOptionRender: {
+			'server': {
+				'option': helpers.setFormat,
+				'item': helpers.setFormat
+			}
+		}
+	});
+
+    _.extend(exports, {
+        View: Backbone.View.extend({
+            forms: {
+                'employee': require('../../templates/forms/employee.hbs'),
+                'client': require('../../templates/forms/client.hbs'),
+                'server': require('../../templates/forms/server.hbs'),
+                'case': require('../../templates/forms/case.hbs'),
+                'attorney': require('../../templates/forms/attorney.hbs')
+            },
+            initialize: function (options) {
+                if (!options.form) {
+                    throw new Error('You must pass a form.');
+                }
+                this.form = options.form;
+                this.template = this.forms[options.form];
+                this.sidebar = new Sidebar.View({active: '#forms/' + this.form});
+            },
+			events: {
+				'submit form': 'submit'
+			},
+			render: function () {
+				this.$el.empty().append(this.template());
+				this.$('.sidebar').html(this.sidebar.render().$el);
+                this.initInputs();
+				return this;
+			},
+            initInputs: function () {
+				var $select = this.$('select');
+				$select.each(function () {
+					var options = $(this).data() || {},
+						that = this;
+					$(this).selectize({
+						valueField: options.value || 'value',
+						labelField: options.label || 'text',
+						searchField: options.search ? options.search.split(',') : 'text',
+						preload: true,
+						create: false,
+						load: function (query, callback) {
+							if (options.url) {
+								$.ajax({
+									url: options.url,
+									type: 'GET',
+									success: function (response) {
+										callback(response);
+									},
+									error: function (e) {
+										console.log('error', e);
+									}
+								});
+							} else {
+								callback();
+							}
+						},
+						render: helpers.customOptionRender[that.name]
+					});
+				});
+            },
+			submit: function (event) {
+				event.preventDefault();
+				var $form = $(event.currentTarget),
+                    url = $form.data('url'),
+					data = Helpers.serializeObject($form.serializeArray()),
+					$alert = $form.find('.alert');
+				//PENDING CREATE NEW CLIENT API
+				/*
+				$.ajax({
+					url: url,
+					type: 'POST',
+					data: data,
+					success: function (response) {
+						console.log(response);
+						$alert.removeClass('hide alert-danger').addClass('alert-success').html('Client Created');
+						$form[0].reset();
+					},
+					error: function (e) {
+						$alert.removeClass('hide alert-success').addClass('alert-danger').html(e.statusText);
+					}
+				});
+				*/
+			   $alert.removeClass('hide').html('Pending create new ' + this.form + ' api');
+			}
+        })
+    });
+    return exports;
+}());
+
+},{"../../libs/selectize/js/standalone/selectize.js":27,"../../templates/forms/attorney.hbs":32,"../../templates/forms/case.hbs":33,"../../templates/forms/client.hbs":34,"../../templates/forms/employee.hbs":36,"../../templates/forms/server.hbs":37,"../utilities/helpers":22,"./sidebar":18,"backbone":51,"jquery":63,"underscore":64}],17:[function(require,module,exports){
+var Backbone = require('backbone'),
+    ServicesTemplate = require('../../templates/services.hbs');
+
+module.exports = {
+    View: Backbone.View.extend({
+        initialize: function () {
+            this.template = ServicesTemplate();
+        },
+        render: function () {
+            this.$el.empty().append(this.template);
+
+            return this;
+        }
+    })
+};
+},{"../../templates/services.hbs":48,"backbone":51}],18:[function(require,module,exports){
+var _ = require('underscore'),
+	Backbone = require('backbone'),
+	TagProcess = require('../tagprocess'),
+	SidebarTemplate = require('../../templates/sidebar.hbs');
+
+module.exports = (function () {
+	'use strict';
+	var exports = {};
+	_.extend(exports, {
+		View: Backbone.View.extend({
+			id: 'sidebar',
+			template: SidebarTemplate,
+			initialize: function (options) {
+				this.collection = TagProcess.sidebar;
+				if (options.active) {
+					this.setActive(options.active);
+				}
+			},
+			render: function () {
+				var payload = {
+					locations: this.collection.toJSON()
+				}
+				this.$el.empty().append(this.template(payload));
+				return this;
+			},
+			setActive: function (href) {
+				_.each(this.collection.models, function (model) {
+					model.set('active', model.get('href') === href);
+				});
+				return this;
+			}
+		})
+	});
+	return exports;
+}());
+
+},{"../../templates/sidebar.hbs":49,"../tagprocess":21,"backbone":51,"underscore":64}],19:[function(require,module,exports){
+var Backbone = require('backbone'),
+    TechnologyTemplate = require('../../templates/technology.hbs');
+
+module.exports = {
+	View: Backbone.View.extend({
+		initialize: function () {
+			this.template = TechnologyTemplate();
+		},
+		render: function () {
+			this.$el.empty().append(this.template);
+			return this;
+		}
+	})
+};
+
+},{"../../templates/technology.hbs":50,"backbone":51}],20:[function(require,module,exports){
+var Backbone = require('backbone'),
+	TagProcess = require('./tagprocess'),
+    _ = require('underscore');
+
+module.exports = (function () {
+	'use strict';
+	var Router = Backbone.Router.extend({
+		routes: {
+			''			    : 'showIndex',
+			'home'		    : 'showIndex',
+			'services'		: 'showServices',
+			'technology'	: 'showTechnology',
+			'aboutus'		: 'showAboutUs',
+			'contactus'		: 'showContactUs',
+			'login'			: 'showLogin',
+			'client'		: 'showClient',
+            'jobs/:id'      : 'showClientID',
+            'forms/:form'   : 'showForm'
+		},
+		initialize: function () {
+			this.viewTarget = '#content';
+			this.viewManager = new TagProcess.ViewManager({'selector': this.viewTarget});
+		},
+		showIndex: function () {
+            var view = require('./modules/home');
+			this.show({hash: '#home', title: 'Home', view: new view.View(), viewOptions: {needsPermission: false}});
+		},
+		showServices: function () {
+			var view = require('./modules/services');
+			this.show({hash: '#services', title: 'Services', view: new view.View(), viewOptions: {needsPermission: false}});
+		},
+		showTechnology: function () {
+			var view = require('./modules/technology');
+			this.show({hash: '#technology', title: 'Technology', view: new view.View(), viewOptions: {needsPermission: false}});
+		},
+		showAboutUs: function () {
+			var view = require('./modules/aboutus');
+			this.show({hash: '#aboutus', title: 'About Us', view: new view.View(), viewOptions: {needsPermission: false}});
+		},
+		showContactUs: function () {
+			var view = require('./modules/contactus');
+			this.show({hash: '#contactus', title: 'Contact Us', view: new view.View(), viewOptions: {needsPermission: false}});
+		},
+		showLogin: function () {
+			var view = require('./modules/login');
+			this.show({hash: '#login', title: 'Log In', view: new view.View(), viewOptions: {needsPermission: false}});
+		},
+		showClient: function () {
+			var view = require('./modules/client');
+			this.show({hash: '#client', title: 'Client', view: new view.View(), viewOptions: {needsPermission: false}});
+		},
+        showClientID: function (id) {
+            var view = require('./modules/jobDetails');
+            this.show({hash: '#client', title: 'Job Details', view: new view.View({id: id}), viewOptions: {needsPermission: true}})
+        },
+        showForm: function (form) {
+            var view = require('./modules/newForms');
+            this.show({hash: '#client', title: 'New ' + form, view: new view.View({form: form}), viewOptions: {needsPermission: true}});
+        },
+		show: function (options) {
+			var that = this,
+                settings = _.extend({
+				hash: undefined,
+				title: '',
+				view: undefined,
+				viewOptions: {}
+			}, options);
+            if (!TagProcess.Auth.signedIn && settings.viewOptions.needsPermission) {
+                this.navigate('login');
+                return;
+            }
+            TagProcess.vent.trigger('domchange:page', settings);
+            if (settings.view instanceof Backbone.View) {
+				that.viewManager.showView(settings.view);
+			}
+			return this;
+		}
+	});
+	return {
+		initialize: function () {
+			TagProcess.router = new Router();
+			Backbone.history.start();
+		}
+	};
+}());
+
+},{"./modules/aboutus":2,"./modules/client":4,"./modules/contactus":6,"./modules/home":9,"./modules/jobDetails":10,"./modules/login":11,"./modules/newForms":16,"./modules/services":17,"./modules/technology":19,"./tagprocess":21,"backbone":51,"underscore":64}],21:[function(require,module,exports){
+var $ = require('jquery'),
+	Backbone = require('backbone')
+    ViewManager = require('./utilities/viewmanager'),
+    Vent = require('./utilities/vent'),
+	Authenticate = require('./modules/authenticate');
+module.exports = {
+	Auth: Authenticate,
+	ViewManager: ViewManager,
+	baseUrl: 'dev1.xertigo.net',
+    $doc: $(document),
+    title: $(document).attr('title'),
+    vent: Vent,
+	locations: [
+		{
+			'href': '#services',
+			'name': 'Services'
+		},
+		{
+			'href': '#technology',
+			'name': 'Technology'
+		},
+        {
+			'href': '#aboutus',
+			'name': 'About Us'
+		},
+        {
+			'href': '#contactus',
+			'name': 'Contact Us'
+		},
+        {
+			'href': '#client',
+			'name': 'Client'
+		}
+	],
+	sidebar: new Backbone.Collection([
+		{
+			'href': '#client',
+			'active': false,
+			'name': 'Jobs'
+		},
+		{
+			'href': '#forms/case',
+			'active': false,
+			'name': 'New Case'
+		},
+		{
+			'href': '#forms/client',
+			'active': false,
+			'name': 'New Client'
+		},
+		{
+			'href': '#forms/server',
+			'active': false,
+			'name': 'New Server'
+		},
+		{
+			'href': '#forms/employee',
+			'active': false,
+			'name': 'New Employee'
+		},
+        {
+            'href': '#forms/attorney',
+            'active': false,
+            'name': 'New Attorney'
+        },
+		{
+			'href': '#',
+			'active': false,
+			'name': 'Client Statement'
+		},
+		{
+			'href': '#',
+			'active': false,
+			'name': 'Server Report'
+		},
+		{
+			'href': '#',
+			'active': false,
+			'name': 'Client Receivables Report'
+		}
+	])
+};
+
+},{"./modules/authenticate":3,"./utilities/vent":24,"./utilities/viewmanager":25,"backbone":51,"jquery":63}],22:[function(require,module,exports){
+var _ = require('underscore');
+
+module.exports = {
+	serializeObject: function (array) {
+		var object = {};
+		_.each(array, function (item) {
+			if (object[item.name] !== undefined) {
+				if (!object[item.name].push) {
+					object[item.name] = [object[item.name]];
+				}
+				object[item.name].push(item.value || '');
+			} else {
+				object[item.name] = item.value || '';
+			}
+		});
+		return object;
+	}
+};
+
+},{"underscore":64}],23:[function(require,module,exports){
+var _ = require('underscore');
+
+module.exports = (function () {
+	'use strict';
+	var exports = {};
+	_.extend(exports, {
+		enabled: false,
+		timeOut: 5000,
+		init: function (callback) {
+			if (!window.Notification) {
+				return;
+			}
+			if (Notification.permission === 'default') {
+				Notification.requestPermission(function () {
+					exports.init();
+					if (_.isFunction(callback)) { callback(); };
+				});
+			} else if (Notification.permission === 'granted') {
+				this.enabled = true;
+			} else if (Notification.permission === 'denied') {
+				return;
+			}
+		},
+		create: function (options) {
+			var validOptions = ['body', 'tag', 'icon'],
+				title = options.title || '',
+				options = _.pick(options, validOptions);
+			if (this.enabled) {
+				this._currentNotification = new Notification(title, options);
+			} else {
+				exports.init(this.create.bind(this, options));
+			}
+			this._currentNotification.onshow = this.onShow.bind(this);
+		},
+		onShow: function (event) {
+			setTimeout(function () { event.currentTarget.close(); }, this.timeOut);
+		}
+	});
+	exports.init();
+	return exports;
+}());
+
+},{"underscore":64}],24:[function(require,module,exports){
+var _ = require('underscore'),
+    Backbone = require('backbone');
+
+module.exports = (function () {
+    "use strict";
+    return _.extend({}, Backbone.Events);
+}());
+
+},{"backbone":51,"underscore":64}],25:[function(require,module,exports){
+var _ = require('underscore'),
+    $ = require('jquery'),
+	Backbone = require('backbone');
+module.exports = (function () {
+    'use strict';
+
+    _.extend(Backbone.View.prototype, {
+        addSubViews: function () {
+            if (!_.isArray(this.subViews)) {
+                this.subViews = [];
+            }
+            Array.prototype.push.apply(this.subViews, arguments);
+            return this;
+        },
+        // Zombie Prevention Part 1
+        // Add close function to Backbone.View to prevent "Zombies"
+        // Inspired by: Derick Bailey
+        // See: http://bit.ly/odAfKo
+        close: function () {
+            if (this.__closing) { return this; }
+            this.__closing = true;
+            if (this.beforeClose && _.isFunction(this.beforeClose)) {
+                this.beforeClose();
+            }
+            if (_.isArray(this.subViews)) {
+                _.each(this.subViews, function (subView) {
+                    if (_.isFunction(subView.close)) {
+                        subView.close();
+                    }
+                });
+            }
+            this.remove();
+            this.unbind();
+            this.__closing = false;
+            return this;
+        }
+    });
+    // Zombie Prevention Part 2
+    // Object to manage transitions between views
+    // Inspired by: Derick Bailey
+    // See: http://bit.ly/odAfKo
+    return function (options) {
+        var that = this,
+            allowed = ['selector'],
+            extender,
+            finish,
+            lastSelect;
+        that.selector = 'body';
+        that.$selector = undefined;
+        that.set = function (opts) { extender(opts); finish(); };
+        that.get = function (name) { return that[name]; };
+        that.showView = function (view) {
+            if (this.currentView) {
+                this.currentView.close();
+            }
+            that.$selector.html(view.render().el);
+            this.currentView = view;
+            return view;
+        };
+
+        // Self invoking function that extends this object
+        // with options passed to the constructor
+        extender = (function (opts) {
+            _.extend(that, _.pick(opts, allowed));
+        }(options));
+
+        // Self invoking function for final set up
+        // - Set '$selector' based on 'selector'
+        finish = (function () {
+            if ($.type(that.selector) === 'string' && that.selector !== lastSelect) {
+                that.$selector = $(that.selector);
+                lastSelect = that.selector;
+            }
+        }());
+    };
+}());
+
+},{"backbone":51,"jquery":63,"underscore":64}],26:[function(require,module,exports){
+/*!
+ * Bootstrap v3.1.1 (http://getbootstrap.com)
+ * Copyright 2011-2014 Twitter, Inc.
+ * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
+ */
+
+if (typeof jQuery === 'undefined') { throw new Error('Bootstrap\'s JavaScript requires jQuery') }
+
+/* ========================================================================
+ * Bootstrap: transition.js v3.1.1
+ * http://getbootstrap.com/javascript/#transitions
+ * ========================================================================
+ * Copyright 2011-2014 Twitter, Inc.
+ * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
+ * ======================================================================== */
+
+
++function ($) {
+  'use strict';
+
+  // CSS TRANSITION SUPPORT (Shoutout: http://www.modernizr.com/)
+  // ============================================================
+
+  function transitionEnd() {
+    var el = document.createElement('bootstrap')
+
+    var transEndEventNames = {
+      'WebkitTransition' : 'webkitTransitionEnd',
+      'MozTransition'    : 'transitionend',
+      'OTransition'      : 'oTransitionEnd otransitionend',
+      'transition'       : 'transitionend'
+    }
+
+    for (var name in transEndEventNames) {
+      if (el.style[name] !== undefined) {
+        return { end: transEndEventNames[name] }
+      }
+    }
+
+    return false // explicit for ie8 (  ._.)
+  }
+
+  // http://blog.alexmaccaw.com/css-transitions
+  $.fn.emulateTransitionEnd = function (duration) {
+    var called = false, $el = this
+    $(this).one($.support.transition.end, function () { called = true })
+    var callback = function () { if (!called) $($el).trigger($.support.transition.end) }
+    setTimeout(callback, duration)
+    return this
+  }
+
+  $(function () {
+    $.support.transition = transitionEnd()
+  })
+
+}(jQuery);
+
+/* ========================================================================
+ * Bootstrap: alert.js v3.1.1
+ * http://getbootstrap.com/javascript/#alerts
+ * ========================================================================
+ * Copyright 2011-2014 Twitter, Inc.
+ * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
+ * ======================================================================== */
+
+
++function ($) {
+  'use strict';
+
+  // ALERT CLASS DEFINITION
+  // ======================
+
+  var dismiss = '[data-dismiss="alert"]'
+  var Alert   = function (el) {
+    $(el).on('click', dismiss, this.close)
+  }
+
+  Alert.prototype.close = function (e) {
+    var $this    = $(this)
+    var selector = $this.attr('data-target')
+
+    if (!selector) {
+      selector = $this.attr('href')
+      selector = selector && selector.replace(/.*(?=#[^\s]*$)/, '') // strip for ie7
+    }
+
+    var $parent = $(selector)
+
+    if (e) e.preventDefault()
+
+    if (!$parent.length) {
+      $parent = $this.hasClass('alert') ? $this : $this.parent()
+    }
+
+    $parent.trigger(e = $.Event('close.bs.alert'))
+
+    if (e.isDefaultPrevented()) return
+
+    $parent.removeClass('in')
+
+    function removeElement() {
+      $parent.trigger('closed.bs.alert').remove()
+    }
+
+    $.support.transition && $parent.hasClass('fade') ?
+      $parent
+        .one($.support.transition.end, removeElement)
+        .emulateTransitionEnd(150) :
+      removeElement()
+  }
+
+
+  // ALERT PLUGIN DEFINITION
+  // =======================
+
+  var old = $.fn.alert
+
+  $.fn.alert = function (option) {
+    return this.each(function () {
+      var $this = $(this)
+      var data  = $this.data('bs.alert')
+
+      if (!data) $this.data('bs.alert', (data = new Alert(this)))
+      if (typeof option == 'string') data[option].call($this)
+    })
+  }
+
+  $.fn.alert.Constructor = Alert
+
+
+  // ALERT NO CONFLICT
+  // =================
+
+  $.fn.alert.noConflict = function () {
+    $.fn.alert = old
+    return this
+  }
+
+
+  // ALERT DATA-API
+  // ==============
+
+  $(document).on('click.bs.alert.data-api', dismiss, Alert.prototype.close)
+
+}(jQuery);
+
+/* ========================================================================
+ * Bootstrap: button.js v3.1.1
+ * http://getbootstrap.com/javascript/#buttons
+ * ========================================================================
+ * Copyright 2011-2014 Twitter, Inc.
+ * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
+ * ======================================================================== */
+
+
++function ($) {
+  'use strict';
+
+  // BUTTON PUBLIC CLASS DEFINITION
+  // ==============================
+
+  var Button = function (element, options) {
+    this.$element  = $(element)
+    this.options   = $.extend({}, Button.DEFAULTS, options)
+    this.isLoading = false
+  }
+
+  Button.DEFAULTS = {
+    loadingText: 'loading...'
+  }
+
+  Button.prototype.setState = function (state) {
+    var d    = 'disabled'
+    var $el  = this.$element
+    var val  = $el.is('input') ? 'val' : 'html'
+    var data = $el.data()
+
+    state = state + 'Text'
+
+    if (!data.resetText) $el.data('resetText', $el[val]())
+
+    $el[val](data[state] || this.options[state])
+
+    // push to event loop to allow forms to submit
+    setTimeout($.proxy(function () {
+      if (state == 'loadingText') {
+        this.isLoading = true
+        $el.addClass(d).attr(d, d)
+      } else if (this.isLoading) {
+        this.isLoading = false
+        $el.removeClass(d).removeAttr(d)
+      }
+    }, this), 0)
+  }
+
+  Button.prototype.toggle = function () {
+    var changed = true
+    var $parent = this.$element.closest('[data-toggle="buttons"]')
+
+    if ($parent.length) {
+      var $input = this.$element.find('input')
+      if ($input.prop('type') == 'radio') {
+        if ($input.prop('checked') && this.$element.hasClass('active')) changed = false
+        else $parent.find('.active').removeClass('active')
+      }
+      if (changed) $input.prop('checked', !this.$element.hasClass('active')).trigger('change')
+    }
+
+    if (changed) this.$element.toggleClass('active')
+  }
+
+
+  // BUTTON PLUGIN DEFINITION
+  // ========================
+
+  var old = $.fn.button
+
+  $.fn.button = function (option) {
+    return this.each(function () {
+      var $this   = $(this)
+      var data    = $this.data('bs.button')
+      var options = typeof option == 'object' && option
+
+      if (!data) $this.data('bs.button', (data = new Button(this, options)))
+
+      if (option == 'toggle') data.toggle()
+      else if (option) data.setState(option)
+    })
+  }
+
+  $.fn.button.Constructor = Button
+
+
+  // BUTTON NO CONFLICT
+  // ==================
+
+  $.fn.button.noConflict = function () {
+    $.fn.button = old
+    return this
+  }
+
+
+  // BUTTON DATA-API
+  // ===============
+
+  $(document).on('click.bs.button.data-api', '[data-toggle^=button]', function (e) {
+    var $btn = $(e.target)
+    if (!$btn.hasClass('btn')) $btn = $btn.closest('.btn')
+    $btn.button('toggle')
+    e.preventDefault()
+  })
+
+}(jQuery);
+
+/* ========================================================================
+ * Bootstrap: carousel.js v3.1.1
+ * http://getbootstrap.com/javascript/#carousel
+ * ========================================================================
+ * Copyright 2011-2014 Twitter, Inc.
+ * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
+ * ======================================================================== */
+
+
++function ($) {
+  'use strict';
+
+  // CAROUSEL CLASS DEFINITION
+  // =========================
+
+  var Carousel = function (element, options) {
+    this.$element    = $(element)
+    this.$indicators = this.$element.find('.carousel-indicators')
+    this.options     = options
+    this.paused      =
+    this.sliding     =
+    this.interval    =
+    this.$active     =
+    this.$items      = null
+
+    this.options.pause == 'hover' && this.$element
+      .on('mouseenter', $.proxy(this.pause, this))
+      .on('mouseleave', $.proxy(this.cycle, this))
+  }
+
+  Carousel.DEFAULTS = {
+    interval: 5000,
+    pause: 'hover',
+    wrap: true
+  }
+
+  Carousel.prototype.cycle =  function (e) {
+    e || (this.paused = false)
+
+    this.interval && clearInterval(this.interval)
+
+    this.options.interval
+      && !this.paused
+      && (this.interval = setInterval($.proxy(this.next, this), this.options.interval))
+
+    return this
+  }
+
+  Carousel.prototype.getActiveIndex = function () {
+    this.$active = this.$element.find('.item.active')
+    this.$items  = this.$active.parent().children()
+
+    return this.$items.index(this.$active)
+  }
+
+  Carousel.prototype.to = function (pos) {
+    var that        = this
+    var activeIndex = this.getActiveIndex()
+
+    if (pos > (this.$items.length - 1) || pos < 0) return
+
+    if (this.sliding)       return this.$element.one('slid.bs.carousel', function () { that.to(pos) })
+    if (activeIndex == pos) return this.pause().cycle()
+
+    return this.slide(pos > activeIndex ? 'next' : 'prev', $(this.$items[pos]))
+  }
+
+  Carousel.prototype.pause = function (e) {
+    e || (this.paused = true)
+
+    if (this.$element.find('.next, .prev').length && $.support.transition) {
+      this.$element.trigger($.support.transition.end)
+      this.cycle(true)
+    }
+
+    this.interval = clearInterval(this.interval)
+
+    return this
+  }
+
+  Carousel.prototype.next = function () {
+    if (this.sliding) return
+    return this.slide('next')
+  }
+
+  Carousel.prototype.prev = function () {
+    if (this.sliding) return
+    return this.slide('prev')
+  }
+
+  Carousel.prototype.slide = function (type, next) {
+    var $active   = this.$element.find('.item.active')
+    var $next     = next || $active[type]()
+    var isCycling = this.interval
+    var direction = type == 'next' ? 'left' : 'right'
+    var fallback  = type == 'next' ? 'first' : 'last'
+    var that      = this
+
+    if (!$next.length) {
+      if (!this.options.wrap) return
+      $next = this.$element.find('.item')[fallback]()
+    }
+
+    if ($next.hasClass('active')) return this.sliding = false
+
+    var e = $.Event('slide.bs.carousel', { relatedTarget: $next[0], direction: direction })
+    this.$element.trigger(e)
+    if (e.isDefaultPrevented()) return
+
+    this.sliding = true
+
+    isCycling && this.pause()
+
+    if (this.$indicators.length) {
+      this.$indicators.find('.active').removeClass('active')
+      this.$element.one('slid.bs.carousel', function () {
+        var $nextIndicator = $(that.$indicators.children()[that.getActiveIndex()])
+        $nextIndicator && $nextIndicator.addClass('active')
+      })
+    }
+
+    if ($.support.transition && this.$element.hasClass('slide')) {
+      $next.addClass(type)
+      $next[0].offsetWidth // force reflow
+      $active.addClass(direction)
+      $next.addClass(direction)
+      $active
+        .one($.support.transition.end, function () {
+          $next.removeClass([type, direction].join(' ')).addClass('active')
+          $active.removeClass(['active', direction].join(' '))
+          that.sliding = false
+          setTimeout(function () { that.$element.trigger('slid.bs.carousel') }, 0)
+        })
+        .emulateTransitionEnd($active.css('transition-duration').slice(0, -1) * 1000)
+    } else {
+      $active.removeClass('active')
+      $next.addClass('active')
+      this.sliding = false
+      this.$element.trigger('slid.bs.carousel')
+    }
+
+    isCycling && this.cycle()
+
+    return this
+  }
+
+
+  // CAROUSEL PLUGIN DEFINITION
+  // ==========================
+
+  var old = $.fn.carousel
+
+  $.fn.carousel = function (option) {
+    return this.each(function () {
+      var $this   = $(this)
+      var data    = $this.data('bs.carousel')
+      var options = $.extend({}, Carousel.DEFAULTS, $this.data(), typeof option == 'object' && option)
+      var action  = typeof option == 'string' ? option : options.slide
+
+      if (!data) $this.data('bs.carousel', (data = new Carousel(this, options)))
+      if (typeof option == 'number') data.to(option)
+      else if (action) data[action]()
+      else if (options.interval) data.pause().cycle()
+    })
+  }
+
+  $.fn.carousel.Constructor = Carousel
+
+
+  // CAROUSEL NO CONFLICT
+  // ====================
+
+  $.fn.carousel.noConflict = function () {
+    $.fn.carousel = old
+    return this
+  }
+
+
+  // CAROUSEL DATA-API
+  // =================
+
+  $(document).on('click.bs.carousel.data-api', '[data-slide], [data-slide-to]', function (e) {
+    var $this   = $(this), href
+    var $target = $($this.attr('data-target') || (href = $this.attr('href')) && href.replace(/.*(?=#[^\s]+$)/, '')) //strip for ie7
+    var options = $.extend({}, $target.data(), $this.data())
+    var slideIndex = $this.attr('data-slide-to')
+    if (slideIndex) options.interval = false
+
+    $target.carousel(options)
+
+    if (slideIndex = $this.attr('data-slide-to')) {
+      $target.data('bs.carousel').to(slideIndex)
+    }
+
+    e.preventDefault()
+  })
+
+  $(window).on('load', function () {
+    $('[data-ride="carousel"]').each(function () {
+      var $carousel = $(this)
+      $carousel.carousel($carousel.data())
+    })
+  })
+
+}(jQuery);
+
+/* ========================================================================
+ * Bootstrap: collapse.js v3.1.1
+ * http://getbootstrap.com/javascript/#collapse
+ * ========================================================================
+ * Copyright 2011-2014 Twitter, Inc.
+ * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
+ * ======================================================================== */
+
+
++function ($) {
+  'use strict';
+
+  // COLLAPSE PUBLIC CLASS DEFINITION
+  // ================================
+
+  var Collapse = function (element, options) {
+    this.$element      = $(element)
+    this.options       = $.extend({}, Collapse.DEFAULTS, options)
+    this.transitioning = null
+
+    if (this.options.parent) this.$parent = $(this.options.parent)
+    if (this.options.toggle) this.toggle()
+  }
+
+  Collapse.DEFAULTS = {
+    toggle: true
+  }
+
+  Collapse.prototype.dimension = function () {
+    var hasWidth = this.$element.hasClass('width')
+    return hasWidth ? 'width' : 'height'
+  }
+
+  Collapse.prototype.show = function () {
+    if (this.transitioning || this.$element.hasClass('in')) return
+
+    var startEvent = $.Event('show.bs.collapse')
+    this.$element.trigger(startEvent)
+    if (startEvent.isDefaultPrevented()) return
+
+    var actives = this.$parent && this.$parent.find('> .panel > .in')
+
+    if (actives && actives.length) {
+      var hasData = actives.data('bs.collapse')
+      if (hasData && hasData.transitioning) return
+      actives.collapse('hide')
+      hasData || actives.data('bs.collapse', null)
+    }
+
+    var dimension = this.dimension()
+
+    this.$element
+      .removeClass('collapse')
+      .addClass('collapsing')
+      [dimension](0)
+
+    this.transitioning = 1
+
+    var complete = function () {
+      this.$element
+        .removeClass('collapsing')
+        .addClass('collapse in')
+        [dimension]('auto')
+      this.transitioning = 0
+      this.$element.trigger('shown.bs.collapse')
+    }
+
+    if (!$.support.transition) return complete.call(this)
+
+    var scrollSize = $.camelCase(['scroll', dimension].join('-'))
+
+    this.$element
+      .one($.support.transition.end, $.proxy(complete, this))
+      .emulateTransitionEnd(350)
+      [dimension](this.$element[0][scrollSize])
+  }
+
+  Collapse.prototype.hide = function () {
+    if (this.transitioning || !this.$element.hasClass('in')) return
+
+    var startEvent = $.Event('hide.bs.collapse')
+    this.$element.trigger(startEvent)
+    if (startEvent.isDefaultPrevented()) return
+
+    var dimension = this.dimension()
+
+    this.$element
+      [dimension](this.$element[dimension]())
+      [0].offsetHeight
+
+    this.$element
+      .addClass('collapsing')
+      .removeClass('collapse')
+      .removeClass('in')
+
+    this.transitioning = 1
+
+    var complete = function () {
+      this.transitioning = 0
+      this.$element
+        .trigger('hidden.bs.collapse')
+        .removeClass('collapsing')
+        .addClass('collapse')
+    }
+
+    if (!$.support.transition) return complete.call(this)
+
+    this.$element
+      [dimension](0)
+      .one($.support.transition.end, $.proxy(complete, this))
+      .emulateTransitionEnd(350)
+  }
+
+  Collapse.prototype.toggle = function () {
+    this[this.$element.hasClass('in') ? 'hide' : 'show']()
+  }
+
+
+  // COLLAPSE PLUGIN DEFINITION
+  // ==========================
+
+  var old = $.fn.collapse
+
+  $.fn.collapse = function (option) {
+    return this.each(function () {
+      var $this   = $(this)
+      var data    = $this.data('bs.collapse')
+      var options = $.extend({}, Collapse.DEFAULTS, $this.data(), typeof option == 'object' && option)
+
+      if (!data && options.toggle && option == 'show') option = !option
+      if (!data) $this.data('bs.collapse', (data = new Collapse(this, options)))
+      if (typeof option == 'string') data[option]()
+    })
+  }
+
+  $.fn.collapse.Constructor = Collapse
+
+
+  // COLLAPSE NO CONFLICT
+  // ====================
+
+  $.fn.collapse.noConflict = function () {
+    $.fn.collapse = old
+    return this
+  }
+
+
+  // COLLAPSE DATA-API
+  // =================
+
+  $(document).on('click.bs.collapse.data-api', '[data-toggle=collapse]', function (e) {
+    var $this   = $(this), href
+    var target  = $this.attr('data-target')
+        || e.preventDefault()
+        || (href = $this.attr('href')) && href.replace(/.*(?=#[^\s]+$)/, '') //strip for ie7
+    var $target = $(target)
+    var data    = $target.data('bs.collapse')
+    var option  = data ? 'toggle' : $this.data()
+    var parent  = $this.attr('data-parent')
+    var $parent = parent && $(parent)
+
+    if (!data || !data.transitioning) {
+      if ($parent) $parent.find('[data-toggle=collapse][data-parent="' + parent + '"]').not($this).addClass('collapsed')
+      $this[$target.hasClass('in') ? 'addClass' : 'removeClass']('collapsed')
+    }
+
+    $target.collapse(option)
+  })
+
+}(jQuery);
+
+/* ========================================================================
+ * Bootstrap: dropdown.js v3.1.1
+ * http://getbootstrap.com/javascript/#dropdowns
+ * ========================================================================
+ * Copyright 2011-2014 Twitter, Inc.
+ * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
+ * ======================================================================== */
+
+
++function ($) {
+  'use strict';
+
+  // DROPDOWN CLASS DEFINITION
+  // =========================
+
+  var backdrop = '.dropdown-backdrop'
+  var toggle   = '[data-toggle=dropdown]'
+  var Dropdown = function (element) {
+    $(element).on('click.bs.dropdown', this.toggle)
+  }
+
+  Dropdown.prototype.toggle = function (e) {
+    var $this = $(this)
+
+    if ($this.is('.disabled, :disabled')) return
+
+    var $parent  = getParent($this)
+    var isActive = $parent.hasClass('open')
+
+    clearMenus()
+
+    if (!isActive) {
+      if ('ontouchstart' in document.documentElement && !$parent.closest('.navbar-nav').length) {
+        // if mobile we use a backdrop because click events don't delegate
+        $('<div class="dropdown-backdrop"/>').insertAfter($(this)).on('click', clearMenus)
+      }
+
+      var relatedTarget = { relatedTarget: this }
+      $parent.trigger(e = $.Event('show.bs.dropdown', relatedTarget))
+
+      if (e.isDefaultPrevented()) return
+
+      $parent
+        .toggleClass('open')
+        .trigger('shown.bs.dropdown', relatedTarget)
+
+      $this.focus()
+    }
+
+    return false
+  }
+
+  Dropdown.prototype.keydown = function (e) {
+    if (!/(38|40|27)/.test(e.keyCode)) return
+
+    var $this = $(this)
+
+    e.preventDefault()
+    e.stopPropagation()
+
+    if ($this.is('.disabled, :disabled')) return
+
+    var $parent  = getParent($this)
+    var isActive = $parent.hasClass('open')
+
+    if (!isActive || (isActive && e.keyCode == 27)) {
+      if (e.which == 27) $parent.find(toggle).focus()
+      return $this.click()
+    }
+
+    var desc = ' li:not(.divider):visible a'
+    var $items = $parent.find('[role=menu]' + desc + ', [role=listbox]' + desc)
+
+    if (!$items.length) return
+
+    var index = $items.index($items.filter(':focus'))
+
+    if (e.keyCode == 38 && index > 0)                 index--                        // up
+    if (e.keyCode == 40 && index < $items.length - 1) index++                        // down
+    if (!~index)                                      index = 0
+
+    $items.eq(index).focus()
+  }
+
+  function clearMenus(e) {
+    $(backdrop).remove()
+    $(toggle).each(function () {
+      var $parent = getParent($(this))
+      var relatedTarget = { relatedTarget: this }
+      if (!$parent.hasClass('open')) return
+      $parent.trigger(e = $.Event('hide.bs.dropdown', relatedTarget))
+      if (e.isDefaultPrevented()) return
+      $parent.removeClass('open').trigger('hidden.bs.dropdown', relatedTarget)
+    })
+  }
+
+  function getParent($this) {
+    var selector = $this.attr('data-target')
+
+    if (!selector) {
+      selector = $this.attr('href')
+      selector = selector && /#[A-Za-z]/.test(selector) && selector.replace(/.*(?=#[^\s]*$)/, '') //strip for ie7
+    }
+
+    var $parent = selector && $(selector)
+
+    return $parent && $parent.length ? $parent : $this.parent()
+  }
+
+
+  // DROPDOWN PLUGIN DEFINITION
+  // ==========================
+
+  var old = $.fn.dropdown
+
+  $.fn.dropdown = function (option) {
+    return this.each(function () {
+      var $this = $(this)
+      var data  = $this.data('bs.dropdown')
+
+      if (!data) $this.data('bs.dropdown', (data = new Dropdown(this)))
+      if (typeof option == 'string') data[option].call($this)
+    })
+  }
+
+  $.fn.dropdown.Constructor = Dropdown
+
+
+  // DROPDOWN NO CONFLICT
+  // ====================
+
+  $.fn.dropdown.noConflict = function () {
+    $.fn.dropdown = old
+    return this
+  }
+
+
+  // APPLY TO STANDARD DROPDOWN ELEMENTS
+  // ===================================
+
+  $(document)
+    .on('click.bs.dropdown.data-api', clearMenus)
+    .on('click.bs.dropdown.data-api', '.dropdown form', function (e) { e.stopPropagation() })
+    .on('click.bs.dropdown.data-api', toggle, Dropdown.prototype.toggle)
+    .on('keydown.bs.dropdown.data-api', toggle + ', [role=menu], [role=listbox]', Dropdown.prototype.keydown)
+
+}(jQuery);
+
+/* ========================================================================
+ * Bootstrap: modal.js v3.1.1
+ * http://getbootstrap.com/javascript/#modals
+ * ========================================================================
+ * Copyright 2011-2014 Twitter, Inc.
+ * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
+ * ======================================================================== */
+
+
++function ($) {
+  'use strict';
+
+  // MODAL CLASS DEFINITION
+  // ======================
+
+  var Modal = function (element, options) {
+    this.options   = options
+    this.$element  = $(element)
+    this.$backdrop =
+    this.isShown   = null
+
+    if (this.options.remote) {
+      this.$element
+        .find('.modal-content')
+        .load(this.options.remote, $.proxy(function () {
+          this.$element.trigger('loaded.bs.modal')
+        }, this))
+    }
+  }
+
+  Modal.DEFAULTS = {
+    backdrop: true,
+    keyboard: true,
+    show: true
+  }
+
+  Modal.prototype.toggle = function (_relatedTarget) {
+    return this[!this.isShown ? 'show' : 'hide'](_relatedTarget)
+  }
+
+  Modal.prototype.show = function (_relatedTarget) {
+    var that = this
+    var e    = $.Event('show.bs.modal', { relatedTarget: _relatedTarget })
+
+    this.$element.trigger(e)
+
+    if (this.isShown || e.isDefaultPrevented()) return
+
+    this.isShown = true
+
+    this.escape()
+
+    this.$element.on('click.dismiss.bs.modal', '[data-dismiss="modal"]', $.proxy(this.hide, this))
+
+    this.backdrop(function () {
+      var transition = $.support.transition && that.$element.hasClass('fade')
+
+      if (!that.$element.parent().length) {
+        that.$element.appendTo(document.body) // don't move modals dom position
+      }
+
+      that.$element
+        .show()
+        .scrollTop(0)
+
+      if (transition) {
+        that.$element[0].offsetWidth // force reflow
+      }
+
+      that.$element
+        .addClass('in')
+        .attr('aria-hidden', false)
+
+      that.enforceFocus()
+
+      var e = $.Event('shown.bs.modal', { relatedTarget: _relatedTarget })
+
+      transition ?
+        that.$element.find('.modal-dialog') // wait for modal to slide in
+          .one($.support.transition.end, function () {
+            that.$element.focus().trigger(e)
+          })
+          .emulateTransitionEnd(300) :
+        that.$element.focus().trigger(e)
+    })
+  }
+
+  Modal.prototype.hide = function (e) {
+    if (e) e.preventDefault()
+
+    e = $.Event('hide.bs.modal')
+
+    this.$element.trigger(e)
+
+    if (!this.isShown || e.isDefaultPrevented()) return
+
+    this.isShown = false
+
+    this.escape()
+
+    $(document).off('focusin.bs.modal')
+
+    this.$element
+      .removeClass('in')
+      .attr('aria-hidden', true)
+      .off('click.dismiss.bs.modal')
+
+    $.support.transition && this.$element.hasClass('fade') ?
+      this.$element
+        .one($.support.transition.end, $.proxy(this.hideModal, this))
+        .emulateTransitionEnd(300) :
+      this.hideModal()
+  }
+
+  Modal.prototype.enforceFocus = function () {
+    $(document)
+      .off('focusin.bs.modal') // guard against infinite focus loop
+      .on('focusin.bs.modal', $.proxy(function (e) {
+        if (this.$element[0] !== e.target && !this.$element.has(e.target).length) {
+          this.$element.focus()
+        }
+      }, this))
+  }
+
+  Modal.prototype.escape = function () {
+    if (this.isShown && this.options.keyboard) {
+      this.$element.on('keyup.dismiss.bs.modal', $.proxy(function (e) {
+        e.which == 27 && this.hide()
+      }, this))
+    } else if (!this.isShown) {
+      this.$element.off('keyup.dismiss.bs.modal')
+    }
+  }
+
+  Modal.prototype.hideModal = function () {
+    var that = this
+    this.$element.hide()
+    this.backdrop(function () {
+      that.removeBackdrop()
+      that.$element.trigger('hidden.bs.modal')
+    })
+  }
+
+  Modal.prototype.removeBackdrop = function () {
+    this.$backdrop && this.$backdrop.remove()
+    this.$backdrop = null
+  }
+
+  Modal.prototype.backdrop = function (callback) {
+    var animate = this.$element.hasClass('fade') ? 'fade' : ''
+
+    if (this.isShown && this.options.backdrop) {
+      var doAnimate = $.support.transition && animate
+
+      this.$backdrop = $('<div class="modal-backdrop ' + animate + '" />')
+        .appendTo(document.body)
+
+      this.$element.on('click.dismiss.bs.modal', $.proxy(function (e) {
+        if (e.target !== e.currentTarget) return
+        this.options.backdrop == 'static'
+          ? this.$element[0].focus.call(this.$element[0])
+          : this.hide.call(this)
+      }, this))
+
+      if (doAnimate) this.$backdrop[0].offsetWidth // force reflow
+
+      this.$backdrop.addClass('in')
+
+      if (!callback) return
+
+      doAnimate ?
+        this.$backdrop
+          .one($.support.transition.end, callback)
+          .emulateTransitionEnd(150) :
+        callback()
+
+    } else if (!this.isShown && this.$backdrop) {
+      this.$backdrop.removeClass('in')
+
+      $.support.transition && this.$element.hasClass('fade') ?
+        this.$backdrop
+          .one($.support.transition.end, callback)
+          .emulateTransitionEnd(150) :
+        callback()
+
+    } else if (callback) {
+      callback()
+    }
+  }
+
+
+  // MODAL PLUGIN DEFINITION
+  // =======================
+
+  var old = $.fn.modal
+
+  $.fn.modal = function (option, _relatedTarget) {
+    return this.each(function () {
+      var $this   = $(this)
+      var data    = $this.data('bs.modal')
+      var options = $.extend({}, Modal.DEFAULTS, $this.data(), typeof option == 'object' && option)
+
+      if (!data) $this.data('bs.modal', (data = new Modal(this, options)))
+      if (typeof option == 'string') data[option](_relatedTarget)
+      else if (options.show) data.show(_relatedTarget)
+    })
+  }
+
+  $.fn.modal.Constructor = Modal
+
+
+  // MODAL NO CONFLICT
+  // =================
+
+  $.fn.modal.noConflict = function () {
+    $.fn.modal = old
+    return this
+  }
+
+
+  // MODAL DATA-API
+  // ==============
+
+  $(document).on('click.bs.modal.data-api', '[data-toggle="modal"]', function (e) {
+    var $this   = $(this)
+    var href    = $this.attr('href')
+    var $target = $($this.attr('data-target') || (href && href.replace(/.*(?=#[^\s]+$)/, ''))) //strip for ie7
+    var option  = $target.data('bs.modal') ? 'toggle' : $.extend({ remote: !/#/.test(href) && href }, $target.data(), $this.data())
+
+    if ($this.is('a')) e.preventDefault()
+
+    $target
+      .modal(option, this)
+      .one('hide', function () {
+        $this.is(':visible') && $this.focus()
+      })
+  })
+
+  $(document)
+    .on('show.bs.modal', '.modal', function () { $(document.body).addClass('modal-open') })
+    .on('hidden.bs.modal', '.modal', function () { $(document.body).removeClass('modal-open') })
+
+}(jQuery);
+
+/* ========================================================================
+ * Bootstrap: tooltip.js v3.1.1
+ * http://getbootstrap.com/javascript/#tooltip
+ * Inspired by the original jQuery.tipsy by Jason Frame
+ * ========================================================================
+ * Copyright 2011-2014 Twitter, Inc.
+ * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
+ * ======================================================================== */
+
+
++function ($) {
+  'use strict';
+
+  // TOOLTIP PUBLIC CLASS DEFINITION
+  // ===============================
+
+  var Tooltip = function (element, options) {
+    this.type       =
+    this.options    =
+    this.enabled    =
+    this.timeout    =
+    this.hoverState =
+    this.$element   = null
+
+    this.init('tooltip', element, options)
+  }
+
+  Tooltip.DEFAULTS = {
+    animation: true,
+    placement: 'top',
+    selector: false,
+    template: '<div class="tooltip"><div class="tooltip-arrow"></div><div class="tooltip-inner"></div></div>',
+    trigger: 'hover focus',
+    title: '',
+    delay: 0,
+    html: false,
+    container: false
+  }
+
+  Tooltip.prototype.init = function (type, element, options) {
+    this.enabled  = true
+    this.type     = type
+    this.$element = $(element)
+    this.options  = this.getOptions(options)
+
+    var triggers = this.options.trigger.split(' ')
+
+    for (var i = triggers.length; i--;) {
+      var trigger = triggers[i]
+
+      if (trigger == 'click') {
+        this.$element.on('click.' + this.type, this.options.selector, $.proxy(this.toggle, this))
+      } else if (trigger != 'manual') {
+        var eventIn  = trigger == 'hover' ? 'mouseenter' : 'focusin'
+        var eventOut = trigger == 'hover' ? 'mouseleave' : 'focusout'
+
+        this.$element.on(eventIn  + '.' + this.type, this.options.selector, $.proxy(this.enter, this))
+        this.$element.on(eventOut + '.' + this.type, this.options.selector, $.proxy(this.leave, this))
+      }
+    }
+
+    this.options.selector ?
+      (this._options = $.extend({}, this.options, { trigger: 'manual', selector: '' })) :
+      this.fixTitle()
+  }
+
+  Tooltip.prototype.getDefaults = function () {
+    return Tooltip.DEFAULTS
+  }
+
+  Tooltip.prototype.getOptions = function (options) {
+    options = $.extend({}, this.getDefaults(), this.$element.data(), options)
+
+    if (options.delay && typeof options.delay == 'number') {
+      options.delay = {
+        show: options.delay,
+        hide: options.delay
+      }
+    }
+
+    return options
+  }
+
+  Tooltip.prototype.getDelegateOptions = function () {
+    var options  = {}
+    var defaults = this.getDefaults()
+
+    this._options && $.each(this._options, function (key, value) {
+      if (defaults[key] != value) options[key] = value
+    })
+
+    return options
+  }
+
+  Tooltip.prototype.enter = function (obj) {
+    var self = obj instanceof this.constructor ?
+      obj : $(obj.currentTarget)[this.type](this.getDelegateOptions()).data('bs.' + this.type)
+
+    clearTimeout(self.timeout)
+
+    self.hoverState = 'in'
+
+    if (!self.options.delay || !self.options.delay.show) return self.show()
+
+    self.timeout = setTimeout(function () {
+      if (self.hoverState == 'in') self.show()
+    }, self.options.delay.show)
+  }
+
+  Tooltip.prototype.leave = function (obj) {
+    var self = obj instanceof this.constructor ?
+      obj : $(obj.currentTarget)[this.type](this.getDelegateOptions()).data('bs.' + this.type)
+
+    clearTimeout(self.timeout)
+
+    self.hoverState = 'out'
+
+    if (!self.options.delay || !self.options.delay.hide) return self.hide()
+
+    self.timeout = setTimeout(function () {
+      if (self.hoverState == 'out') self.hide()
+    }, self.options.delay.hide)
+  }
+
+  Tooltip.prototype.show = function () {
+    var e = $.Event('show.bs.' + this.type)
+
+    if (this.hasContent() && this.enabled) {
+      this.$element.trigger(e)
+
+      if (e.isDefaultPrevented()) return
+      var that = this;
+
+      var $tip = this.tip()
+
+      this.setContent()
+
+      if (this.options.animation) $tip.addClass('fade')
+
+      var placement = typeof this.options.placement == 'function' ?
+        this.options.placement.call(this, $tip[0], this.$element[0]) :
+        this.options.placement
+
+      var autoToken = /\s?auto?\s?/i
+      var autoPlace = autoToken.test(placement)
+      if (autoPlace) placement = placement.replace(autoToken, '') || 'top'
+
+      $tip
+        .detach()
+        .css({ top: 0, left: 0, display: 'block' })
+        .addClass(placement)
+
+      this.options.container ? $tip.appendTo(this.options.container) : $tip.insertAfter(this.$element)
+
+      var pos          = this.getPosition()
+      var actualWidth  = $tip[0].offsetWidth
+      var actualHeight = $tip[0].offsetHeight
+
+      if (autoPlace) {
+        var $parent = this.$element.parent()
+
+        var orgPlacement = placement
+        var docScroll    = document.documentElement.scrollTop || document.body.scrollTop
+        var parentWidth  = this.options.container == 'body' ? window.innerWidth  : $parent.outerWidth()
+        var parentHeight = this.options.container == 'body' ? window.innerHeight : $parent.outerHeight()
+        var parentLeft   = this.options.container == 'body' ? 0 : $parent.offset().left
+
+        placement = placement == 'bottom' && pos.top   + pos.height  + actualHeight - docScroll > parentHeight  ? 'top'    :
+                    placement == 'top'    && pos.top   - docScroll   - actualHeight < 0                         ? 'bottom' :
+                    placement == 'right'  && pos.right + actualWidth > parentWidth                              ? 'left'   :
+                    placement == 'left'   && pos.left  - actualWidth < parentLeft                               ? 'right'  :
+                    placement
+
+        $tip
+          .removeClass(orgPlacement)
+          .addClass(placement)
+      }
+
+      var calculatedOffset = this.getCalculatedOffset(placement, pos, actualWidth, actualHeight)
+
+      this.applyPlacement(calculatedOffset, placement)
+      this.hoverState = null
+
+      var complete = function() {
+        that.$element.trigger('shown.bs.' + that.type)
+      }
+
+      $.support.transition && this.$tip.hasClass('fade') ?
+        $tip
+          .one($.support.transition.end, complete)
+          .emulateTransitionEnd(150) :
+        complete()
+    }
+  }
+
+  Tooltip.prototype.applyPlacement = function (offset, placement) {
+    var replace
+    var $tip   = this.tip()
+    var width  = $tip[0].offsetWidth
+    var height = $tip[0].offsetHeight
+
+    // manually read margins because getBoundingClientRect includes difference
+    var marginTop = parseInt($tip.css('margin-top'), 10)
+    var marginLeft = parseInt($tip.css('margin-left'), 10)
+
+    // we must check for NaN for ie 8/9
+    if (isNaN(marginTop))  marginTop  = 0
+    if (isNaN(marginLeft)) marginLeft = 0
+
+    offset.top  = offset.top  + marginTop
+    offset.left = offset.left + marginLeft
+
+    // $.fn.offset doesn't round pixel values
+    // so we use setOffset directly with our own function B-0
+    $.offset.setOffset($tip[0], $.extend({
+      using: function (props) {
+        $tip.css({
+          top: Math.round(props.top),
+          left: Math.round(props.left)
+        })
+      }
+    }, offset), 0)
+
+    $tip.addClass('in')
+
+    // check to see if placing tip in new offset caused the tip to resize itself
+    var actualWidth  = $tip[0].offsetWidth
+    var actualHeight = $tip[0].offsetHeight
+
+    if (placement == 'top' && actualHeight != height) {
+      replace = true
+      offset.top = offset.top + height - actualHeight
+    }
+
+    if (/bottom|top/.test(placement)) {
+      var delta = 0
+
+      if (offset.left < 0) {
+        delta       = offset.left * -2
+        offset.left = 0
+
+        $tip.offset(offset)
+
+        actualWidth  = $tip[0].offsetWidth
+        actualHeight = $tip[0].offsetHeight
+      }
+
+      this.replaceArrow(delta - width + actualWidth, actualWidth, 'left')
+    } else {
+      this.replaceArrow(actualHeight - height, actualHeight, 'top')
+    }
+
+    if (replace) $tip.offset(offset)
+  }
+
+  Tooltip.prototype.replaceArrow = function (delta, dimension, position) {
+    this.arrow().css(position, delta ? (50 * (1 - delta / dimension) + '%') : '')
+  }
+
+  Tooltip.prototype.setContent = function () {
+    var $tip  = this.tip()
+    var title = this.getTitle()
+
+    $tip.find('.tooltip-inner')[this.options.html ? 'html' : 'text'](title)
+    $tip.removeClass('fade in top bottom left right')
+  }
+
+  Tooltip.prototype.hide = function () {
+    var that = this
+    var $tip = this.tip()
+    var e    = $.Event('hide.bs.' + this.type)
+
+    function complete() {
+      if (that.hoverState != 'in') $tip.detach()
+      that.$element.trigger('hidden.bs.' + that.type)
+    }
+
+    this.$element.trigger(e)
+
+    if (e.isDefaultPrevented()) return
+
+    $tip.removeClass('in')
+
+    $.support.transition && this.$tip.hasClass('fade') ?
+      $tip
+        .one($.support.transition.end, complete)
+        .emulateTransitionEnd(150) :
+      complete()
+
+    this.hoverState = null
+
+    return this
+  }
+
+  Tooltip.prototype.fixTitle = function () {
+    var $e = this.$element
+    if ($e.attr('title') || typeof($e.attr('data-original-title')) != 'string') {
+      $e.attr('data-original-title', $e.attr('title') || '').attr('title', '')
+    }
+  }
+
+  Tooltip.prototype.hasContent = function () {
+    return this.getTitle()
+  }
+
+  Tooltip.prototype.getPosition = function () {
+    var el = this.$element[0]
+    return $.extend({}, (typeof el.getBoundingClientRect == 'function') ? el.getBoundingClientRect() : {
+      width: el.offsetWidth,
+      height: el.offsetHeight
+    }, this.$element.offset())
+  }
+
+  Tooltip.prototype.getCalculatedOffset = function (placement, pos, actualWidth, actualHeight) {
+    return placement == 'bottom' ? { top: pos.top + pos.height,   left: pos.left + pos.width / 2 - actualWidth / 2  } :
+           placement == 'top'    ? { top: pos.top - actualHeight, left: pos.left + pos.width / 2 - actualWidth / 2  } :
+           placement == 'left'   ? { top: pos.top + pos.height / 2 - actualHeight / 2, left: pos.left - actualWidth } :
+        /* placement == 'right' */ { top: pos.top + pos.height / 2 - actualHeight / 2, left: pos.left + pos.width   }
+  }
+
+  Tooltip.prototype.getTitle = function () {
+    var title
+    var $e = this.$element
+    var o  = this.options
+
+    title = $e.attr('data-original-title')
+      || (typeof o.title == 'function' ? o.title.call($e[0]) :  o.title)
+
+    return title
+  }
+
+  Tooltip.prototype.tip = function () {
+    return this.$tip = this.$tip || $(this.options.template)
+  }
+
+  Tooltip.prototype.arrow = function () {
+    return this.$arrow = this.$arrow || this.tip().find('.tooltip-arrow')
+  }
+
+  Tooltip.prototype.validate = function () {
+    if (!this.$element[0].parentNode) {
+      this.hide()
+      this.$element = null
+      this.options  = null
+    }
+  }
+
+  Tooltip.prototype.enable = function () {
+    this.enabled = true
+  }
+
+  Tooltip.prototype.disable = function () {
+    this.enabled = false
+  }
+
+  Tooltip.prototype.toggleEnabled = function () {
+    this.enabled = !this.enabled
+  }
+
+  Tooltip.prototype.toggle = function (e) {
+    var self = e ? $(e.currentTarget)[this.type](this.getDelegateOptions()).data('bs.' + this.type) : this
+    self.tip().hasClass('in') ? self.leave(self) : self.enter(self)
+  }
+
+  Tooltip.prototype.destroy = function () {
+    clearTimeout(this.timeout)
+    this.hide().$element.off('.' + this.type).removeData('bs.' + this.type)
+  }
+
+
+  // TOOLTIP PLUGIN DEFINITION
+  // =========================
+
+  var old = $.fn.tooltip
+
+  $.fn.tooltip = function (option) {
+    return this.each(function () {
+      var $this   = $(this)
+      var data    = $this.data('bs.tooltip')
+      var options = typeof option == 'object' && option
+
+      if (!data && option == 'destroy') return
+      if (!data) $this.data('bs.tooltip', (data = new Tooltip(this, options)))
+      if (typeof option == 'string') data[option]()
+    })
+  }
+
+  $.fn.tooltip.Constructor = Tooltip
+
+
+  // TOOLTIP NO CONFLICT
+  // ===================
+
+  $.fn.tooltip.noConflict = function () {
+    $.fn.tooltip = old
+    return this
+  }
+
+}(jQuery);
+
+/* ========================================================================
+ * Bootstrap: popover.js v3.1.1
+ * http://getbootstrap.com/javascript/#popovers
+ * ========================================================================
+ * Copyright 2011-2014 Twitter, Inc.
+ * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
+ * ======================================================================== */
+
+
++function ($) {
+  'use strict';
+
+  // POPOVER PUBLIC CLASS DEFINITION
+  // ===============================
+
+  var Popover = function (element, options) {
+    this.init('popover', element, options)
+  }
+
+  if (!$.fn.tooltip) throw new Error('Popover requires tooltip.js')
+
+  Popover.DEFAULTS = $.extend({}, $.fn.tooltip.Constructor.DEFAULTS, {
+    placement: 'right',
+    trigger: 'click',
+    content: '',
+    template: '<div class="popover"><div class="arrow"></div><h3 class="popover-title"></h3><div class="popover-content"></div></div>'
+  })
+
+
+  // NOTE: POPOVER EXTENDS tooltip.js
+  // ================================
+
+  Popover.prototype = $.extend({}, $.fn.tooltip.Constructor.prototype)
+
+  Popover.prototype.constructor = Popover
+
+  Popover.prototype.getDefaults = function () {
+    return Popover.DEFAULTS
+  }
+
+  Popover.prototype.setContent = function () {
+    var $tip    = this.tip()
+    var title   = this.getTitle()
+    var content = this.getContent()
+
+    $tip.find('.popover-title')[this.options.html ? 'html' : 'text'](title)
+    $tip.find('.popover-content')[ // we use append for html objects to maintain js events
+      this.options.html ? (typeof content == 'string' ? 'html' : 'append') : 'text'
+    ](content)
+
+    $tip.removeClass('fade top bottom left right in')
+
+    // IE8 doesn't accept hiding via the `:empty` pseudo selector, we have to do
+    // this manually by checking the contents.
+    if (!$tip.find('.popover-title').html()) $tip.find('.popover-title').hide()
+  }
+
+  Popover.prototype.hasContent = function () {
+    return this.getTitle() || this.getContent()
+  }
+
+  Popover.prototype.getContent = function () {
+    var $e = this.$element
+    var o  = this.options
+
+    return $e.attr('data-content')
+      || (typeof o.content == 'function' ?
+            o.content.call($e[0]) :
+            o.content)
+  }
+
+  Popover.prototype.arrow = function () {
+    return this.$arrow = this.$arrow || this.tip().find('.arrow')
+  }
+
+  Popover.prototype.tip = function () {
+    if (!this.$tip) this.$tip = $(this.options.template)
+    return this.$tip
+  }
+
+
+  // POPOVER PLUGIN DEFINITION
+  // =========================
+
+  var old = $.fn.popover
+
+  $.fn.popover = function (option) {
+    return this.each(function () {
+      var $this   = $(this)
+      var data    = $this.data('bs.popover')
+      var options = typeof option == 'object' && option
+
+      if (!data && option == 'destroy') return
+      if (!data) $this.data('bs.popover', (data = new Popover(this, options)))
+      if (typeof option == 'string') data[option]()
+    })
+  }
+
+  $.fn.popover.Constructor = Popover
+
+
+  // POPOVER NO CONFLICT
+  // ===================
+
+  $.fn.popover.noConflict = function () {
+    $.fn.popover = old
+    return this
+  }
+
+}(jQuery);
+
+/* ========================================================================
+ * Bootstrap: scrollspy.js v3.1.1
+ * http://getbootstrap.com/javascript/#scrollspy
+ * ========================================================================
+ * Copyright 2011-2014 Twitter, Inc.
+ * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
+ * ======================================================================== */
+
+
++function ($) {
+  'use strict';
+
+  // SCROLLSPY CLASS DEFINITION
+  // ==========================
+
+  function ScrollSpy(element, options) {
+    var href
+    var process  = $.proxy(this.process, this)
+
+    this.$element       = $(element).is('body') ? $(window) : $(element)
+    this.$body          = $('body')
+    this.$scrollElement = this.$element.on('scroll.bs.scroll-spy.data-api', process)
+    this.options        = $.extend({}, ScrollSpy.DEFAULTS, options)
+    this.selector       = (this.options.target
+      || ((href = $(element).attr('href')) && href.replace(/.*(?=#[^\s]+$)/, '')) //strip for ie7
+      || '') + ' .nav li > a'
+    this.offsets        = $([])
+    this.targets        = $([])
+    this.activeTarget   = null
+
+    this.refresh()
+    this.process()
+  }
+
+  ScrollSpy.DEFAULTS = {
+    offset: 10
+  }
+
+  ScrollSpy.prototype.refresh = function () {
+    var offsetMethod = this.$element[0] == window ? 'offset' : 'position'
+
+    this.offsets = $([])
+    this.targets = $([])
+
+    var self     = this
+    var $targets = this.$body
+      .find(this.selector)
+      .map(function () {
+        var $el   = $(this)
+        var href  = $el.data('target') || $el.attr('href')
+        var $href = /^#./.test(href) && $(href)
+
+        return ($href
+          && $href.length
+          && $href.is(':visible')
+          && [[ $href[offsetMethod]().top + (!$.isWindow(self.$scrollElement.get(0)) && self.$scrollElement.scrollTop()), href ]]) || null
+      })
+      .sort(function (a, b) { return a[0] - b[0] })
+      .each(function () {
+        self.offsets.push(this[0])
+        self.targets.push(this[1])
+      })
+  }
+
+  ScrollSpy.prototype.process = function () {
+    var scrollTop    = this.$scrollElement.scrollTop() + this.options.offset
+    var scrollHeight = this.$scrollElement[0].scrollHeight || this.$body[0].scrollHeight
+    var maxScroll    = scrollHeight - this.$scrollElement.height()
+    var offsets      = this.offsets
+    var targets      = this.targets
+    var activeTarget = this.activeTarget
+    var i
+
+    if (scrollTop >= maxScroll) {
+      return activeTarget != (i = targets.last()[0]) && this.activate(i)
+    }
+
+    if (activeTarget && scrollTop <= offsets[0]) {
+      return activeTarget != (i = targets[0]) && this.activate(i)
+    }
+
+    for (i = offsets.length; i--;) {
+      activeTarget != targets[i]
+        && scrollTop >= offsets[i]
+        && (!offsets[i + 1] || scrollTop <= offsets[i + 1])
+        && this.activate( targets[i] )
+    }
+  }
+
+  ScrollSpy.prototype.activate = function (target) {
+    this.activeTarget = target
+
+    $(this.selector)
+      .parentsUntil(this.options.target, '.active')
+      .removeClass('active')
+
+    var selector = this.selector +
+        '[data-target="' + target + '"],' +
+        this.selector + '[href="' + target + '"]'
+
+    var active = $(selector)
+      .parents('li')
+      .addClass('active')
+
+    if (active.parent('.dropdown-menu').length) {
+      active = active
+        .closest('li.dropdown')
+        .addClass('active')
+    }
+
+    active.trigger('activate.bs.scrollspy')
+  }
+
+
+  // SCROLLSPY PLUGIN DEFINITION
+  // ===========================
+
+  var old = $.fn.scrollspy
+
+  $.fn.scrollspy = function (option) {
+    return this.each(function () {
+      var $this   = $(this)
+      var data    = $this.data('bs.scrollspy')
+      var options = typeof option == 'object' && option
+
+      if (!data) $this.data('bs.scrollspy', (data = new ScrollSpy(this, options)))
+      if (typeof option == 'string') data[option]()
+    })
+  }
+
+  $.fn.scrollspy.Constructor = ScrollSpy
+
+
+  // SCROLLSPY NO CONFLICT
+  // =====================
+
+  $.fn.scrollspy.noConflict = function () {
+    $.fn.scrollspy = old
+    return this
+  }
+
+
+  // SCROLLSPY DATA-API
+  // ==================
+
+  $(window).on('load', function () {
+    $('[data-spy="scroll"]').each(function () {
+      var $spy = $(this)
+      $spy.scrollspy($spy.data())
+    })
+  })
+
+}(jQuery);
+
+/* ========================================================================
+ * Bootstrap: tab.js v3.1.1
+ * http://getbootstrap.com/javascript/#tabs
+ * ========================================================================
+ * Copyright 2011-2014 Twitter, Inc.
+ * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
+ * ======================================================================== */
+
+
++function ($) {
+  'use strict';
+
+  // TAB CLASS DEFINITION
+  // ====================
+
+  var Tab = function (element) {
+    this.element = $(element)
+  }
+
+  Tab.prototype.show = function () {
+    var $this    = this.element
+    var $ul      = $this.closest('ul:not(.dropdown-menu)')
+    var selector = $this.data('target')
+
+    if (!selector) {
+      selector = $this.attr('href')
+      selector = selector && selector.replace(/.*(?=#[^\s]*$)/, '') //strip for ie7
+    }
+
+    if ($this.parent('li').hasClass('active')) return
+
+    var previous = $ul.find('.active:last a')[0]
+    var e        = $.Event('show.bs.tab', {
+      relatedTarget: previous
+    })
+
+    $this.trigger(e)
+
+    if (e.isDefaultPrevented()) return
+
+    var $target = $(selector)
+
+    this.activate($this.parent('li'), $ul)
+    this.activate($target, $target.parent(), function () {
+      $this.trigger({
+        type: 'shown.bs.tab',
+        relatedTarget: previous
+      })
+    })
+  }
+
+  Tab.prototype.activate = function (element, container, callback) {
+    var $active    = container.find('> .active')
+    var transition = callback
+      && $.support.transition
+      && $active.hasClass('fade')
+
+    function next() {
+      $active
+        .removeClass('active')
+        .find('> .dropdown-menu > .active')
+        .removeClass('active')
+
+      element.addClass('active')
+
+      if (transition) {
+        element[0].offsetWidth // reflow for transition
+        element.addClass('in')
+      } else {
+        element.removeClass('fade')
+      }
+
+      if (element.parent('.dropdown-menu')) {
+        element.closest('li.dropdown').addClass('active')
+      }
+
+      callback && callback()
+    }
+
+    transition ?
+      $active
+        .one($.support.transition.end, next)
+        .emulateTransitionEnd(150) :
+      next()
+
+    $active.removeClass('in')
+  }
+
+
+  // TAB PLUGIN DEFINITION
+  // =====================
+
+  var old = $.fn.tab
+
+  $.fn.tab = function ( option ) {
+    return this.each(function () {
+      var $this = $(this)
+      var data  = $this.data('bs.tab')
+
+      if (!data) $this.data('bs.tab', (data = new Tab(this)))
+      if (typeof option == 'string') data[option]()
+    })
+  }
+
+  $.fn.tab.Constructor = Tab
+
+
+  // TAB NO CONFLICT
+  // ===============
+
+  $.fn.tab.noConflict = function () {
+    $.fn.tab = old
+    return this
+  }
+
+
+  // TAB DATA-API
+  // ============
+
+  $(document).on('click.bs.tab.data-api', '[data-toggle="tab"], [data-toggle="pill"]', function (e) {
+    e.preventDefault()
+    $(this).tab('show')
+  })
+
+}(jQuery);
+
+/* ========================================================================
+ * Bootstrap: affix.js v3.1.1
+ * http://getbootstrap.com/javascript/#affix
+ * ========================================================================
+ * Copyright 2011-2014 Twitter, Inc.
+ * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
+ * ======================================================================== */
+
+
++function ($) {
+  'use strict';
+
+  // AFFIX CLASS DEFINITION
+  // ======================
+
+  var Affix = function (element, options) {
+    this.options = $.extend({}, Affix.DEFAULTS, options)
+    this.$window = $(window)
+      .on('scroll.bs.affix.data-api', $.proxy(this.checkPosition, this))
+      .on('click.bs.affix.data-api',  $.proxy(this.checkPositionWithEventLoop, this))
+
+    this.$element     = $(element)
+    this.affixed      =
+    this.unpin        =
+    this.pinnedOffset = null
+
+    this.checkPosition()
+  }
+
+  Affix.RESET = 'affix affix-top affix-bottom'
+
+  Affix.DEFAULTS = {
+    offset: 0
+  }
+
+  Affix.prototype.getPinnedOffset = function () {
+    if (this.pinnedOffset) return this.pinnedOffset
+    this.$element.removeClass(Affix.RESET).addClass('affix')
+    var scrollTop = this.$window.scrollTop()
+    var position  = this.$element.offset()
+    return (this.pinnedOffset = position.top - scrollTop)
+  }
+
+  Affix.prototype.checkPositionWithEventLoop = function () {
+    setTimeout($.proxy(this.checkPosition, this), 1)
+  }
+
+  Affix.prototype.checkPosition = function () {
+    if (!this.$element.is(':visible')) return
+
+    var scrollHeight = $(document).height()
+    var scrollTop    = this.$window.scrollTop()
+    var position     = this.$element.offset()
+    var offset       = this.options.offset
+    var offsetTop    = offset.top
+    var offsetBottom = offset.bottom
+
+    if (this.affixed == 'top') position.top += scrollTop
+
+    if (typeof offset != 'object')         offsetBottom = offsetTop = offset
+    if (typeof offsetTop == 'function')    offsetTop    = offset.top(this.$element)
+    if (typeof offsetBottom == 'function') offsetBottom = offset.bottom(this.$element)
+
+    var affix = this.unpin   != null && (scrollTop + this.unpin <= position.top) ? false :
+                offsetBottom != null && (position.top + this.$element.height() >= scrollHeight - offsetBottom) ? 'bottom' :
+                offsetTop    != null && (scrollTop <= offsetTop) ? 'top' : false
+
+    if (this.affixed === affix) return
+    if (this.unpin) this.$element.css('top', '')
+
+    var affixType = 'affix' + (affix ? '-' + affix : '')
+    var e         = $.Event(affixType + '.bs.affix')
+
+    this.$element.trigger(e)
+
+    if (e.isDefaultPrevented()) return
+
+    this.affixed = affix
+    this.unpin = affix == 'bottom' ? this.getPinnedOffset() : null
+
+    this.$element
+      .removeClass(Affix.RESET)
+      .addClass(affixType)
+      .trigger($.Event(affixType.replace('affix', 'affixed')))
+
+    if (affix == 'bottom') {
+      this.$element.offset({ top: scrollHeight - offsetBottom - this.$element.height() })
+    }
+  }
+
+
+  // AFFIX PLUGIN DEFINITION
+  // =======================
+
+  var old = $.fn.affix
+
+  $.fn.affix = function (option) {
+    return this.each(function () {
+      var $this   = $(this)
+      var data    = $this.data('bs.affix')
+      var options = typeof option == 'object' && option
+
+      if (!data) $this.data('bs.affix', (data = new Affix(this, options)))
+      if (typeof option == 'string') data[option]()
+    })
+  }
+
+  $.fn.affix.Constructor = Affix
+
+
+  // AFFIX NO CONFLICT
+  // =================
+
+  $.fn.affix.noConflict = function () {
+    $.fn.affix = old
+    return this
+  }
+
+
+  // AFFIX DATA-API
+  // ==============
+
+  $(window).on('load', function () {
+    $('[data-spy="affix"]').each(function () {
+      var $spy = $(this)
+      var data = $spy.data()
+
+      data.offset = data.offset || {}
+
+      if (data.offsetBottom) data.offset.bottom = data.offsetBottom
+      if (data.offsetTop)    data.offset.top    = data.offsetTop
+
+      $spy.affix(data)
+    })
+  })
+
+}(jQuery);
+
+},{}],27:[function(require,module,exports){
+/**
+ * sifter.js
+ * Copyright (c) 2013 Brian Reavis & contributors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this
+ * file except in compliance with the License. You may obtain a copy of the License at:
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under
+ * the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
+ * ANY KIND, either express or implied. See the License for the specific language
+ * governing permissions and limitations under the License.
+ *
+ * @author Brian Reavis <brian@thirdroute.com>
+ */
+
+(function(root, factory) {
+	if (typeof define === 'function' && define.amd) {
+		define('sifter', factory);
+	} else if (typeof exports === 'object') {
+		module.exports.Sifter = factory();
+	} else {
+		root.Sifter = factory();
+	}
+}(this, function() {
+
+	/**
+	 * Textually searches arrays and hashes of objects
+	 * by property (or multiple properties). Designed
+	 * specifically for autocomplete.
+	 *
+	 * @constructor
+	 * @param {array|object} items
+	 * @param {object} items
+	 */
+	var Sifter = function(items, settings) {
+		this.items = items;
+		this.settings = settings || {diacritics: true};
+	};
+
+	/**
+	 * Splits a search string into an array of individual
+	 * regexps to be used to match results.
+	 *
+	 * @param {string} query
+	 * @returns {array}
+	 */
+	Sifter.prototype.tokenize = function(query) {
+		query = trim(String(query || '').toLowerCase());
+		if (!query || !query.length) return [];
+
+		var i, n, regex, letter;
+		var tokens = [];
+		var words = query.split(/ +/);
+
+		for (i = 0, n = words.length; i < n; i++) {
+			regex = escape_regex(words[i]);
+			if (this.settings.diacritics) {
+				for (letter in DIACRITICS) {
+					if (DIACRITICS.hasOwnProperty(letter)) {
+						regex = regex.replace(new RegExp(letter, 'g'), DIACRITICS[letter]);
+					}
+				}
+			}
+			tokens.push({
+				string : words[i],
+				regex  : new RegExp(regex, 'i')
+			});
+		}
+
+		return tokens;
+	};
+
+	/**
+	 * Iterates over arrays and hashes.
+	 *
+	 * ```
+	 * this.iterator(this.items, function(item, id) {
+	 *    // invoked for each item
+	 * });
+	 * ```
+	 *
+	 * @param {array|object} object
+	 */
+	Sifter.prototype.iterator = function(object, callback) {
+		var iterator;
+		if (is_array(object)) {
+			iterator = Array.prototype.forEach || function(callback) {
+				for (var i = 0, n = this.length; i < n; i++) {
+					callback(this[i], i, this);
+				}
+			};
+		} else {
+			iterator = function(callback) {
+				for (var key in this) {
+					if (this.hasOwnProperty(key)) {
+						callback(this[key], key, this);
+					}
+				}
+			};
+		}
+
+		iterator.apply(object, [callback]);
+	};
+
+	/**
+	 * Returns a function to be used to score individual results.
+	 *
+	 * Good matches will have a higher score than poor matches.
+	 * If an item is not a match, 0 will be returned by the function.
+	 *
+	 * @param {object|string} search
+	 * @param {object} options (optional)
+	 * @returns {function}
+	 */
+	Sifter.prototype.getScoreFunction = function(search, options) {
+		var self, fields, tokens, token_count;
+
+		self        = this;
+		search      = self.prepareSearch(search, options);
+		tokens      = search.tokens;
+		fields      = search.options.fields;
+		token_count = tokens.length;
+
+		/**
+		 * Calculates how close of a match the
+		 * given value is against a search token.
+		 *
+		 * @param {mixed} value
+		 * @param {object} token
+		 * @return {number}
+		 */
+		var scoreValue = function(value, token) {
+			var score, pos;
+
+			if (!value) return 0;
+			value = String(value || '');
+			pos = value.search(token.regex);
+			if (pos === -1) return 0;
+			score = token.string.length / value.length;
+			if (pos === 0) score += 0.5;
+			return score;
+		};
+
+		/**
+		 * Calculates the score of an object
+		 * against the search query.
+		 *
+		 * @param {object} token
+		 * @param {object} data
+		 * @return {number}
+		 */
+		var scoreObject = (function() {
+			var field_count = fields.length;
+			if (!field_count) {
+				return function() { return 0; };
+			}
+			if (field_count === 1) {
+				return function(token, data) {
+					return scoreValue(data[fields[0]], token);
+				};
+			}
+			return function(token, data) {
+				for (var i = 0, sum = 0; i < field_count; i++) {
+					sum += scoreValue(data[fields[i]], token);
+				}
+				return sum / field_count;
+			};
+		})();
+
+		if (!token_count) {
+			return function() { return 0; };
+		}
+		if (token_count === 1) {
+			return function(data) {
+				return scoreObject(tokens[0], data);
+			};
+		}
+
+		if (search.options.conjunction === 'and') {
+			return function(data) {
+				var score;
+				for (var i = 0, sum = 0; i < token_count; i++) {
+					score = scoreObject(tokens[i], data);
+					if (score <= 0) return 0;
+					sum += score;
+				}
+				return sum / token_count;
+			};
+		} else {
+			return function(data) {
+				for (var i = 0, sum = 0; i < token_count; i++) {
+					sum += scoreObject(tokens[i], data);
+				}
+				return sum / token_count;
+			};
+		}
+	};
+
+	/**
+	 * Returns a function that can be used to compare two
+	 * results, for sorting purposes. If no sorting should
+	 * be performed, `null` will be returned.
+	 *
+	 * @param {string|object} search
+	 * @param {object} options
+	 * @return function(a,b)
+	 */
+	Sifter.prototype.getSortFunction = function(search, options) {
+		var i, n, self, field, fields, fields_count, multiplier, multipliers, get_field, implicit_score, sort;
+
+		self   = this;
+		search = self.prepareSearch(search, options);
+		sort   = (!search.query && options.sort_empty) || options.sort;
+
+		/**
+		 * Fetches the specified sort field value
+		 * from a search result item.
+		 *
+		 * @param  {string} name
+		 * @param  {object} result
+		 * @return {mixed}
+		 */
+		get_field  = function(name, result) {
+			if (name === '$score') return result.score;
+			return self.items[result.id][name];
+		};
+
+		// parse options
+		fields = [];
+		if (sort) {
+			for (i = 0, n = sort.length; i < n; i++) {
+				if (search.query || sort[i].field !== '$score') {
+					fields.push(sort[i]);
+				}
+			}
+		}
+
+		// the "$score" field is implied to be the primary
+		// sort field, unless it's manually specified
+		if (search.query) {
+			implicit_score = true;
+			for (i = 0, n = fields.length; i < n; i++) {
+				if (fields[i].field === '$score') {
+					implicit_score = false;
+					break;
+				}
+			}
+			if (implicit_score) {
+				fields.unshift({field: '$score', direction: 'desc'});
+			}
+		} else {
+			for (i = 0, n = fields.length; i < n; i++) {
+				if (fields[i].field === '$score') {
+					fields.splice(i, 1);
+					break;
+				}
+			}
+		}
+
+		multipliers = [];
+		for (i = 0, n = fields.length; i < n; i++) {
+			multipliers.push(fields[i].direction === 'desc' ? -1 : 1);
+		}
+
+		// build function
+		fields_count = fields.length;
+		if (!fields_count) {
+			return null;
+		} else if (fields_count === 1) {
+			field = fields[0].field;
+			multiplier = multipliers[0];
+			return function(a, b) {
+				return multiplier * cmp(
+					get_field(field, a),
+					get_field(field, b)
+				);
+			};
+		} else {
+			return function(a, b) {
+				var i, result, a_value, b_value, field;
+				for (i = 0; i < fields_count; i++) {
+					field = fields[i].field;
+					result = multipliers[i] * cmp(
+						get_field(field, a),
+						get_field(field, b)
+					);
+					if (result) return result;
+				}
+				return 0;
+			};
+		}
+	};
+
+	/**
+	 * Parses a search query and returns an object
+	 * with tokens and fields ready to be populated
+	 * with results.
+	 *
+	 * @param {string} query
+	 * @param {object} options
+	 * @returns {object}
+	 */
+	Sifter.prototype.prepareSearch = function(query, options) {
+		if (typeof query === 'object') return query;
+
+		options = extend({}, options);
+
+		var option_fields     = options.fields;
+		var option_sort       = options.sort;
+		var option_sort_empty = options.sort_empty;
+
+		if (option_fields && !is_array(option_fields)) options.fields = [option_fields];
+		if (option_sort && !is_array(option_sort)) options.sort = [option_sort];
+		if (option_sort_empty && !is_array(option_sort_empty)) options.sort_empty = [option_sort_empty];
+
+		return {
+			options : options,
+			query   : String(query || '').toLowerCase(),
+			tokens  : this.tokenize(query),
+			total   : 0,
+			items   : []
+		};
+	};
+
+	/**
+	 * Searches through all items and returns a sorted array of matches.
+	 *
+	 * The `options` parameter can contain:
+	 *
+	 *   - fields {string|array}
+	 *   - sort {array}
+	 *   - score {function}
+	 *   - filter {bool}
+	 *   - limit {integer}
+	 *
+	 * Returns an object containing:
+	 *
+	 *   - options {object}
+	 *   - query {string}
+	 *   - tokens {array}
+	 *   - total {int}
+	 *   - items {array}
+	 *
+	 * @param {string} query
+	 * @param {object} options
+	 * @returns {object}
+	 */
+	Sifter.prototype.search = function(query, options) {
+		var self = this, value, score, search, calculateScore;
+		var fn_sort;
+		var fn_score;
+
+		search  = this.prepareSearch(query, options);
+		options = search.options;
+		query   = search.query;
+
+		// generate result scoring function
+		fn_score = options.score || self.getScoreFunction(search);
+
+		// perform search and sort
+		if (query.length) {
+			self.iterator(self.items, function(item, id) {
+				score = fn_score(item);
+				if (options.filter === false || score > 0) {
+					search.items.push({'score': score, 'id': id});
+				}
+			});
+		} else {
+			self.iterator(self.items, function(item, id) {
+				search.items.push({'score': 1, 'id': id});
+			});
+		}
+
+		fn_sort = self.getSortFunction(search, options);
+		if (fn_sort) search.items.sort(fn_sort);
+
+		// apply limits
+		search.total = search.items.length;
+		if (typeof options.limit === 'number') {
+			search.items = search.items.slice(0, options.limit);
+		}
+
+		return search;
+	};
+
+	// utilities
+	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+	var cmp = function(a, b) {
+		if (typeof a === 'number' && typeof b === 'number') {
+			return a > b ? 1 : (a < b ? -1 : 0);
+		}
+		a = String(a || '').toLowerCase();
+		b = String(b || '').toLowerCase();
+		if (a > b) return 1;
+		if (b > a) return -1;
+		return 0;
+	};
+
+	var extend = function(a, b) {
+		var i, n, k, object;
+		for (i = 1, n = arguments.length; i < n; i++) {
+			object = arguments[i];
+			if (!object) continue;
+			for (k in object) {
+				if (object.hasOwnProperty(k)) {
+					a[k] = object[k];
+				}
+			}
+		}
+		return a;
+	};
+
+	var trim = function(str) {
+		return (str + '').replace(/^\s+|\s+$|/g, '');
+	};
+
+	var escape_regex = function(str) {
+		return (str + '').replace(/([.?*+^$[\]\\(){}|-])/g, '\\$1');
+	};
+
+	var is_array = Array.isArray || ($ && $.isArray) || function(object) {
+		return Object.prototype.toString.call(object) === '[object Array]';
+	};
+
+	var DIACRITICS = {
+		'a': '[aÀÁÂÃÄÅàáâãäå]',
+		'c': '[cÇçćĆčČ]',
+		'd': '[dđĐ]',
+		'e': '[eÈÉÊËèéêë]',
+		'i': '[iÌÍÎÏìíîï]',
+		'n': '[nÑñ]',
+		'o': '[oÒÓÔÕÕÖØòóôõöø]',
+		's': '[sŠš]',
+		'u': '[uÙÚÛÜùúûü]',
+		'y': '[yŸÿý]',
+		'z': '[zŽž]'
+	};
+
+	// export
+	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+	return Sifter;
+}));
+
+
+
+/**
+ * microplugin.js
+ * Copyright (c) 2013 Brian Reavis & contributors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this
+ * file except in compliance with the License. You may obtain a copy of the License at:
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under
+ * the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
+ * ANY KIND, either express or implied. See the License for the specific language
+ * governing permissions and limitations under the License.
+ *
+ * @author Brian Reavis <brian@thirdroute.com>
+ */
+
+(function(root, factory) {
+	if (typeof define === 'function' && define.amd) {
+		define('microplugin', factory);
+	} else if (typeof exports === 'object') {
+		module.exports.MicroPlugin = factory();
+	} else {
+		root.MicroPlugin = factory();
+	}
+}(this, function() {
+	var MicroPlugin = {};
+
+	MicroPlugin.mixin = function(Interface) {
+		Interface.plugins = {};
+
+		/**
+		 * Initializes the listed plugins (with options).
+		 * Acceptable formats:
+		 *
+		 * List (without options):
+		 *   ['a', 'b', 'c']
+		 *
+		 * List (with options):
+		 *   [{'name': 'a', options: {}}, {'name': 'b', options: {}}]
+		 *
+		 * Hash (with options):
+		 *   {'a': { ... }, 'b': { ... }, 'c': { ... }}
+		 *
+		 * @param {mixed} plugins
+		 */
+		Interface.prototype.initializePlugins = function(plugins) {
+			var i, n, key;
+			var self  = this;
+			var queue = [];
+
+			self.plugins = {
+				names     : [],
+				settings  : {},
+				requested : {},
+				loaded    : {}
+			};
+
+			if (utils.isArray(plugins)) {
+				for (i = 0, n = plugins.length; i < n; i++) {
+					if (typeof plugins[i] === 'string') {
+						queue.push(plugins[i]);
+					} else {
+						self.plugins.settings[plugins[i].name] = plugins[i].options;
+						queue.push(plugins[i].name);
+					}
+				}
+			} else if (plugins) {
+				for (key in plugins) {
+					if (plugins.hasOwnProperty(key)) {
+						self.plugins.settings[key] = plugins[key];
+						queue.push(key);
+					}
+				}
+			}
+
+			while (queue.length) {
+				self.require(queue.shift());
+			}
+		};
+
+		Interface.prototype.loadPlugin = function(name) {
+			var self    = this;
+			var plugins = self.plugins;
+			var plugin  = Interface.plugins[name];
+
+			if (!Interface.plugins.hasOwnProperty(name)) {
+				throw new Error('Unable to find "' +  name + '" plugin');
+			}
+
+			plugins.requested[name] = true;
+			plugins.loaded[name] = plugin.fn.apply(self, [self.plugins.settings[name] || {}]);
+			plugins.names.push(name);
+		};
+
+		/**
+		 * Initializes a plugin.
+		 *
+		 * @param {string} name
+		 */
+		Interface.prototype.require = function(name) {
+			var self = this;
+			var plugins = self.plugins;
+
+			if (!self.plugins.loaded.hasOwnProperty(name)) {
+				if (plugins.requested[name]) {
+					throw new Error('Plugin has circular dependency ("' + name + '")');
+				}
+				self.loadPlugin(name);
+			}
+
+			return plugins.loaded[name];
+		};
+
+		/**
+		 * Registers a plugin.
+		 *
+		 * @param {string} name
+		 * @param {function} fn
+		 */
+		Interface.define = function(name, fn) {
+			Interface.plugins[name] = {
+				'name' : name,
+				'fn'   : fn
+			};
+		};
+	};
+
+	var utils = {
+		isArray: Array.isArray || function(vArg) {
+			return Object.prototype.toString.call(vArg) === '[object Array]';
+		}
+	};
+
+	return MicroPlugin;
+}));
+
+/**
+ * selectize.js (v0.8.5)
+ * Copyright (c) 2013 Brian Reavis & contributors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this
+ * file except in compliance with the License. You may obtain a copy of the License at:
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under
+ * the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
+ * ANY KIND, either express or implied. See the License for the specific language
+ * governing permissions and limitations under the License.
+ *
+ * @author Brian Reavis <brian@thirdroute.com>
+ */
+
+/*jshint curly:false */
+/*jshint browser:true */
+
+(function(root, factory) {
+	if (typeof define === 'function' && define.amd) {
+		define('selectize', ['jquery','sifter','microplugin'], factory);
+	} else if (typeof exports === 'object') {
+        module.exports.Selectize = factory(window.jQuery, module.exports.Sifter, module.exports.MicroPlugin);
+    } else {
+		root.Selectize = factory(root.jQuery, root.Sifter, root.MicroPlugin);
+	}
+}(this, function($, Sifter, MicroPlugin) {
+	'use strict';
+
+	var highlight = function($element, pattern) {
+		if (typeof pattern === 'string' && !pattern.length) return;
+		var regex = (typeof pattern === 'string') ? new RegExp(pattern, 'i') : pattern;
+	
+		var highlight = function(node) {
+			var skip = 0;
+			if (node.nodeType === 3) {
+				var pos = node.data.search(regex);
+				if (pos >= 0 && node.data.length > 0) {
+					var match = node.data.match(regex);
+					var spannode = document.createElement('span');
+					spannode.className = 'highlight';
+					var middlebit = node.splitText(pos);
+					var endbit = middlebit.splitText(match[0].length);
+					var middleclone = middlebit.cloneNode(true);
+					spannode.appendChild(middleclone);
+					middlebit.parentNode.replaceChild(spannode, middlebit);
+					skip = 1;
+				}
+			} else if (node.nodeType === 1 && node.childNodes && !/(script|style)/i.test(node.tagName)) {
+				for (var i = 0; i < node.childNodes.length; ++i) {
+					i += highlight(node.childNodes[i]);
+				}
+			}
+			return skip;
+		};
+	
+		return $element.each(function() {
+			highlight(this);
+		});
+	};
+	
+	var MicroEvent = function() {};
+	MicroEvent.prototype = {
+		on: function(event, fct){
+			this._events = this._events || {};
+			this._events[event] = this._events[event] || [];
+			this._events[event].push(fct);
+		},
+		off: function(event, fct){
+			var n = arguments.length;
+			if (n === 0) return delete this._events;
+			if (n === 1) return delete this._events[event];
+	
+			this._events = this._events || {};
+			if (event in this._events === false) return;
+			this._events[event].splice(this._events[event].indexOf(fct), 1);
+		},
+		trigger: function(event /* , args... */){
+			this._events = this._events || {};
+			if (event in this._events === false) return;
+			for (var i = 0; i < this._events[event].length; i++){
+				this._events[event][i].apply(this, Array.prototype.slice.call(arguments, 1));
+			}
+		}
+	};
+	
+	/**
+	 * Mixin will delegate all MicroEvent.js function in the destination object.
+	 *
+	 * - MicroEvent.mixin(Foobar) will make Foobar able to use MicroEvent
+	 *
+	 * @param {object} the object which will support MicroEvent
+	 */
+	MicroEvent.mixin = function(destObject){
+		var props = ['on', 'off', 'trigger'];
+		for (var i = 0; i < props.length; i++){
+			destObject.prototype[props[i]] = MicroEvent.prototype[props[i]];
+		}
+	};
+	
+	var IS_MAC        = /Mac/.test(navigator.userAgent);
+	
+	var KEY_A         = 65;
+	var KEY_COMMA     = 188;
+	var KEY_RETURN    = 13;
+	var KEY_ESC       = 27;
+	var KEY_LEFT      = 37;
+	var KEY_UP        = 38;
+	var KEY_RIGHT     = 39;
+	var KEY_DOWN      = 40;
+	var KEY_BACKSPACE = 8;
+	var KEY_DELETE    = 46;
+	var KEY_SHIFT     = 16;
+	var KEY_CMD       = IS_MAC ? 91 : 17;
+	var KEY_CTRL      = IS_MAC ? 18 : 17;
+	var KEY_TAB       = 9;
+	
+	var TAG_SELECT    = 1;
+	var TAG_INPUT     = 2;
+	
+	var isset = function(object) {
+		return typeof object !== 'undefined';
+	};
+	
+	/**
+	 * Converts a scalar to its best string representation
+	 * for hash keys and HTML attribute values.
+	 *
+	 * Transformations:
+	 *   'str'     -> 'str'
+	 *   null      -> ''
+	 *   undefined -> ''
+	 *   true      -> '1'
+	 *   false     -> '0'
+	 *   0         -> '0'
+	 *   1         -> '1'
+	 *
+	 * @param {string} value
+	 * @returns {string}
+	 */
+	var hash_key = function(value) {
+		if (typeof value === 'undefined' || value === null) return '';
+		if (typeof value === 'boolean') return value ? '1' : '0';
+		return value + '';
+	};
+	
+	/**
+	 * Escapes a string for use within HTML.
+	 *
+	 * @param {string} str
+	 * @returns {string}
+	 */
+	var escape_html = function(str) {
+		return (str + '')
+			.replace(/&/g, '&amp;')
+			.replace(/</g, '&lt;')
+			.replace(/>/g, '&gt;')
+			.replace(/"/g, '&quot;');
+	};
+	
+	/**
+	 * Escapes "$" characters in replacement strings.
+	 *
+	 * @param {string} str
+	 * @returns {string}
+	 */
+	var escape_replace = function(str) {
+		return (str + '').replace(/\$/g, '$$$$');
+	};
+	
+	var hook = {};
+	
+	/**
+	 * Wraps `method` on `self` so that `fn`
+	 * is invoked before the original method.
+	 *
+	 * @param {object} self
+	 * @param {string} method
+	 * @param {function} fn
+	 */
+	hook.before = function(self, method, fn) {
+		var original = self[method];
+		self[method] = function() {
+			fn.apply(self, arguments);
+			return original.apply(self, arguments);
+		};
+	};
+	
+	/**
+	 * Wraps `method` on `self` so that `fn`
+	 * is invoked after the original method.
+	 *
+	 * @param {object} self
+	 * @param {string} method
+	 * @param {function} fn
+	 */
+	hook.after = function(self, method, fn) {
+		var original = self[method];
+		self[method] = function() {
+			var result = original.apply(self, arguments);
+			fn.apply(self, arguments);
+			return result;
+		};
+	};
+	
+	/**
+	 * Builds a hash table out of an array of
+	 * objects, using the specified `key` within
+	 * each object.
+	 *
+	 * @param {string} key
+	 * @param {mixed} objects
+	 */
+	var build_hash_table = function(key, objects) {
+		if (!$.isArray(objects)) return objects;
+		var i, n, table = {};
+		for (i = 0, n = objects.length; i < n; i++) {
+			if (objects[i].hasOwnProperty(key)) {
+				table[objects[i][key]] = objects[i];
+			}
+		}
+		return table;
+	};
+	
+	/**
+	 * Wraps `fn` so that it can only be invoked once.
+	 *
+	 * @param {function} fn
+	 * @returns {function}
+	 */
+	var once = function(fn) {
+		var called = false;
+		return function() {
+			if (called) return;
+			called = true;
+			fn.apply(this, arguments);
+		};
+	};
+	
+	/**
+	 * Wraps `fn` so that it can only be called once
+	 * every `delay` milliseconds (invoked on the falling edge).
+	 *
+	 * @param {function} fn
+	 * @param {int} delay
+	 * @returns {function}
+	 */
+	var debounce = function(fn, delay) {
+		var timeout;
+		return function() {
+			var self = this;
+			var args = arguments;
+			window.clearTimeout(timeout);
+			timeout = window.setTimeout(function() {
+				fn.apply(self, args);
+			}, delay);
+		};
+	};
+	
+	/**
+	 * Debounce all fired events types listed in `types`
+	 * while executing the provided `fn`.
+	 *
+	 * @param {object} self
+	 * @param {array} types
+	 * @param {function} fn
+	 */
+	var debounce_events = function(self, types, fn) {
+		var type;
+		var trigger = self.trigger;
+		var event_args = {};
+	
+		// override trigger method
+		self.trigger = function() {
+			var type = arguments[0];
+			if (types.indexOf(type) !== -1) {
+				event_args[type] = arguments;
+			} else {
+				return trigger.apply(self, arguments);
+			}
+		};
+	
+		// invoke provided function
+		fn.apply(self, []);
+		self.trigger = trigger;
+	
+		// trigger queued events
+		for (type in event_args) {
+			if (event_args.hasOwnProperty(type)) {
+				trigger.apply(self, event_args[type]);
+			}
+		}
+	};
+	
+	/**
+	 * A workaround for http://bugs.jquery.com/ticket/6696
+	 *
+	 * @param {object} $parent - Parent element to listen on.
+	 * @param {string} event - Event name.
+	 * @param {string} selector - Descendant selector to filter by.
+	 * @param {function} fn - Event handler.
+	 */
+	var watchChildEvent = function($parent, event, selector, fn) {
+		$parent.on(event, selector, function(e) {
+			var child = e.target;
+			while (child && child.parentNode !== $parent[0]) {
+				child = child.parentNode;
+			}
+			e.currentTarget = child;
+			return fn.apply(this, [e]);
+		});
+	};
+	
+	/**
+	 * Determines the current selection within a text input control.
+	 * Returns an object containing:
+	 *   - start
+	 *   - length
+	 *
+	 * @param {object} input
+	 * @returns {object}
+	 */
+	var getSelection = function(input) {
+		var result = {};
+		if ('selectionStart' in input) {
+			result.start = input.selectionStart;
+			result.length = input.selectionEnd - result.start;
+		} else if (document.selection) {
+			input.focus();
+			var sel = document.selection.createRange();
+			var selLen = document.selection.createRange().text.length;
+			sel.moveStart('character', -input.value.length);
+			result.start = sel.text.length - selLen;
+			result.length = selLen;
+		}
+		return result;
+	};
+	
+	/**
+	 * Copies CSS properties from one element to another.
+	 *
+	 * @param {object} $from
+	 * @param {object} $to
+	 * @param {array} properties
+	 */
+	var transferStyles = function($from, $to, properties) {
+		var i, n, styles = {};
+		if (properties) {
+			for (i = 0, n = properties.length; i < n; i++) {
+				styles[properties[i]] = $from.css(properties[i]);
+			}
+		} else {
+			styles = $from.css();
+		}
+		$to.css(styles);
+	};
+	
+	/**
+	 * Measures the width of a string within a
+	 * parent element (in pixels).
+	 *
+	 * @param {string} str
+	 * @param {object} $parent
+	 * @returns {int}
+	 */
+	var measureString = function(str, $parent) {
+		var $test = $('<test>').css({
+			position: 'absolute',
+			top: -99999,
+			left: -99999,
+			width: 'auto',
+			padding: 0,
+			whiteSpace: 'pre'
+		}).text(str).appendTo('body');
+	
+		transferStyles($parent, $test, [
+			'letterSpacing',
+			'fontSize',
+			'fontFamily',
+			'fontWeight',
+			'textTransform'
+		]);
+	
+		var width = $test.width();
+		$test.remove();
+	
+		return width;
+	};
+	
+	/**
+	 * Sets up an input to grow horizontally as the user
+	 * types. If the value is changed manually, you can
+	 * trigger the "update" handler to resize:
+	 *
+	 * $input.trigger('update');
+	 *
+	 * @param {object} $input
+	 */
+	var autoGrow = function($input) {
+		var update = function(e) {
+			var value, keyCode, printable, placeholder, width;
+			var shift, character, selection;
+			e = e || window.event || {};
+	
+			if (e.metaKey || e.altKey) return;
+			if ($input.data('grow') === false) return;
+	
+			value = $input.val();
+			if (e.type && e.type.toLowerCase() === 'keydown') {
+				keyCode = e.keyCode;
+				printable = (
+					(keyCode >= 97 && keyCode <= 122) || // a-z
+					(keyCode >= 65 && keyCode <= 90)  || // A-Z
+					(keyCode >= 48 && keyCode <= 57)  || // 0-9
+					keyCode === 32 // space
+				);
+	
+				if (keyCode === KEY_DELETE || keyCode === KEY_BACKSPACE) {
+					selection = getSelection($input[0]);
+					if (selection.length) {
+						value = value.substring(0, selection.start) + value.substring(selection.start + selection.length);
+					} else if (keyCode === KEY_BACKSPACE && selection.start) {
+						value = value.substring(0, selection.start - 1) + value.substring(selection.start + 1);
+					} else if (keyCode === KEY_DELETE && typeof selection.start !== 'undefined') {
+						value = value.substring(0, selection.start) + value.substring(selection.start + 1);
+					}
+				} else if (printable) {
+					shift = e.shiftKey;
+					character = String.fromCharCode(e.keyCode);
+					if (shift) character = character.toUpperCase();
+					else character = character.toLowerCase();
+					value += character;
+				}
+			}
+	
+			placeholder = $input.attr('placeholder') || '';
+			if (!value.length && placeholder.length) {
+				value = placeholder;
+			}
+	
+			width = measureString(value, $input) + 4;
+			if (width !== $input.width()) {
+				$input.width(width);
+				$input.triggerHandler('resize');
+			}
+		};
+	
+		$input.on('keydown keyup update blur', update);
+		update();
+	};
+	
+	var Selectize = function($input, settings) {
+		var key, i, n, dir, input, self = this;
+		input = $input[0];
+		input.selectize = self;
+	
+		// detect rtl environment
+		dir = window.getComputedStyle ? window.getComputedStyle(input, null).getPropertyValue('direction') : input.currentStyle && input.currentStyle.direction;
+		dir = dir || $input.parents('[dir]:first').attr('dir') || '';
+	
+		// setup default state
+		$.extend(self, {
+			settings         : settings,
+			$input           : $input,
+			tagType          : input.tagName.toLowerCase() === 'select' ? TAG_SELECT : TAG_INPUT,
+			rtl              : /rtl/i.test(dir),
+	
+			eventNS          : '.selectize' + (++Selectize.count),
+			highlightedValue : null,
+			isOpen           : false,
+			isDisabled       : false,
+			isRequired       : $input.is('[required]'),
+			isInvalid        : false,
+			isLocked         : false,
+			isFocused        : false,
+			isInputHidden    : false,
+			isSetup          : false,
+			isShiftDown      : false,
+			isCmdDown        : false,
+			isCtrlDown       : false,
+			ignoreFocus      : false,
+			ignoreHover      : false,
+			hasOptions       : false,
+			currentResults   : null,
+			lastValue        : '',
+			caretPos         : 0,
+			loading          : 0,
+			loadedSearches   : {},
+	
+			$activeOption    : null,
+			$activeItems     : [],
+	
+			optgroups        : {},
+			options          : {},
+			userOptions      : {},
+			items            : [],
+			renderCache      : {},
+			onSearchChange   : debounce(self.onSearchChange, settings.loadThrottle)
+		});
+	
+		// search system
+		self.sifter = new Sifter(this.options, {diacritics: settings.diacritics});
+	
+		// build options table
+		$.extend(self.options, build_hash_table(settings.valueField, settings.options));
+		delete self.settings.options;
+	
+		// build optgroup table
+		$.extend(self.optgroups, build_hash_table(settings.optgroupValueField, settings.optgroups));
+		delete self.settings.optgroups;
+	
+		// option-dependent defaults
+		self.settings.mode = self.settings.mode || (self.settings.maxItems === 1 ? 'single' : 'multi');
+		if (typeof self.settings.hideSelected !== 'boolean') {
+			self.settings.hideSelected = self.settings.mode === 'multi';
+		}
+	
+		self.initializePlugins(self.settings.plugins);
+		self.setupCallbacks();
+		self.setupTemplates();
+		self.setup();
+	};
+	
+	// mixins
+	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	
+	MicroEvent.mixin(Selectize);
+	MicroPlugin.mixin(Selectize);
+	
+	// methods
+	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	
+	$.extend(Selectize.prototype, {
+	
+		/**
+		 * Creates all elements and sets up event bindings.
+		 */
+		setup: function() {
+			var self      = this;
+			var settings  = self.settings;
+			var eventNS   = self.eventNS;
+			var $window   = $(window);
+			var $document = $(document);
+	
+			var $wrapper;
+			var $control;
+			var $control_input;
+			var $dropdown;
+			var $dropdown_content;
+			var $dropdown_parent;
+			var inputMode;
+			var timeout_blur;
+			var timeout_focus;
+			var tab_index;
+			var classes;
+			var classes_plugins;
+	
+			inputMode         = self.settings.mode;
+			tab_index         = self.$input.attr('tabindex') || '';
+			classes           = self.$input.attr('class') || '';
+	
+			$wrapper          = $('<div>').addClass(settings.wrapperClass).addClass(classes).addClass(inputMode);
+			$control          = $('<div>').addClass(settings.inputClass).addClass('items').appendTo($wrapper);
+			$control_input    = $('<input type="text" autocomplete="off">').appendTo($control).attr('tabindex', tab_index);
+			$dropdown_parent  = $(settings.dropdownParent || $wrapper);
+			$dropdown         = $('<div>').addClass(settings.dropdownClass).addClass(classes).addClass(inputMode).hide().appendTo($dropdown_parent);
+			$dropdown_content = $('<div>').addClass(settings.dropdownContentClass).appendTo($dropdown);
+	
+			$wrapper.css({
+				width: self.$input[0].style.width
+			});
+	
+			if (self.plugins.names.length) {
+				classes_plugins = 'plugin-' + self.plugins.names.join(' plugin-');
+				$wrapper.addClass(classes_plugins);
+				$dropdown.addClass(classes_plugins);
+			}
+	
+			if ((settings.maxItems === null || settings.maxItems > 1) && self.tagType === TAG_SELECT) {
+				self.$input.attr('multiple', 'multiple');
+			}
+	
+			if (self.settings.placeholder) {
+				$control_input.attr('placeholder', settings.placeholder);
+			}
+	
+			self.$wrapper          = $wrapper;
+			self.$control          = $control;
+			self.$control_input    = $control_input;
+			self.$dropdown         = $dropdown;
+			self.$dropdown_content = $dropdown_content;
+	
+			$dropdown.on('mouseenter', '[data-selectable]', function() { return self.onOptionHover.apply(self, arguments); });
+			$dropdown.on('mousedown', '[data-selectable]', function() { return self.onOptionSelect.apply(self, arguments); });
+			watchChildEvent($control, 'mousedown', '*:not(input)', function() { return self.onItemSelect.apply(self, arguments); });
+			autoGrow($control_input);
+	
+			$control.on({
+				mousedown : function() { return self.onMouseDown.apply(self, arguments); },
+				click     : function() { return self.onClick.apply(self, arguments); }
+			});
+	
+			$control_input.on({
+				mousedown : function(e) { e.stopPropagation(); },
+				keydown   : function() { return self.onKeyDown.apply(self, arguments); },
+				keyup     : function() { return self.onKeyUp.apply(self, arguments); },
+				keypress  : function() { return self.onKeyPress.apply(self, arguments); },
+				resize    : function() { self.positionDropdown.apply(self, []); },
+				blur      : function() { return self.onBlur.apply(self, arguments); },
+				focus     : function() { return self.onFocus.apply(self, arguments); }
+			});
+	
+			$document.on('keydown' + eventNS, function(e) {
+				self.isCmdDown = e[IS_MAC ? 'metaKey' : 'ctrlKey'];
+				self.isCtrlDown = e[IS_MAC ? 'altKey' : 'ctrlKey'];
+				self.isShiftDown = e.shiftKey;
+			});
+	
+			$document.on('keyup' + eventNS, function(e) {
+				if (e.keyCode === KEY_CTRL) self.isCtrlDown = false;
+				if (e.keyCode === KEY_SHIFT) self.isShiftDown = false;
+				if (e.keyCode === KEY_CMD) self.isCmdDown = false;
+			});
+	
+			$document.on('mousedown' + eventNS, function(e) {
+				if (self.isFocused) {
+					// prevent events on the dropdown scrollbar from causing the control to blur
+					if (e.target === self.$dropdown[0] || e.target.parentNode === self.$dropdown[0]) {
+						return false;
+					}
+					// blur on click outside
+					if (!self.$control.has(e.target).length && e.target !== self.$control[0]) {
+						self.blur();
+					}
+				}
+			});
+	
+			$window.on(['scroll' + eventNS, 'resize' + eventNS].join(' '), function() {
+				if (self.isOpen) {
+					self.positionDropdown.apply(self, arguments);
+				}
+			});
+			$window.on('mousemove' + eventNS, function() {
+				self.ignoreHover = false;
+			});
+	
+			// store original children and tab index so that they can be
+			// restored when the destroy() method is called.
+			this.revertSettings = {
+				$children : self.$input.children().detach(),
+				tabindex  : self.$input.attr('tabindex')
+			};
+	
+			self.$input.attr('tabindex', -1).hide().after(self.$wrapper);
+	
+			if ($.isArray(settings.items)) {
+				self.setValue(settings.items);
+				delete settings.items;
+			}
+	
+			// feature detect for the validation API
+			if (self.$input[0].validity) {
+				self.$input.on('invalid' + eventNS, function(e) {
+					e.preventDefault();
+					self.isInvalid = true;
+					self.refreshState();
+				});
+			}
+	
+			self.updateOriginalInput();
+			self.refreshItems();
+			self.refreshState();
+			self.updatePlaceholder();
+			self.isSetup = true;
+	
+			if (self.$input.is(':disabled')) {
+				self.disable();
+			}
+	
+			self.on('change', this.onChange);
+			self.trigger('initialize');
+	
+			// preload options
+			if (settings.preload) {
+				self.onSearchChange('');
+			}
+		},
+	
+		/**
+		 * Sets up default rendering functions.
+		 */
+		setupTemplates: function() {
+			var self = this;
+			var field_label = self.settings.labelField;
+			var field_optgroup = self.settings.optgroupLabelField;
+	
+			var templates = {
+				'optgroup': function(data) {
+					return '<div class="optgroup">' + data.html + '</div>';
+				},
+				'optgroup_header': function(data, escape) {
+					return '<div class="optgroup-header">' + escape(data[field_optgroup]) + '</div>';
+				},
+				'option': function(data, escape) {
+					return '<div class="option">' + escape(data[field_label]) + '</div>';
+				},
+				'item': function(data, escape) {
+					return '<div class="item">' + escape(data[field_label]) + '</div>';
+				},
+				'option_create': function(data, escape) {
+					return '<div class="create">Add <strong>' + escape(data.input) + '</strong>&hellip;</div>';
+				}
+			};
+	
+			self.settings.render = $.extend({}, templates, self.settings.render);
+		},
+	
+		/**
+		 * Maps fired events to callbacks provided
+		 * in the settings used when creating the control.
+		 */
+		setupCallbacks: function() {
+			var key, fn, callbacks = {
+				'initialize'     : 'onInitialize',
+				'change'         : 'onChange',
+				'item_add'       : 'onItemAdd',
+				'item_remove'    : 'onItemRemove',
+				'clear'          : 'onClear',
+				'option_add'     : 'onOptionAdd',
+				'option_remove'  : 'onOptionRemove',
+				'option_clear'   : 'onOptionClear',
+				'dropdown_open'  : 'onDropdownOpen',
+				'dropdown_close' : 'onDropdownClose',
+				'type'           : 'onType'
+			};
+	
+			for (key in callbacks) {
+				if (callbacks.hasOwnProperty(key)) {
+					fn = this.settings[callbacks[key]];
+					if (fn) this.on(key, fn);
+				}
+			}
+		},
+	
+		/**
+		 * Triggered when the main control element
+		 * has a click event.
+		 *
+		 * @param {object} e
+		 * @return {boolean}
+		 */
+		onClick: function(e) {
+			var self = this;
+	
+			// necessary for mobile webkit devices (manual focus triggering
+			// is ignored unless invoked within a click event)
+			if (!self.isFocused) {
+				self.focus();
+				e.preventDefault();
+			}
+		},
+	
+		/**
+		 * Triggered when the main control element
+		 * has a mouse down event.
+		 *
+		 * @param {object} e
+		 * @return {boolean}
+		 */
+		onMouseDown: function(e) {
+			var self = this;
+			var defaultPrevented = e.isDefaultPrevented();
+			var $target = $(e.target);
+	
+			if (self.isFocused) {
+				// retain focus by preventing native handling. if the
+				// event target is the input it should not be modified.
+				// otherwise, text selection within the input won't work.
+				if (e.target !== self.$control_input[0]) {
+					if (self.settings.mode === 'single') {
+						// toggle dropdown
+						self.isOpen ? self.close() : self.open();
+					} else if (!defaultPrevented) {
+						self.setActiveItem(null);
+					}
+					return false;
+				}
+			} else {
+				// give control focus
+				if (!defaultPrevented) {
+					window.setTimeout(function() {
+						self.focus();
+					}, 0);
+				}
+			}
+		},
+	
+		/**
+		 * Triggered when the value of the control has been changed.
+		 * This should propagate the event to the original DOM
+		 * input / select element.
+		 */
+		onChange: function() {
+			this.$input.trigger('change');
+		},
+	
+		/**
+		 * Triggered on <input> keypress.
+		 *
+		 * @param {object} e
+		 * @returns {boolean}
+		 */
+		onKeyPress: function(e) {
+			if (this.isLocked) return e && e.preventDefault();
+			var character = String.fromCharCode(e.keyCode || e.which);
+			if (this.settings.create && character === this.settings.delimiter) {
+				this.createItem();
+				e.preventDefault();
+				return false;
+			}
+		},
+	
+		/**
+		 * Triggered on <input> keydown.
+		 *
+		 * @param {object} e
+		 * @returns {boolean}
+		 */
+		onKeyDown: function(e) {
+			var isInput = e.target === this.$control_input[0];
+			var self = this;
+	
+			if (self.isLocked) {
+				if (e.keyCode !== KEY_TAB) {
+					e.preventDefault();
+				}
+				return;
+			}
+	
+			switch (e.keyCode) {
+				case KEY_A:
+					if (self.isCmdDown) {
+						self.selectAll();
+						return;
+					}
+					break;
+				case KEY_ESC:
+					self.close();
+					return;
+				case KEY_DOWN:
+					if (!self.isOpen && self.hasOptions) {
+						self.open();
+					} else if (self.$activeOption) {
+						self.ignoreHover = true;
+						var $next = self.getAdjacentOption(self.$activeOption, 1);
+						if ($next.length) self.setActiveOption($next, true, true);
+					}
+					e.preventDefault();
+					return;
+				case KEY_UP:
+					if (self.$activeOption) {
+						self.ignoreHover = true;
+						var $prev = self.getAdjacentOption(self.$activeOption, -1);
+						if ($prev.length) self.setActiveOption($prev, true, true);
+					}
+					e.preventDefault();
+					return;
+				case KEY_RETURN:
+					if (self.isOpen && self.$activeOption) {
+						self.onOptionSelect({currentTarget: self.$activeOption});
+					}
+					e.preventDefault();
+					return;
+				case KEY_LEFT:
+					self.advanceSelection(-1, e);
+					return;
+				case KEY_RIGHT:
+					self.advanceSelection(1, e);
+					return;
+				case KEY_TAB:
+					if (self.settings.create && self.createItem()) {
+						e.preventDefault();
+					}
+					return;
+				case KEY_BACKSPACE:
+				case KEY_DELETE:
+					self.deleteSelection(e);
+					return;
+			}
+			if (self.isFull() || self.isInputHidden) {
+				e.preventDefault();
+				return;
+			}
+		},
+	
+		/**
+		 * Triggered on <input> keyup.
+		 *
+		 * @param {object} e
+		 * @returns {boolean}
+		 */
+		onKeyUp: function(e) {
+			var self = this;
+	
+			if (self.isLocked) return e && e.preventDefault();
+			var value = self.$control_input.val() || '';
+			if (self.lastValue !== value) {
+				self.lastValue = value;
+				self.onSearchChange(value);
+				self.refreshOptions();
+				self.trigger('type', value);
+			}
+		},
+	
+		/**
+		 * Invokes the user-provide option provider / loader.
+		 *
+		 * Note: this function is debounced in the Selectize
+		 * constructor (by `settings.loadDelay` milliseconds)
+		 *
+		 * @param {string} value
+		 */
+		onSearchChange: function(value) {
+			var self = this;
+			var fn = self.settings.load;
+			if (!fn) return;
+			if (self.loadedSearches.hasOwnProperty(value)) return;
+			self.loadedSearches[value] = true;
+			self.load(function(callback) {
+				fn.apply(self, [value, callback]);
+			});
+		},
+	
+		/**
+		 * Triggered on <input> focus.
+		 *
+		 * @param {object} e (optional)
+		 * @returns {boolean}
+		 */
+		onFocus: function(e) {
+			var self = this;
+	
+			self.isFocused = true;
+			if (self.isDisabled) {
+				self.blur();
+				e && e.preventDefault();
+				return false;
+			}
+	
+			if (self.ignoreFocus) return;
+			if (self.settings.preload === 'focus') self.onSearchChange('');
+	
+			if (!self.$activeItems.length) {
+				self.showInput();
+				self.setActiveItem(null);
+				self.refreshOptions(!!self.settings.openOnFocus);
+			}
+	
+			self.refreshState();
+		},
+	
+		/**
+		 * Triggered on <input> blur.
+		 *
+		 * @param {object} e
+		 * @returns {boolean}
+		 */
+		onBlur: function(e) {
+			var self = this;
+			self.isFocused = false;
+			if (self.ignoreFocus) return;
+	
+			if (self.settings.create && self.settings.createOnBlur) {
+				self.createItem();
+			}
+	
+			self.close();
+			self.setTextboxValue('');
+			self.setActiveItem(null);
+			self.setActiveOption(null);
+			self.setCaret(self.items.length);
+			self.refreshState();
+		},
+	
+		/**
+		 * Triggered when the user rolls over
+		 * an option in the autocomplete dropdown menu.
+		 *
+		 * @param {object} e
+		 * @returns {boolean}
+		 */
+		onOptionHover: function(e) {
+			if (this.ignoreHover) return;
+			this.setActiveOption(e.currentTarget, false);
+		},
+	
+		/**
+		 * Triggered when the user clicks on an option
+		 * in the autocomplete dropdown menu.
+		 *
+		 * @param {object} e
+		 * @returns {boolean}
+		 */
+		onOptionSelect: function(e) {
+			var value, $target, $option, self = this;
+	
+			if (e.preventDefault) {
+				e.preventDefault();
+				e.stopPropagation();
+			}
+	
+			$target = $(e.currentTarget);
+			if ($target.hasClass('create')) {
+				self.createItem();
+			} else {
+				value = $target.attr('data-value');
+				if (value) {
+					self.lastQuery = null;
+					self.setTextboxValue('');
+					self.addItem(value);
+					if (!self.settings.hideSelected && e.type && /mouse/.test(e.type)) {
+						self.setActiveOption(self.getOption(value));
+					}
+				}
+			}
+		},
+	
+		/**
+		 * Triggered when the user clicks on an item
+		 * that has been selected.
+		 *
+		 * @param {object} e
+		 * @returns {boolean}
+		 */
+		onItemSelect: function(e) {
+			var self = this;
+	
+			if (self.isLocked) return;
+			if (self.settings.mode === 'multi') {
+				e.preventDefault();
+				self.setActiveItem(e.currentTarget, e);
+			}
+		},
+	
+		/**
+		 * Invokes the provided method that provides
+		 * results to a callback---which are then added
+		 * as options to the control.
+		 *
+		 * @param {function} fn
+		 */
+		load: function(fn) {
+			var self = this;
+			var $wrapper = self.$wrapper.addClass('loading');
+	
+			self.loading++;
+			fn.apply(self, [function(results) {
+				self.loading = Math.max(self.loading - 1, 0);
+				if (results && results.length) {
+					self.addOption(results);
+					self.refreshOptions(self.isFocused && !self.isInputHidden);
+				}
+				if (!self.loading) {
+					$wrapper.removeClass('loading');
+				}
+				self.trigger('load', results);
+			}]);
+		},
+	
+		/**
+		 * Sets the input field of the control to the specified value.
+		 *
+		 * @param {string} value
+		 */
+		setTextboxValue: function(value) {
+			this.$control_input.val(value).triggerHandler('update');
+			this.lastValue = value;
+		},
+	
+		/**
+		 * Returns the value of the control. If multiple items
+		 * can be selected (e.g. <select multiple>), this returns
+		 * an array. If only one item can be selected, this
+		 * returns a string.
+		 *
+		 * @returns {mixed}
+		 */
+		getValue: function() {
+			if (this.tagType === TAG_SELECT && this.$input.attr('multiple')) {
+				return this.items;
+			} else {
+				return this.items.join(this.settings.delimiter);
+			}
+		},
+	
+		/**
+		 * Resets the selected items to the given value.
+		 *
+		 * @param {mixed} value
+		 */
+		setValue: function(value) {
+			debounce_events(this, ['change'], function() {
+				this.clear();
+				var items = $.isArray(value) ? value : [value];
+				for (var i = 0, n = items.length; i < n; i++) {
+					this.addItem(items[i]);
+				}
+			});
+		},
+	
+		/**
+		 * Sets the selected item.
+		 *
+		 * @param {object} $item
+		 * @param {object} e (optional)
+		 */
+		setActiveItem: function($item, e) {
+			var self = this;
+			var eventName;
+			var i, idx, begin, end, item, swap;
+			var $last;
+	
+			if (self.settings.mode === 'single') return;
+			$item = $($item);
+	
+			// clear the active selection
+			if (!$item.length) {
+				$(self.$activeItems).removeClass('active');
+				self.$activeItems = [];
+				if (self.isFocused) {
+					self.showInput();
+				}
+				return;
+			}
+	
+			// modify selection
+			eventName = e && e.type.toLowerCase();
+	
+			if (eventName === 'mousedown' && self.isShiftDown && self.$activeItems.length) {
+				$last = self.$control.children('.active:last');
+				begin = Array.prototype.indexOf.apply(self.$control[0].childNodes, [$last[0]]);
+				end   = Array.prototype.indexOf.apply(self.$control[0].childNodes, [$item[0]]);
+				if (begin > end) {
+					swap  = begin;
+					begin = end;
+					end   = swap;
+				}
+				for (i = begin; i <= end; i++) {
+					item = self.$control[0].childNodes[i];
+					if (self.$activeItems.indexOf(item) === -1) {
+						$(item).addClass('active');
+						self.$activeItems.push(item);
+					}
+				}
+				e.preventDefault();
+			} else if ((eventName === 'mousedown' && self.isCtrlDown) || (eventName === 'keydown' && this.isShiftDown)) {
+				if ($item.hasClass('active')) {
+					idx = self.$activeItems.indexOf($item[0]);
+					self.$activeItems.splice(idx, 1);
+					$item.removeClass('active');
+				} else {
+					self.$activeItems.push($item.addClass('active')[0]);
+				}
+			} else {
+				$(self.$activeItems).removeClass('active');
+				self.$activeItems = [$item.addClass('active')[0]];
+			}
+	
+			// ensure control has focus
+			self.hideInput();
+			if (!this.isFocused) {
+				self.focus();
+			}
+		},
+	
+		/**
+		 * Sets the selected item in the dropdown menu
+		 * of available options.
+		 *
+		 * @param {object} $object
+		 * @param {boolean} scroll
+		 * @param {boolean} animate
+		 */
+		setActiveOption: function($option, scroll, animate) {
+			var height_menu, height_item, y;
+			var scroll_top, scroll_bottom;
+			var self = this;
+	
+			if (self.$activeOption) self.$activeOption.removeClass('active');
+			self.$activeOption = null;
+	
+			$option = $($option);
+			if (!$option.length) return;
+	
+			self.$activeOption = $option.addClass('active');
+	
+			if (scroll || !isset(scroll)) {
+	
+				height_menu   = self.$dropdown_content.height();
+				height_item   = self.$activeOption.outerHeight(true);
+				scroll        = self.$dropdown_content.scrollTop() || 0;
+				y             = self.$activeOption.offset().top - self.$dropdown_content.offset().top + scroll;
+				scroll_top    = y;
+				scroll_bottom = y - height_menu + height_item;
+	
+				if (y + height_item > height_menu + scroll) {
+					self.$dropdown_content.stop().animate({scrollTop: scroll_bottom}, animate ? self.settings.scrollDuration : 0);
+				} else if (y < scroll) {
+					self.$dropdown_content.stop().animate({scrollTop: scroll_top}, animate ? self.settings.scrollDuration : 0);
+				}
+	
+			}
+		},
+	
+		/**
+		 * Selects all items (CTRL + A).
+		 */
+		selectAll: function() {
+			var self = this;
+			if (self.settings.mode === 'single') return;
+	
+			self.$activeItems = Array.prototype.slice.apply(self.$control.children(':not(input)').addClass('active'));
+			if (self.$activeItems.length) {
+				self.hideInput();
+				self.close();
+			}
+			self.focus();
+		},
+	
+		/**
+		 * Hides the input element out of view, while
+		 * retaining its focus.
+		 */
+		hideInput: function() {
+			var self = this;
+	
+			self.setTextboxValue('');
+			self.$control_input.css({opacity: 0, position: 'absolute', left: self.rtl ? 10000 : -10000});
+			self.isInputHidden = true;
+		},
+	
+		/**
+		 * Restores input visibility.
+		 */
+		showInput: function() {
+			this.$control_input.css({opacity: 1, position: 'relative', left: 0});
+			this.isInputHidden = false;
+		},
+	
+		/**
+		 * Gives the control focus. If "trigger" is falsy,
+		 * focus handlers won't be fired--causing the focus
+		 * to happen silently in the background.
+		 *
+		 * @param {boolean} trigger
+		 */
+		focus: function() {
+			var self = this;
+			if (self.isDisabled) return;
+	
+			self.ignoreFocus = true;
+			self.$control_input[0].focus();
+			window.setTimeout(function() {
+				self.ignoreFocus = false;
+				self.onFocus();
+			}, 0);
+		},
+	
+		/**
+		 * Forces the control out of focus.
+		 */
+		blur: function() {
+			this.$control_input.trigger('blur');
+		},
+	
+		/**
+		 * Returns a function that scores an object
+		 * to show how good of a match it is to the
+		 * provided query.
+		 *
+		 * @param {string} query
+		 * @param {object} options
+		 * @return {function}
+		 */
+		getScoreFunction: function(query) {
+			return this.sifter.getScoreFunction(query, this.getSearchOptions());
+		},
+	
+		/**
+		 * Returns search options for sifter (the system
+		 * for scoring and sorting results).
+		 *
+		 * @see https://github.com/brianreavis/sifter.js
+		 * @return {object}
+		 */
+		getSearchOptions: function() {
+			var settings = this.settings;
+			var sort = settings.sortField;
+			if (typeof sort === 'string') {
+				sort = {field: sort};
+			}
+	
+			return {
+				fields      : settings.searchField,
+				conjunction : settings.searchConjunction,
+				sort        : sort
+			};
+		},
+	
+		/**
+		 * Searches through available options and returns
+		 * a sorted array of matches.
+		 *
+		 * Returns an object containing:
+		 *
+		 *   - query {string}
+		 *   - tokens {array}
+		 *   - total {int}
+		 *   - items {array}
+		 *
+		 * @param {string} query
+		 * @returns {object}
+		 */
+		search: function(query) {
+			var i, value, score, result, calculateScore;
+			var self     = this;
+			var settings = self.settings;
+			var options  = this.getSearchOptions();
+	
+			// validate user-provided result scoring function
+			if (settings.score) {
+				calculateScore = self.settings.score.apply(this, [query]);
+				if (typeof calculateScore !== 'function') {
+					throw new Error('Selectize "score" setting must be a function that returns a function');
+				}
+			}
+	
+			// perform search
+			if (query !== self.lastQuery) {
+				self.lastQuery = query;
+				result = self.sifter.search(query, $.extend(options, {score: calculateScore}));
+				self.currentResults = result;
+			} else {
+				result = $.extend(true, {}, self.currentResults);
+			}
+	
+			// filter out selected items
+			if (settings.hideSelected) {
+				for (i = result.items.length - 1; i >= 0; i--) {
+					if (self.items.indexOf(hash_key(result.items[i].id)) !== -1) {
+						result.items.splice(i, 1);
+					}
+				}
+			}
+	
+			return result;
+		},
+	
+		/**
+		 * Refreshes the list of available options shown
+		 * in the autocomplete dropdown menu.
+		 *
+		 * @param {boolean} triggerDropdown
+		 */
+		refreshOptions: function(triggerDropdown) {
+			var i, j, k, n, groups, groups_order, option, option_html, optgroup, optgroups, html, html_children, has_create_option;
+			var $active, $active_before, $create;
+	
+			if (typeof triggerDropdown === 'undefined') {
+				triggerDropdown = true;
+			}
+	
+			var self              = this;
+			var query             = self.$control_input.val();
+			var results           = self.search(query);
+			var $dropdown_content = self.$dropdown_content;
+			var active_before     = self.$activeOption && hash_key(self.$activeOption.attr('data-value'));
+	
+			// build markup
+			n = results.items.length;
+			if (typeof self.settings.maxOptions === 'number') {
+				n = Math.min(n, self.settings.maxOptions);
+			}
+	
+			// render and group available options individually
+			groups = {};
+	
+			if (self.settings.optgroupOrder) {
+				groups_order = self.settings.optgroupOrder;
+				for (i = 0; i < groups_order.length; i++) {
+					groups[groups_order[i]] = [];
+				}
+			} else {
+				groups_order = [];
+			}
+	
+			for (i = 0; i < n; i++) {
+				option      = self.options[results.items[i].id];
+				option_html = self.render('option', option);
+				optgroup    = option[self.settings.optgroupField] || '';
+				optgroups   = $.isArray(optgroup) ? optgroup : [optgroup];
+	
+				for (j = 0, k = optgroups && optgroups.length; j < k; j++) {
+					optgroup = optgroups[j];
+					if (!self.optgroups.hasOwnProperty(optgroup)) {
+						optgroup = '';
+					}
+					if (!groups.hasOwnProperty(optgroup)) {
+						groups[optgroup] = [];
+						groups_order.push(optgroup);
+					}
+					groups[optgroup].push(option_html);
+				}
+			}
+	
+			// render optgroup headers & join groups
+			html = [];
+			for (i = 0, n = groups_order.length; i < n; i++) {
+				optgroup = groups_order[i];
+				if (self.optgroups.hasOwnProperty(optgroup) && groups[optgroup].length) {
+					// render the optgroup header and options within it,
+					// then pass it to the wrapper template
+					html_children = self.render('optgroup_header', self.optgroups[optgroup]) || '';
+					html_children += groups[optgroup].join('');
+					html.push(self.render('optgroup', $.extend({}, self.optgroups[optgroup], {
+						html: html_children
+					})));
+				} else {
+					html.push(groups[optgroup].join(''));
+				}
+			}
+	
+			$dropdown_content.html(html.join(''));
+	
+			// highlight matching terms inline
+			if (self.settings.highlight && results.query.length && results.tokens.length) {
+				for (i = 0, n = results.tokens.length; i < n; i++) {
+					highlight($dropdown_content, results.tokens[i].regex);
+				}
+			}
+	
+			// add "selected" class to selected options
+			if (!self.settings.hideSelected) {
+				for (i = 0, n = self.items.length; i < n; i++) {
+					self.getOption(self.items[i]).addClass('selected');
+				}
+			}
+	
+			// add create option
+			has_create_option = self.settings.create && results.query.length;
+			if (has_create_option) {
+				$dropdown_content.prepend(self.render('option_create', {input: query}));
+				$create = $($dropdown_content[0].childNodes[0]);
+			}
+	
+			// activate
+			self.hasOptions = results.items.length > 0 || has_create_option;
+			if (self.hasOptions) {
+				if (results.items.length > 0) {
+					$active_before = active_before && self.getOption(active_before);
+					if ($active_before && $active_before.length) {
+						$active = $active_before;
+					} else if (self.settings.mode === 'single' && self.items.length) {
+						$active = self.getOption(self.items[0]);
+					}
+					if (!$active || !$active.length) {
+						if ($create && !self.settings.addPrecedence) {
+							$active = self.getAdjacentOption($create, 1);
+						} else {
+							$active = $dropdown_content.find('[data-selectable]:first');
+						}
+					}
+				} else {
+					$active = $create;
+				}
+				self.setActiveOption($active);
+				if (triggerDropdown && !self.isOpen) { self.open(); }
+			} else {
+				self.setActiveOption(null);
+				if (triggerDropdown && self.isOpen) { self.close(); }
+			}
+		},
+	
+		/**
+		 * Adds an available option. If it already exists,
+		 * nothing will happen. Note: this does not refresh
+		 * the options list dropdown (use `refreshOptions`
+		 * for that).
+		 *
+		 * Usage:
+		 *
+		 *   this.addOption(data)
+		 *
+		 * @param {object} data
+		 */
+		addOption: function(data) {
+			var i, n, optgroup, value, self = this;
+	
+			if ($.isArray(data)) {
+				for (i = 0, n = data.length; i < n; i++) {
+					self.addOption(data[i]);
+				}
+				return;
+			}
+	
+			value = hash_key(data[self.settings.valueField]);
+			if (!value || self.options.hasOwnProperty(value)) return;
+	
+			self.userOptions[value] = true;
+			self.options[value] = data;
+			self.lastQuery = null;
+			self.trigger('option_add', value, data);
+		},
+	
+		/**
+		 * Registers a new optgroup for options
+		 * to be bucketed into.
+		 *
+		 * @param {string} id
+		 * @param {object} data
+		 */
+		addOptionGroup: function(id, data) {
+			this.optgroups[id] = data;
+			this.trigger('optgroup_add', id, data);
+		},
+	
+		/**
+		 * Updates an option available for selection. If
+		 * it is visible in the selected items or options
+		 * dropdown, it will be re-rendered automatically.
+		 *
+		 * @param {string} value
+		 * @param {object} data
+		 */
+		updateOption: function(value, data) {
+			var self = this;
+			var $item, $item_new;
+			var value_new, index_item, cache_items, cache_options;
+	
+			value     = hash_key(value);
+			value_new = hash_key(data[self.settings.valueField]);
+	
+			// sanity checks
+			if (!self.options.hasOwnProperty(value)) return;
+			if (!value_new) throw new Error('Value must be set in option data');
+	
+			// update references
+			if (value_new !== value) {
+				delete self.options[value];
+				index_item = self.items.indexOf(value);
+				if (index_item !== -1) {
+					self.items.splice(index_item, 1, value_new);
+				}
+			}
+			self.options[value_new] = data;
+	
+			// invalidate render cache
+			cache_items = self.renderCache['item'];
+			cache_options = self.renderCache['option'];
+	
+			if (isset(cache_items)) {
+				delete cache_items[value];
+				delete cache_items[value_new];
+			}
+			if (isset(cache_options)) {
+				delete cache_options[value];
+				delete cache_options[value_new];
+			}
+	
+			// update the item if it's selected
+			if (self.items.indexOf(value_new) !== -1) {
+				$item = self.getItem(value);
+				$item_new = $(self.render('item', data));
+				if ($item.hasClass('active')) $item_new.addClass('active');
+				$item.replaceWith($item_new);
+			}
+	
+			// update dropdown contents
+			if (self.isOpen) {
+				self.refreshOptions(false);
+			}
+		},
+	
+		/**
+		 * Removes a single option.
+		 *
+		 * @param {string} value
+		 */
+		removeOption: function(value) {
+			var self = this;
+	
+			value = hash_key(value);
+			delete self.userOptions[value];
+			delete self.options[value];
+			self.lastQuery = null;
+			self.trigger('option_remove', value);
+			self.removeItem(value);
+		},
+	
+		/**
+		 * Clears all options.
+		 */
+		clearOptions: function() {
+			var self = this;
+	
+			self.loadedSearches = {};
+			self.userOptions = {};
+			self.options = self.sifter.items = {};
+			self.lastQuery = null;
+			self.trigger('option_clear');
+			self.clear();
+		},
+	
+		/**
+		 * Returns the jQuery element of the option
+		 * matching the given value.
+		 *
+		 * @param {string} value
+		 * @returns {object}
+		 */
+		getOption: function(value) {
+			return this.getElementWithValue(value, this.$dropdown_content.find('[data-selectable]'));
+		},
+	
+		/**
+		 * Returns the jQuery element of the next or
+		 * previous selectable option.
+		 *
+		 * @param {object} $option
+		 * @param {int} direction  can be 1 for next or -1 for previous
+		 * @return {object}
+		 */
+		getAdjacentOption: function($option, direction) {
+			var $options = this.$dropdown.find('[data-selectable]');
+			var index    = $options.index($option) + direction;
+	
+			return index >= 0 && index < $options.length ? $options.eq(index) : $();
+		},
+	
+		/**
+		 * Finds the first element with a "data-value" attribute
+		 * that matches the given value.
+		 *
+		 * @param {mixed} value
+		 * @param {object} $els
+		 * @return {object}
+		 */
+		getElementWithValue: function(value, $els) {
+			value = hash_key(value);
+	
+			if (value) {
+				for (var i = 0, n = $els.length; i < n; i++) {
+					if ($els[i].getAttribute('data-value') === value) {
+						return $($els[i]);
+					}
+				}
+			}
+	
+			return $();
+		},
+	
+		/**
+		 * Returns the jQuery element of the item
+		 * matching the given value.
+		 *
+		 * @param {string} value
+		 * @returns {object}
+		 */
+		getItem: function(value) {
+			return this.getElementWithValue(value, this.$control.children());
+		},
+	
+		/**
+		 * "Selects" an item. Adds it to the list
+		 * at the current caret position.
+		 *
+		 * @param {string} value
+		 */
+		addItem: function(value) {
+			debounce_events(this, ['change'], function() {
+				var $item, $option;
+				var self = this;
+				var inputMode = self.settings.mode;
+				var i, active, options, value_next;
+				value = hash_key(value);
+	
+				if (self.items.indexOf(value) !== -1) {
+					if (inputMode === 'single') self.close();
+					return;
+				}
+	
+				if (!self.options.hasOwnProperty(value)) return;
+				if (inputMode === 'single') self.clear();
+				if (inputMode === 'multi' && self.isFull()) return;
+	
+				$item = $(self.render('item', self.options[value]));
+				self.items.splice(self.caretPos, 0, value);
+				self.insertAtCaret($item);
+				self.refreshState();
+	
+				if (self.isSetup) {
+					options = self.$dropdown_content.find('[data-selectable]');
+	
+					// update menu / remove the option
+					$option = self.getOption(value);
+					value_next = self.getAdjacentOption($option, 1).attr('data-value');
+					self.refreshOptions(self.isFocused && inputMode !== 'single');
+					if (value_next) {
+						self.setActiveOption(self.getOption(value_next));
+					}
+	
+					// hide the menu if the maximum number of items have been selected or no options are left
+					if (!options.length || (self.settings.maxItems !== null && self.items.length >= self.settings.maxItems)) {
+						self.close();
+					} else {
+						self.positionDropdown();
+					}
+	
+					self.updatePlaceholder();
+					self.trigger('item_add', value, $item);
+					self.updateOriginalInput();
+				}
+			});
+		},
+	
+		/**
+		 * Removes the selected item matching
+		 * the provided value.
+		 *
+		 * @param {string} value
+		 */
+		removeItem: function(value) {
+			var self = this;
+			var $item, i, idx;
+	
+			$item = (typeof value === 'object') ? value : self.getItem(value);
+			value = hash_key($item.attr('data-value'));
+			i = self.items.indexOf(value);
+	
+			if (i !== -1) {
+				$item.remove();
+				if ($item.hasClass('active')) {
+					idx = self.$activeItems.indexOf($item[0]);
+					self.$activeItems.splice(idx, 1);
+				}
+	
+				self.items.splice(i, 1);
+				self.lastQuery = null;
+				if (!self.settings.persist && self.userOptions.hasOwnProperty(value)) {
+					self.removeOption(value);
+				}
+	
+				if (i < self.caretPos) {
+					self.setCaret(self.caretPos - 1);
+				}
+	
+				self.refreshState();
+				self.updatePlaceholder();
+				self.updateOriginalInput();
+				self.positionDropdown();
+				self.trigger('item_remove', value);
+			}
+		},
+	
+		/**
+		 * Invokes the `create` method provided in the
+		 * selectize options that should provide the data
+		 * for the new item, given the user input.
+		 *
+		 * Once this completes, it will be added
+		 * to the item list.
+		 *
+		 * @return {boolean}
+		 */
+		createItem: function() {
+			var self  = this;
+			var input = $.trim(self.$control_input.val() || '');
+			var caret = self.caretPos;
+			if (!input.length) return false;
+			self.lock();
+	
+			var setup = (typeof self.settings.create === 'function') ? this.settings.create : function(input) {
+				var data = {};
+				data[self.settings.labelField] = input;
+				data[self.settings.valueField] = input;
+				return data;
+			};
+	
+			var create = once(function(data) {
+				self.unlock();
+	
+				if (!data || typeof data !== 'object') return;
+				var value = hash_key(data[self.settings.valueField]);
+				if (!value) return;
+	
+				self.setTextboxValue('');
+				self.addOption(data);
+				self.setCaret(caret);
+				self.addItem(value);
+				self.refreshOptions(self.settings.mode !== 'single');
+			});
+	
+			var output = setup.apply(this, [input, create]);
+			if (typeof output !== 'undefined') {
+				create(output);
+			}
+	
+			return true;
+		},
+	
+		/**
+		 * Re-renders the selected item lists.
+		 */
+		refreshItems: function() {
+			this.lastQuery = null;
+	
+			if (this.isSetup) {
+				for (var i = 0; i < this.items.length; i++) {
+					this.addItem(this.items);
+				}
+			}
+	
+			this.refreshState();
+			this.updateOriginalInput();
+		},
+	
+		/**
+		 * Updates all state-dependent attributes
+		 * and CSS classes.
+		 */
+		refreshState: function() {
+			var self = this;
+			var invalid = self.isRequired && !self.items.length;
+			if (!invalid) self.isInvalid = false;
+			self.$control_input.prop('required', invalid);
+			self.refreshClasses();
+		},
+	
+		/**
+		 * Updates all state-dependent CSS classes.
+		 */
+		refreshClasses: function() {
+			var self     = this;
+			var isFull   = self.isFull();
+			var isLocked = self.isLocked;
+	
+			self.$wrapper
+				.toggleClass('rtl', self.rtl);
+	
+			self.$control
+				.toggleClass('focus', self.isFocused)
+				.toggleClass('disabled', self.isDisabled)
+				.toggleClass('required', self.isRequired)
+				.toggleClass('invalid', self.isInvalid)
+				.toggleClass('locked', isLocked)
+				.toggleClass('full', isFull).toggleClass('not-full', !isFull)
+				.toggleClass('input-active', self.isFocused && !self.isInputHidden)
+				.toggleClass('dropdown-active', self.isOpen)
+				.toggleClass('has-options', !$.isEmptyObject(self.options))
+				.toggleClass('has-items', self.items.length > 0);
+	
+			self.$control_input.data('grow', !isFull && !isLocked);
+		},
+	
+		/**
+		 * Determines whether or not more items can be added
+		 * to the control without exceeding the user-defined maximum.
+		 *
+		 * @returns {boolean}
+		 */
+		isFull: function() {
+			return this.settings.maxItems !== null && this.items.length >= this.settings.maxItems;
+		},
+	
+		/**
+		 * Refreshes the original <select> or <input>
+		 * element to reflect the current state.
+		 */
+		updateOriginalInput: function() {
+			var i, n, options, self = this;
+	
+			if (self.$input[0].tagName.toLowerCase() === 'select') {
+				options = [];
+				for (i = 0, n = self.items.length; i < n; i++) {
+					options.push('<option value="' + escape_html(self.items[i]) + '" selected="selected"></option>');
+				}
+				if (!options.length && !this.$input.attr('multiple')) {
+					options.push('<option value="" selected="selected"></option>');
+				}
+				self.$input.html(options.join(''));
+			} else {
+				self.$input.val(self.getValue());
+			}
+	
+			if (self.isSetup) {
+				self.trigger('change', self.$input.val());
+			}
+		},
+	
+		/**
+		 * Shows/hide the input placeholder depending
+		 * on if there items in the list already.
+		 */
+		updatePlaceholder: function() {
+			if (!this.settings.placeholder) return;
+			var $input = this.$control_input;
+	
+			if (this.items.length) {
+				$input.removeAttr('placeholder');
+			} else {
+				$input.attr('placeholder', this.settings.placeholder);
+			}
+			$input.triggerHandler('update');
+		},
+	
+		/**
+		 * Shows the autocomplete dropdown containing
+		 * the available options.
+		 */
+		open: function() {
+			var self = this;
+	
+			if (self.isLocked || self.isOpen || (self.settings.mode === 'multi' && self.isFull())) return;
+			self.focus();
+			self.isOpen = true;
+			self.refreshState();
+			self.$dropdown.css({visibility: 'hidden', display: 'block'});
+			self.positionDropdown();
+			self.$dropdown.css({visibility: 'visible'});
+			self.trigger('dropdown_open', self.$dropdown);
+		},
+	
+		/**
+		 * Closes the autocomplete dropdown menu.
+		 */
+		close: function() {
+			var self = this;
+			var trigger = self.isOpen;
+	
+			if (self.settings.mode === 'single' && self.items.length) {
+				self.hideInput();
+			}
+	
+			self.isOpen = false;
+			self.$dropdown.hide();
+			self.setActiveOption(null);
+			self.refreshState();
+	
+			if (trigger) self.trigger('dropdown_close', self.$dropdown);
+		},
+	
+		/**
+		 * Calculates and applies the appropriate
+		 * position of the dropdown.
+		 */
+		positionDropdown: function() {
+			var $control = this.$control;
+			var offset = this.settings.dropdownParent === 'body' ? $control.offset() : $control.position();
+			offset.top += $control.outerHeight(true);
+	
+			this.$dropdown.css({
+				width : $control.outerWidth(),
+				top   : offset.top,
+				left  : offset.left
+			});
+		},
+	
+		/**
+		 * Resets / clears all selected items
+		 * from the control.
+		 */
+		clear: function() {
+			var self = this;
+	
+			if (!self.items.length) return;
+			self.$control.children(':not(input)').remove();
+			self.items = [];
+			self.setCaret(0);
+			self.updatePlaceholder();
+			self.updateOriginalInput();
+			self.refreshState();
+			self.showInput();
+			self.trigger('clear');
+		},
+	
+		/**
+		 * A helper method for inserting an element
+		 * at the current caret position.
+		 *
+		 * @param {object} $el
+		 */
+		insertAtCaret: function($el) {
+			var caret = Math.min(this.caretPos, this.items.length);
+			if (caret === 0) {
+				this.$control.prepend($el);
+			} else {
+				$(this.$control[0].childNodes[caret]).before($el);
+			}
+			this.setCaret(caret + 1);
+		},
+	
+		/**
+		 * Removes the current selected item(s).
+		 *
+		 * @param {object} e (optional)
+		 * @returns {boolean}
+		 */
+		deleteSelection: function(e) {
+			var i, n, direction, selection, values, caret, option_select, $option_select, $tail;
+			var self = this;
+	
+			direction = (e && e.keyCode === KEY_BACKSPACE) ? -1 : 1;
+			selection = getSelection(self.$control_input[0]);
+	
+			if (self.$activeOption && !self.settings.hideSelected) {
+				option_select = self.getAdjacentOption(self.$activeOption, -1).attr('data-value');
+			}
+	
+			// determine items that will be removed
+			values = [];
+	
+			if (self.$activeItems.length) {
+				$tail = self.$control.children('.active:' + (direction > 0 ? 'last' : 'first'));
+				caret = self.$control.children(':not(input)').index($tail);
+				if (direction > 0) { caret++; }
+	
+				for (i = 0, n = self.$activeItems.length; i < n; i++) {
+					values.push($(self.$activeItems[i]).attr('data-value'));
+				}
+				if (e) {
+					e.preventDefault();
+					e.stopPropagation();
+				}
+			} else if ((self.isFocused || self.settings.mode === 'single') && self.items.length) {
+				if (direction < 0 && selection.start === 0 && selection.length === 0) {
+					values.push(self.items[self.caretPos - 1]);
+				} else if (direction > 0 && selection.start === self.$control_input.val().length) {
+					values.push(self.items[self.caretPos]);
+				}
+			}
+	
+			// allow the callback to abort
+			if (!values.length || (typeof self.settings.onDelete === 'function' && self.settings.onDelete.apply(self, [values]) === false)) {
+				return false;
+			}
+	
+			// perform removal
+			if (typeof caret !== 'undefined') {
+				self.setCaret(caret);
+			}
+			while (values.length) {
+				self.removeItem(values.pop());
+			}
+	
+			self.showInput();
+			self.positionDropdown();
+			self.refreshOptions(true);
+	
+			// select previous option
+			if (option_select) {
+				$option_select = self.getOption(option_select);
+				if ($option_select.length) {
+					self.setActiveOption($option_select);
+				}
+			}
+	
+			return true;
+		},
+	
+		/**
+		 * Selects the previous / next item (depending
+		 * on the `direction` argument).
+		 *
+		 * > 0 - right
+		 * < 0 - left
+		 *
+		 * @param {int} direction
+		 * @param {object} e (optional)
+		 */
+		advanceSelection: function(direction, e) {
+			var tail, selection, idx, valueLength, cursorAtEdge, $tail;
+			var self = this;
+	
+			if (direction === 0) return;
+			if (self.rtl) direction *= -1;
+	
+			tail = direction > 0 ? 'last' : 'first';
+			selection = getSelection(self.$control_input[0]);
+	
+			if (self.isFocused && !self.isInputHidden) {
+				valueLength = self.$control_input.val().length;
+				cursorAtEdge = direction < 0
+					? selection.start === 0 && selection.length === 0
+					: selection.start === valueLength;
+	
+				if (cursorAtEdge && !valueLength) {
+					self.advanceCaret(direction, e);
+				}
+			} else {
+				$tail = self.$control.children('.active:' + tail);
+				if ($tail.length) {
+					idx = self.$control.children(':not(input)').index($tail);
+					self.setActiveItem(null);
+					self.setCaret(direction > 0 ? idx + 1 : idx);
+				}
+			}
+		},
+	
+		/**
+		 * Moves the caret left / right.
+		 *
+		 * @param {int} direction
+		 * @param {object} e (optional)
+		 */
+		advanceCaret: function(direction, e) {
+			var self = this, fn, $adj;
+	
+			if (direction === 0) return;
+	
+			fn = direction > 0 ? 'next' : 'prev';
+			if (self.isShiftDown) {
+				$adj = self.$control_input[fn]();
+				if ($adj.length) {
+					self.hideInput();
+					self.setActiveItem($adj);
+					e && e.preventDefault();
+				}
+			} else {
+				self.setCaret(self.caretPos + direction);
+			}
+		},
+	
+		/**
+		 * Moves the caret to the specified index.
+		 *
+		 * @param {int} i
+		 */
+		setCaret: function(i) {
+			var self = this;
+	
+			if (self.settings.mode === 'single') {
+				i = self.items.length;
+			} else {
+				i = Math.max(0, Math.min(self.items.length, i));
+			}
+	
+			// the input must be moved by leaving it in place and moving the
+			// siblings, due to the fact that focus cannot be restored once lost
+			// on mobile webkit devices
+			var j, n, fn, $children, $child;
+			$children = self.$control.children(':not(input)');
+			for (j = 0, n = $children.length; j < n; j++) {
+				$child = $($children[j]).detach();
+				if (j <  i) {
+					self.$control_input.before($child);
+				} else {
+					self.$control.append($child);
+				}
+			}
+	
+			self.caretPos = i;
+		},
+	
+		/**
+		 * Disables user input on the control. Used while
+		 * items are being asynchronously created.
+		 */
+		lock: function() {
+			this.close();
+			this.isLocked = true;
+			this.refreshState();
+		},
+	
+		/**
+		 * Re-enables user input on the control.
+		 */
+		unlock: function() {
+			this.isLocked = false;
+			this.refreshState();
+		},
+	
+		/**
+		 * Disables user input on the control completely.
+		 * While disabled, it cannot receive focus.
+		 */
+		disable: function() {
+			var self = this;
+			self.$input.prop('disabled', true);
+			self.isDisabled = true;
+			self.lock();
+		},
+	
+		/**
+		 * Enables the control so that it can respond
+		 * to focus and user input.
+		 */
+		enable: function() {
+			var self = this;
+			self.$input.prop('disabled', false);
+			self.isDisabled = false;
+			self.unlock();
+		},
+	
+		/**
+		 * Completely destroys the control and
+		 * unbinds all event listeners so that it can
+		 * be garbage collected.
+		 */
+		destroy: function() {
+			var self = this;
+			var eventNS = self.eventNS;
+			var revertSettings = self.revertSettings;
+	
+			self.trigger('destroy');
+			self.off();
+			self.$wrapper.remove();
+			self.$dropdown.remove();
+	
+			self.$input
+				.html('')
+				.append(revertSettings.$children)
+				.removeAttr('tabindex')
+				.attr({tabindex: revertSettings.tabindex})
+				.show();
+	
+			$(window).off(eventNS);
+			$(document).off(eventNS);
+			$(document.body).off(eventNS);
+	
+			delete self.$input[0].selectize;
+		},
+	
+		/**
+		 * A helper method for rendering "item" and
+		 * "option" templates, given the data.
+		 *
+		 * @param {string} templateName
+		 * @param {object} data
+		 * @returns {string}
+		 */
+		render: function(templateName, data) {
+			var value, id, label;
+			var html = '';
+			var cache = false;
+			var self = this;
+			var regex_tag = /^[\t ]*<([a-z][a-z0-9\-_]*(?:\:[a-z][a-z0-9\-_]*)?)/i;
+	
+			if (templateName === 'option' || templateName === 'item') {
+				value = hash_key(data[self.settings.valueField]);
+				cache = !!value;
+			}
+	
+			// pull markup from cache if it exists
+			if (cache) {
+				if (!isset(self.renderCache[templateName])) {
+					self.renderCache[templateName] = {};
+				}
+				if (self.renderCache[templateName].hasOwnProperty(value)) {
+					return self.renderCache[templateName][value];
+				}
+			}
+	
+			// render markup
+			html = self.settings.render[templateName].apply(this, [data, escape_html]);
+	
+			// add mandatory attributes
+			if (templateName === 'option' || templateName === 'option_create') {
+				html = html.replace(regex_tag, '<$1 data-selectable');
+			}
+			if (templateName === 'optgroup') {
+				id = data[self.settings.optgroupValueField] || '';
+				html = html.replace(regex_tag, '<$1 data-group="' + escape_replace(escape_html(id)) + '"');
+			}
+			if (templateName === 'option' || templateName === 'item') {
+				html = html.replace(regex_tag, '<$1 data-value="' + escape_replace(escape_html(value || '')) + '"');
+			}
+	
+			// update cache
+			if (cache) {
+				self.renderCache[templateName][value] = html;
+			}
+	
+			return html;
+		}
+	
+	});
+	
+	
+	Selectize.count = 0;
+	Selectize.defaults = {
+		plugins: [],
+		delimiter: ',',
+		persist: true,
+		diacritics: true,
+		create: false,
+		createOnBlur: false,
+		highlight: true,
+		openOnFocus: true,
+		maxOptions: 1000,
+		maxItems: null,
+		hideSelected: null,
+		addPrecedence: false,
+		preload: false,
+	
+		scrollDuration: 60,
+		loadThrottle: 300,
+	
+		dataAttr: 'data-data',
+		optgroupField: 'optgroup',
+		valueField: 'value',
+		labelField: 'text',
+		optgroupLabelField: 'label',
+		optgroupValueField: 'value',
+		optgroupOrder: null,
+	
+		sortField: '$order',
+		searchField: ['text'],
+		searchConjunction: 'and',
+	
+		mode: null,
+		wrapperClass: 'selectize-control',
+		inputClass: 'selectize-input',
+		dropdownClass: 'selectize-dropdown',
+		dropdownContentClass: 'selectize-dropdown-content',
+	
+		dropdownParent: null,
+	
+		/*
+		load            : null, // function(query, callback) { ... }
+		score           : null, // function(search) { ... }
+		onInitialize    : null, // function() { ... }
+		onChange        : null, // function(value) { ... }
+		onItemAdd       : null, // function(value, $item) { ... }
+		onItemRemove    : null, // function(value) { ... }
+		onClear         : null, // function() { ... }
+		onOptionAdd     : null, // function(value, data) { ... }
+		onOptionRemove  : null, // function(value) { ... }
+		onOptionClear   : null, // function() { ... }
+		onDropdownOpen  : null, // function($dropdown) { ... }
+		onDropdownClose : null, // function($dropdown) { ... }
+		onType          : null, // function(str) { ... }
+		onDelete        : null, // function(values) { ... }
+		*/
+	
+		render: {
+			/*
+			item: null,
+			optgroup: null,
+			optgroup_header: null,
+			option: null,
+			option_create: null
+			*/
+		}
+	};
+	
+	$.fn.selectize = function(settings_user) {
+		var defaults             = $.fn.selectize.defaults;
+		var settings             = $.extend({}, defaults, settings_user);
+		var attr_data            = settings.dataAttr;
+		var field_label          = settings.labelField;
+		var field_value          = settings.valueField;
+		var field_optgroup       = settings.optgroupField;
+		var field_optgroup_label = settings.optgroupLabelField;
+		var field_optgroup_value = settings.optgroupValueField;
+	
+		/**
+		 * Initializes selectize from a <input type="text"> element.
+		 *
+		 * @param {object} $input
+		 * @param {object} settings_element
+		 */
+		var init_textbox = function($input, settings_element) {
+			var i, n, values, option, value = $.trim($input.val() || '');
+			if (!value.length) return;
+	
+			values = value.split(settings.delimiter);
+			for (i = 0, n = values.length; i < n; i++) {
+				option = {};
+				option[field_label] = values[i];
+				option[field_value] = values[i];
+	
+				settings_element.options[values[i]] = option;
+			}
+	
+			settings_element.items = values;
+		};
+	
+		/**
+		 * Initializes selectize from a <select> element.
+		 *
+		 * @param {object} $input
+		 * @param {object} settings_element
+		 */
+		var init_select = function($input, settings_element) {
+			var i, n, tagName, $children, order = 0;
+			var options = settings_element.options;
+	
+			var readData = function($el) {
+				var data = attr_data && $el.attr(attr_data);
+				if (typeof data === 'string' && data.length) {
+					return JSON.parse(data);
+				}
+				return null;
+			};
+	
+			var addOption = function($option, group) {
+				var value, option;
+	
+				$option = $($option);
+	
+				value = $option.attr('value') || '';
+				if (!value.length) return;
+	
+				// if the option already exists, it's probably been
+				// duplicated in another optgroup. in this case, push
+				// the current group to the "optgroup" property on the
+				// existing option so that it's rendered in both places.
+				if (options.hasOwnProperty(value)) {
+					if (group) {
+						if (!options[value].optgroup) {
+							options[value].optgroup = group;
+						} else if (!$.isArray(options[value].optgroup)) {
+							options[value].optgroup = [options[value].optgroup, group];
+						} else {
+							options[value].optgroup.push(group);
+						}
+					}
+					return;
+				}
+	
+				option                 = readData($option) || {};
+				option[field_label]    = option[field_label] || $option.text();
+				option[field_value]    = option[field_value] || value;
+				option[field_optgroup] = option[field_optgroup] || group;
+	
+				option.$order = ++order;
+				options[value] = option;
+	
+				if ($option.is(':selected')) {
+					settings_element.items.push(value);
+				}
+			};
+	
+			var addGroup = function($optgroup) {
+				var i, n, id, optgroup, $options;
+	
+				$optgroup = $($optgroup);
+				id = $optgroup.attr('label');
+	
+				if (id) {
+					optgroup = readData($optgroup) || {};
+					optgroup[field_optgroup_label] = id;
+					optgroup[field_optgroup_value] = id;
+					settings_element.optgroups[id] = optgroup;
+				}
+	
+				$options = $('option', $optgroup);
+				for (i = 0, n = $options.length; i < n; i++) {
+					addOption($options[i], id);
+				}
+			};
+	
+			settings_element.maxItems = $input.attr('multiple') ? null : 1;
+	
+			$children = $input.children();
+			for (i = 0, n = $children.length; i < n; i++) {
+				tagName = $children[i].tagName.toLowerCase();
+				if (tagName === 'optgroup') {
+					addGroup($children[i]);
+				} else if (tagName === 'option') {
+					addOption($children[i]);
+				}
+			}
+		};
+	
+		return this.each(function() {
+			if (this.selectize) return;
+	
+			var instance;
+			var $input = $(this);
+			var tag_name = this.tagName.toLowerCase();
+			var settings_element = {
+				'placeholder' : $input.children('option[value=""]').text() || $input.attr('placeholder'),
+				'options'     : {},
+				'optgroups'   : {},
+				'items'       : []
+			};
+	
+			if (tag_name === 'select') {
+				init_select($input, settings_element);
+			} else {
+				init_textbox($input, settings_element);
+			}
+	
+			instance = new Selectize($input, $.extend(true, {}, defaults, settings_element, settings_user));
+			$input.data('selectize', instance);
+			$input.addClass('selectized');
+		});
+	};
+	
+	$.fn.selectize.defaults = Selectize.defaults;
+	
+	Selectize.define('drag_drop', function(options) {
+		if (!$.fn.sortable) throw new Error('The "drag_drop" plugin requires jQuery UI "sortable".');
+		if (this.settings.mode !== 'multi') return;
+		var self = this;
+	
+		self.lock = (function() {
+			var original = self.lock;
+			return function() {
+				var sortable = self.$control.data('sortable');
+				if (sortable) sortable.disable();
+				return original.apply(self, arguments);
+			};
+		})();
+	
+		self.unlock = (function() {
+			var original = self.unlock;
+			return function() {
+				var sortable = self.$control.data('sortable');
+				if (sortable) sortable.enable();
+				return original.apply(self, arguments);
+			};
+		})();
+	
+		self.setup = (function() {
+			var original = self.setup;
+			return function() {
+				original.apply(this, arguments);
+	
+				var $control = self.$control.sortable({
+					items: '[data-value]',
+					forcePlaceholderSize: true,
+					disabled: self.isLocked,
+					start: function(e, ui) {
+						ui.placeholder.css('width', ui.helper.css('width'));
+						$control.css({overflow: 'visible'});
+					},
+					stop: function() {
+						$control.css({overflow: 'hidden'});
+						var active = self.$activeItems ? self.$activeItems.slice() : null;
+						var values = [];
+						$control.children('[data-value]').each(function() {
+							values.push($(this).attr('data-value'));
+						});
+						self.setValue(values);
+						self.setActiveItem(active);
+					}
+				});
+			};
+		})();
+	
+	});
+	
+	Selectize.define('dropdown_header', function(options) {
+		var self = this;
+	
+		options = $.extend({
+			title         : 'Untitled',
+			headerClass   : 'selectize-dropdown-header',
+			titleRowClass : 'selectize-dropdown-header-title',
+			labelClass    : 'selectize-dropdown-header-label',
+			closeClass    : 'selectize-dropdown-header-close',
+	
+			html: function(data) {
+				return (
+					'<div class="' + data.headerClass + '">' +
+						'<div class="' + data.titleRowClass + '">' +
+							'<span class="' + data.labelClass + '">' + data.title + '</span>' +
+							'<a href="javascript:void(0)" class="' + data.closeClass + '">&times;</a>' +
+						'</div>' +
+					'</div>'
+				);
+			}
+		}, options);
+	
+		self.setup = (function() {
+			var original = self.setup;
+			return function() {
+				original.apply(self, arguments);
+				self.$dropdown_header = $(options.html(options));
+				self.$dropdown.prepend(self.$dropdown_header);
+			};
+		})();
+	
+	});
+	
+	Selectize.define('optgroup_columns', function(options) {
+		var self = this;
+	
+		options = $.extend({
+			equalizeWidth  : true,
+			equalizeHeight : true
+		}, options);
+	
+		this.getAdjacentOption = function($option, direction) {
+			var $options = $option.closest('[data-group]').find('[data-selectable]');
+			var index    = $options.index($option) + direction;
+	
+			return index >= 0 && index < $options.length ? $options.eq(index) : $();
+		};
+	
+		this.onKeyDown = (function() {
+			var original = self.onKeyDown;
+			return function(e) {
+				var index, $option, $options, $optgroup;
+	
+				if (this.isOpen && (e.keyCode === KEY_LEFT || e.keyCode === KEY_RIGHT)) {
+					self.ignoreHover = true;
+					$optgroup = this.$activeOption.closest('[data-group]');
+					index = $optgroup.find('[data-selectable]').index(this.$activeOption);
+	
+					if(e.keyCode === KEY_LEFT) {
+						$optgroup = $optgroup.prev('[data-group]');
+					} else {
+						$optgroup = $optgroup.next('[data-group]');
+					}
+	
+					$options = $optgroup.find('[data-selectable]');
+					$option  = $options.eq(Math.min($options.length - 1, index));
+					if ($option.length) {
+						this.setActiveOption($option);
+					}
+					return;
+				}
+	
+				return original.apply(this, arguments);
+			};
+		})();
+	
+		var equalizeSizes = function() {
+			var i, n, height_max, width, width_last, width_parent, $optgroups;
+	
+			$optgroups = $('[data-group]', self.$dropdown_content);
+			n = $optgroups.length;
+			if (!n || !self.$dropdown_content.width()) return;
+	
+			if (options.equalizeHeight) {
+				height_max = 0;
+				for (i = 0; i < n; i++) {
+					height_max = Math.max(height_max, $optgroups.eq(i).height());
+				}
+				$optgroups.css({height: height_max});
+			}
+	
+			if (options.equalizeWidth) {
+				width_parent = self.$dropdown_content.innerWidth();
+				width = Math.round(width_parent / n);
+				$optgroups.css({width: width});
+				if (n > 1) {
+					width_last = width_parent - width * (n - 1);
+					$optgroups.eq(n - 1).css({width: width_last});
+				}
+			}
+		};
+	
+		if (options.equalizeHeight || options.equalizeWidth) {
+			hook.after(this, 'positionDropdown', equalizeSizes);
+			hook.after(this, 'refreshOptions', equalizeSizes);
+		}
+	
+	
+	});
+	
+	Selectize.define('remove_button', function(options) {
+		if (this.settings.mode === 'single') return;
+	
+		options = $.extend({
+			label     : '&times;',
+			title     : 'Remove',
+			className : 'remove',
+			append    : true
+		}, options);
+	
+		var self = this;
+		var html = '<a href="javascript:void(0)" class="' + options.className + '" tabindex="-1" title="' + escape_html(options.title) + '">' + options.label + '</a>';
+	
+		/**
+		 * Appends an element as a child (with raw HTML).
+		 *
+		 * @param {string} html_container
+		 * @param {string} html_element
+		 * @return {string}
+		 */
+		var append = function(html_container, html_element) {
+			var pos = html_container.search(/(<\/[^>]+>\s*)$/);
+			return html_container.substring(0, pos) + html_element + html_container.substring(pos);
+		};
+	
+		this.setup = (function() {
+			var original = self.setup;
+			return function() {
+				// override the item rendering method to add the button to each
+				if (options.append) {
+					var render_item = self.settings.render.item;
+					self.settings.render.item = function(data) {
+						return append(render_item.apply(this, arguments), html);
+					};
+				}
+	
+				original.apply(this, arguments);
+	
+				// add event listener
+				this.$control.on('click', '.' + options.className, function(e) {
+					e.preventDefault();
+					if (self.isLocked) return;
+	
+					var $item = $(e.target).parent();
+					self.setActiveItem($item);
+					if (self.deleteSelection()) {
+						self.setCaret(self.items.length);
+					}
+				});
+	
+			};
+		})();
+	
+	});
+	
+	Selectize.define('restore_on_backspace', function(options) {
+		var self = this;
+	
+		options.text = options.text || function(option) {
+			return option[this.settings.labelField];
+		};
+	
+		this.onKeyDown = (function(e) {
+			var original = self.onKeyDown;
+			return function(e) {
+				var index, option;
+				if (e.keyCode === KEY_BACKSPACE && this.$control_input.val() === '' && !this.$activeItems.length) {
+					index = this.caretPos - 1;
+					if (index >= 0 && index < this.items.length) {
+						option = this.options[this.items[index]];
+						if (this.deleteSelection(e)) {
+							this.setTextboxValue(options.text.apply(this, [option]));
+							this.refreshOptions(true);
+						}
+						e.preventDefault();
+						return;
+					}
+				}
+				return original.apply(this, arguments);
+			};
+		})();
+	});
+
+	return Selectize;
+}));
+},{}],28:[function(require,module,exports){
+var	$ = require('jquery'),
+	TagProcess = require('./js/tagprocess'),
+	Router = require('./js/router'),
+	Header = require('./js/modules/header'),
+	NavBar = require('./js/modules/navbar'),
+	Footer = require('./js/modules/footer'),
+	header = new Header.View(),
+	navbar = new NavBar.View(),
+	footer = new Footer.View(),
+	deferred = {};
+
+TagProcess.vent.on('domchange:page', function (options) {
+    if (options.title && options.title.trim() !== '') {
+        TagProcess.$doc.attr('title', TagProcess.title + ': ' + options.title);
+    } else {
+        TagProcess.$doc.attr('title', TagProcess.title);
+    }
+});
+
+$('#layout').prepend(navbar.render().$el)
+    .prepend(header.render().$el).parent()
+	.append(footer.render().$el);
+
+var signInAttempt = TagProcess.Auth.rememberMeSignIn();
+if (signInAttempt !== false) {
+	deferred.userRequest = $.Deferred();
+	signInAttempt.always(deferred.userRequest.resolve);
+}
+
+Router.initialize();
+
+},{"./js/modules/footer":7,"./js/modules/header":8,"./js/modules/navbar":14,"./js/router":20,"./js/tagprocess":21,"jquery":63}],29:[function(require,module,exports){
+var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
+  this.compilerInfo = [4,'>= 1.0.0'];
+helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
+  
+
+
+  return "<div id=\"about\" class=\"container-fluid\">\n    <div class=\"row\">\n        <div class=\"col-md-12\">\n            <h2>About us</h2>\n            <h3>We look Forward To The Opportunity To Impress You!</h3>\n            <p>TAG PROCESS  philosophy and the flexibility needed to meet the needs of our clients and partners requires us to continually pursue accuracy, speed, and responsiveness.<br/><br/>\n                Our clients are assured of the integrity of our service. Our managed network of Process Servers is experienced, highly skilled, trained, and licensed, ensuring legally defendable service of process time and again.<br/><br/>\n                We pride ourselves on the highest level of customer service and stride each day to remain one of the best process serving companies in the state of Florida. <br/><br/>\n                We have extensive experience in state-of-the-art networking, technology infrastructure and business growth strategies. We can design a step-by-step, cost-effective plan for you to achieve optimum ongoing productivity for your company.</p>\n        </div>\n    </div>\n</div>\n";
+  });
+},{"handlebars/runtime":60}],30:[function(require,module,exports){
+var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
+  this.compilerInfo = [4,'>= 1.0.0'];
+helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
+  
+
+
+  return "<div id=\"contact\" class=\"container-fluid\">\n    <div class=\"row\">\n        <div class=\"col-md-6\">\n            <h2 style=\"margin-top: 0px;\">Contact Us\n                <small> Send us an e-mail </small>\n            </h2>\n            <form class=\"form-horizontal\" method=\"post\" action=\"contactus.php\" role=\"form\">\n                <div class=\"form-group\">\n                    <label for=\"name\" class=\"col-sm-2 control-label\">Name:</label>\n                    <div class=\"col-sm-10\">\n                        <input class=\"form-control\" name=\"name\" id=\"name\" type=\"text\" placeholder=\"Name\" required/>\n                    </div>\n                </div>\n                <div class=\"form-group\">\n                    <label for=\"phone\" class=\"col-sm-2 control-label\">Phone #:</label>\n                    <div class=\"col-sm-10\">\n                        <input class=\"form-control\" name=\"phone\" id=\"phone\" type=\"tel\" placeholder=\"Eg. (410) 555-5555\" pattern=\"^(?:\\(\\d{3}\\)|\\d{3})[- ]?\\d{3}[- ]?\\d{4}$\"/>\n                    </div>\n                </div>\n                <div class=\"form-group\">\n                    <label for='email' class=\"col-sm-2 control-label\">E-mail:</label>\n                    <div class=\"col-sm-10\">\n                        <input name='email' id='email' type=\"email\" class=\"form-control\" placeholder=\"E-mail\" required/>\n                    </div>\n                </div>\n                <div class=\"form-group\">\n                    <label for='subject' class=\"col-sm-2 control-label\">Subject:</label>\n                    <div class=\"col-sm-10\">\n                        <input name='subject' id='subject' type='text' class=\"form-control\" placeholder=\"Subject\" required/>\n                    </div>\n                </div>\n                <div class=\"form-group\">\n                    <label for='message' class=\"col-sm-2 control-label\">Message:</label>\n                    <div class=\"col-sm-10\">\n                        <textarea name='message' id='message' class=\"form-control\" placeholder=\"Message\" required></textarea>\n                    </div>\n                </div>\n				<div class=\"alert alert-danger hide col-sm-offset-2 col-sm-10\"></div>\n                <div class=\"form-group\">\n                    <div class=\"col-sm-offset-2 col-sm-10\">\n                        <button type=\"submit\" class=\"btn btn-default btn-block\">\n                            Send <span class=\"glyphicon glyphicon-send\"></span>\n                        </button>\n                    </div>\n                </div>\n            </form>\n        </div>\n        <div class=\"col-md-6\">\n            <address>\n                  <strong>TagProcess, LLC.</strong><br>\n                  7128  NW 49TH ST.<br>\n                  LAUDERHILL, FL 33319<br>\n                  <abbr title=\"Phone\">P:</abbr> (561) 899-0777<br>\n                  <abbr title=\"Fax\">F:</abbr> (754) 200-4423\n            </address>\n            <address>\n                  <strong>Gary Tomlinson</strong><br>\n                  <a href=\"mailto:#\">INFO@TAGPROCESSLLC.com</a>\n            </address>\n        </div>\n    </div>\n</div>\n";
+  });
+},{"handlebars/runtime":60}],31:[function(require,module,exports){
+var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
+  this.compilerInfo = [4,'>= 1.0.0'];
+helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
+  
+
+
+  return "<div class=\"container\">\n	<div class=\"text-center\">\n	    Copyright 2012 Tag Process LLC. All rights reserved<br>\n		<address>\n            3500 N State Road 7 Suite 430, Lauderdale Lakes, FL 33319 Call (561)899.0777 Fax (754)200.4423\n        </address>\n	</div>\n</div>\n";
+  });
+},{"handlebars/runtime":60}],32:[function(require,module,exports){
+var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
+  this.compilerInfo = [4,'>= 1.0.0'];
+helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
+  
+
+
+  return "<div class=\"container-fluid\">\n	<div class=\"row\">\n		<div class=\"col-md-2 sidebar\"></div>\n		<div class=\"col-md-10\">\n			<form class=\"form-horizontal\" data-url=\"/tagproc/api/attorney\">\n				<div class=\"form-group\">\n					<label for=\"att_first\" class=\"col-sm-2 control-label\">First Name</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"att_first\" name=\"att_first\" placeholder=\"Attorney's First Name\" required>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"att_last\" class=\"col-sm-2 control-label\">Last Name</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"att_last\" name=\"att_last\" placeholder=\"Attorney's Last Name\" required>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"att_firm\" class=\"col-sm-2 control-label\">Firm</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"att_firm\" name=\"att_firm\" placeholder=\"Firm\">\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"att_bar\" class=\"col-sm-2 control-label\">Bar Number</label>\n					<div class=\"col-sm-10\">\n						<input type=\"tel\" class=\"form-control\" id=\"att_bar\" name=\"att_bar\" placeholder=\"Bar Number\">\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"att_phone\" class=\"col-sm-2 control-label\">Phone Number</label>\n					<div class=\"col-sm-10\">\n						<input type=\"tel\" class=\"form-control\" id=\"att_phone\" name=\"att_phone\" placeholder=\"Phone Number\">\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"att_address\" class=\"col-sm-2 control-label\">Address</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"att_address\" name=\"att_address\" placeholder=\"Attorney's Address\" required>\n					</div>\n				</div>\n				<div class=\"alert alert-danger hide col-sm-offset-2 col-sm-10\"></div>\n				<div class=\"form-group\">\n					<div class=\"col-sm-offset-2 col-sm-10\">\n						<button type=\"submit\" class=\"btn btn-default btn-block\">Submit</button>\n					</div>\n				</div>\n			</form>\n		</div>\n	</div>\n</div>\n";
+  });
+},{"handlebars/runtime":60}],33:[function(require,module,exports){
+var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
+  this.compilerInfo = [4,'>= 1.0.0'];
+helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
+  
+
+
+  return "<div class=\"container-fluid\">\n	<div class=\"row\">\n		<div class=\"col-md-2 sidebar\"></div>\n		<div class=\"col-md-10\">\n			<form class=\"form-horizontal\" data-url=\"/tagproc/api/case\">\n			    <div class=\"form-group\">\n					<label for=\"account\" class=\"col-sm-2 control-label\">Account Responsible</label>\n					<div class=\"col-sm-10\">\n						<select class=\"form-control\" id=\"account\" name=\"account\" data-value=\"accountname\" data-label=\"accountname\" data-search=\"accountname\" data-url=\"/tagproc/api/accounts\" required>\n							<option value=\"\">Please select one...</option>\n						</select>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"server\" class=\"col-sm-2 control-label\">Server Assigned</label>\n					<div class=\"col-sm-10\">\n						<select class=\"form-control\" id=\"server\" name=\"server\" data-value=\"uniqueid\" data-label=\"firstname\" data-search=\"uniqueid,firstname,lastname,county\" data-url=\"/tagproc/api/servers\" required>\n							<option value=\"\">Please select one...</option>\n						</select>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"served_party\" class=\"col-sm-2 control-label\">Party to be served</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"served_party\" name=\"served_party\" placeholder=\"Served party\">\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"served_person\" class=\"col-sm-2 control-label\">Person to be served</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"served_person\" name=\"served_person\" placeholder=\"Served Person\">\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"date_received\" class=\"col-sm-2 control-label\">Received Date</label>\n					<div class=\"col-sm-10\">\n						<input type=\"date\" class=\"form-control\" id=\"date_received\" name=\"date_received\" placeholder=\"Date Received\">\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"time_received\" class=\"col-sm-2 control-label\">Received Time</label>\n					<div class=\"col-sm-10\">\n						<input type=\"time\" class=\"form-control\" id=\"time_received\" name=\"time_received\" placeholder=\"Time Received\">\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"served_documents\" class=\"col-sm-2 control-label\">Documents to be Served</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"served_documents\" name=\"served_documents\" placeholder=\"Served Documents\">\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"date_court\" class=\"col-sm-2 control-label\">Court Date/Time</label>\n					<div class=\"col-sm-10\">\n						<input type=\"datetime-local\" class=\"form-control\" id=\"date_court\" name=\"date_court\" placeholder=\"Court Date and Time\">\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"casenumber\" class=\"col-sm-2 control-label\">Case Number</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"casenumber\" name=\"casenumber\" placeholder=\"Case Number\">\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"judge\" class=\"col-sm-2 control-label\">Judge</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"judge\" name=\"judge\" placeholder=\"Judge\">\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"plaintiff\" class=\"col-sm-2 control-label\">Plaintiff</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"plaintiff\" name=\"plaintiff\" placeholder=\"Plaintiff\">\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"defendant\" class=\"col-sm-2 control-label\">Defendant</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"defendant\" name=\"defendant\" placeholder=\"Defendant\">\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"attorney\" class=\"col-sm-2 control-label\">Attorney</label>\n					<div class=\"col-sm-10\">\n						<select class=\"form-control\" id=\"attorney\" name=\"attorney\" data-value=\"attorney\" data-label=\"attorney\" data-search=\"attorney\" data-url=\"/tagproc/api/attorneys\" required>\n							<option value=\"\">Please select one...</option>\n						</select>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"state\" class=\"col-sm-2 control-label\">State</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"state\" name=\"state\" placeholder=\"State\">\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"county\" class=\"col-sm-2 control-label\">County</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"county\" name=\"county\" placeholder=\"County\">\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"courttype\" class=\"col-sm-2 control-label\">Type of Court</label>\n					<div class=\"col-sm-10\">\n						<select class=\"form-control\" id=\"courttype\" name=\"courttype\" data-value=\"value\" data-search=\"text\" data-label=\"text\" required>\n							<option value=\"\">Please select one...</option>\n							<option value=\"Circuit\">Circuit</option>\n							<option value=\"Family\">Family</option>\n							<option value=\"County\">County</option>\n							<option value=\"District\">District</option>\n						</select>\n					</div>\n				</div>\n				<h3>Invoice Details</h3>\n				<div class=\"form-group\">\n					<label for=\"amount\" class=\"col-sm-2 control-label\">Amount</label>\n					<div class=\"col-sm-10\">\n						<input type=\"number\" class=\"form-control\" id=\"amount\" name=\"amount\" placeholder=\"Amount\">\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"itemname\" class=\"col-sm-2 control-label\">Name</label>\n					<div class=\"col-sm-10\">\n						<select class=\"form-control\" id=\"itemname\" name=\"itemname\">\n                            <option value=\"\">Please select one...</option>\n                            <option>SUMMON</option>\n                            <option>SUBPOENA</option>\n                            <option>MANUAL INVOICE</option>\n                            <option>COURIER</option>\n                            <option>SKIP TRACE</option>\n                            <option>STAKEOUT</option>\n                            <option>DEFAULT</option>\n						</select>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"itemdescription\" class=\"col-sm-2 control-label\">Description</label>\n					<div class=\"col-sm-10\">\n						<textarea class=\"form-control\" id=\"itemdescription\" name=\"itemdescription\" placeholder=\"Description\"></textarea>\n					</div>\n				</div>\n				<div class=\"alert alert-danger hide col-sm-offset-2 col-sm-10\"></div>\n				<div class=\"form-group\">\n					<div class=\"col-sm-offset-2 col-sm-10\">\n						<button type=\"submit\" class=\"btn btn-default btn-block\">Submit</button>\n					</div>\n				</div>\n			</form>\n		</div>\n	</div>\n</div>\n";
+  });
+},{"handlebars/runtime":60}],34:[function(require,module,exports){
+var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
+  this.compilerInfo = [4,'>= 1.0.0'];
+helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
+  
+
+
+  return "<div class=\"container-fluid\">\n	<div class=\"row\">\n		<div class=\"col-md-2 sidebar\"></div>\n		<div class=\"col-md-10\">\n			<form class=\"form-horizontal\" data-url=\"/tagproc/api/client\">\n				<div class=\"form-group\">\n					<label for=\"client_username\" class=\"col-sm-2 control-label\">Username</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"client_username\" name=\"client_username\" placeholder=\"Client Username\" required>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"client_password\" class=\"col-sm-2 control-label\">Password</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"client_password\" name=\"client_password\" placeholder=\"Client Password\" required>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"client_account\" class=\"col-sm-2 control-label\">Account Name</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"client_account\" name=\"client_account\" placeholder=\"Client's Account Name\" required>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"client_phone\" class=\"col-sm-2 control-label\">Phone</label>\n					<div class=\"col-sm-10\">\n						<input type=\"tel\" class=\"form-control\" id=\"client_phone\" name=\"client_phone\" placeholder=\"Client's Phone #\">\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"client_fax\" class=\"col-sm-2 control-label\">Fax</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"client_fax\" name=\"client_fax\" placeholder=\"Client's Fax #\">\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"client_email\" class=\"col-sm-2 control-label\">E-mail</label>\n					<div class=\"col-sm-10\">\n						<input type=\"email\" class=\"form-control\" id=\"client_email\" name=\"client_email\" placeholder=\"E-mail\">\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"client_address\" class=\"col-sm-2 control-label\">Address</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"client_address\" name=\"client_address\" placeholder=\"Client's Address\" required>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"client_city\" class=\"col-sm-2 control-label\">City</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"client_city\" name=\"client_city\" placeholder=\"City\" required>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"client_state\" class=\"col-sm-2 control-label\">State</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"client_state\" name=\"client_state\" placeholder=\"State\" required>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"client_zip\" class=\"col-sm-2 control-label\">Zip</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"client_zip\" name=\"client_zip\" placeholder=\"ZIP Code\" required>\n					</div>\n				</div>\n				<div class=\"alert alert-danger hide col-sm-offset-2 col-sm-10\"></div>\n				<div class=\"form-group\">\n					<div class=\"col-sm-offset-2 col-sm-10\">\n						<button type=\"submit\" class=\"btn btn-default btn-block\">Submit</button>\n					</div>\n				</div>\n			</form>\n		</div>\n	</div>\n</div>\n";
+  });
+},{"handlebars/runtime":60}],35:[function(require,module,exports){
+var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
+  this.compilerInfo = [4,'>= 1.0.0'];
+helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
+  
+
+
+  return "<form class=\"form-horizontal\" id=\"commentForm\">\n    <div class=\"form-group\">\n        <label for=\"comment\" class=\"col-md-2 control-label\">Comment</label>\n        <div class=\"col-md-10\">\n            <textarea id=\"comment\" name=\"comment\" class=\"form-control\" required></textarea>\n        </div>\n    </div>\n    <div class=\"form-group\">\n        <div class=\"col-sm-offset-2 col-sm-10\">\n            <button type=\"submit\" class=\"btn btn-primary\">Submit</button>\n        </div>\n    </div>\n</form>";
+  });
+},{"handlebars/runtime":60}],36:[function(require,module,exports){
+var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
+  this.compilerInfo = [4,'>= 1.0.0'];
+helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
+  
+
+
+  return "<div class=\"container-fluid\">\n	<div class=\"row\">\n		<div class=\"col-md-2 sidebar\"></div>\n		<div class=\"col-md-10\">\n			<form class=\"form-horizontal\" data-url=\"/tagproc/api/employee\">\n				<div class=\"form-group\">\n					<label for=\"employee_username\" class=\"col-sm-2 control-label\">Username</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"employee_username\" name=\"employee_username\" placeholder=\"Username\" required>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"employee_password\" class=\"col-sm-2 control-label\">Password</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"employee_password\" name=\"employee_password\" placeholder=\"Password\" required>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"employee_name\" class=\"col-sm-2 control-label\">Employee Name</label>\n					<div class=\"col-sm-10\">\n						<input type=\"tel\" class=\"form-control\" id=\"employee_name\" name=\"employee_name\" placeholder=\"Employee's Name\" required>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"employee_phone\" class=\"col-sm-2 control-label\">Phone #</label>\n					<div class=\"col-sm-10\">\n						<input type=\"tel\" class=\"form-control\" id=\"employee_phone\" name=\"employee_phone\" placeholder=\"Phone #\">\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"employee_fax\" class=\"col-sm-2 control-label\">Fax #</label>\n					<div class=\"col-sm-10\">\n						<input type=\"tel\" class=\"form-control\" id=\"employee_fax\" name=\"employee_fax\" placeholder=\"Fax #\">\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"employee_email\" class=\"col-sm-2 control-label\">E-mail</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"employee_email\" name=\"employee_email\" placeholder=\"E-mail\" required>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"employee_address\" class=\"col-sm-2 control-label\">Address</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"employee_address\" name=\"employee_address\" placeholder=\"Employee's Address\" required>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"employee_city\" class=\"col-sm-2 control-label\">City</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"employee_city\" name=\"employee_city\" placeholder=\"City\" required>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"employee_state\" class=\"col-sm-2 control-label\">State</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"employee_state\" name=\"employee_state\" placeholder=\"State\" required>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"employee_zip\" class=\"col-sm-2 control-label\">Zip</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"employee_zip\" name=\"employee_zip\" placeholder=\"Zip\" required>\n					</div>\n				</div>\n				<div class=\"alert alert-danger hide col-sm-offset-2 col-sm-10\"></div>\n				<div class=\"form-group\">\n					<div class=\"col-sm-offset-2 col-sm-10\">\n						<button type=\"submit\" class=\"btn btn-default btn-block\">Submit</button>\n					</div>\n				</div>\n			</form>\n		</div>\n	</div>\n</div>";
+  });
+},{"handlebars/runtime":60}],37:[function(require,module,exports){
+var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
+  this.compilerInfo = [4,'>= 1.0.0'];
+helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
+  
+
+
+  return "<div class=\"container-fluid\">\n	<div class=\"row\">\n		<div class=\"col-md-2 sidebar\"></div>\n		<div class=\"col-md-10\">\n			<form class=\"form-horizontal\" data-url=\"/tagproc/api/server\">\n				<div class=\"form-group\">\n					<label for=\"server_fname\" class=\"col-sm-2 control-label\">First Name</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"server_fname\" name=\"server_fname\" placeholder=\"Server First Name\" required>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"server_lname\" class=\"col-sm-2 control-label\">Last Name</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"server_lname\" name=\"server_lname\" placeholder=\"Server Last Name\" required>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"server_type\" class=\"col-sm-2 control-label\">Server Type</label>\n					<div class=\"col-sm-10\">\n						<select type=\"text\" class=\"form-control\" id=\"server_type\" name=\"server_type\" data-value=\"value\" data-label=\"text\" data-search=\"text\" required>\n							<option value=\"\">Please select one...</option>\n							<option value=\"Certified Process Server\">Certified Process Server</option>\n							<option value=\"Special Process Server\">Special Process Server</option>\n							<option value=\"Court Officer\">Court Officer</option>\n						</select>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"server_id\" class=\"col-sm-2 control-label\">Server ID #</label>\n					<div class=\"col-sm-10\">\n						<input type=\"tel\" class=\"form-control\" id=\"server_id\" name=\"server_id\" placeholder=\"Server's ID #\" required>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"server_county\" class=\"col-sm-2 control-label\">County</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"server_county\" name=\"server_county\" placeholder=\"County\">\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"server_phone\" class=\"col-sm-2 control-label\">Phone #</label>\n					<div class=\"col-sm-10\">\n						<input type=\"tel\" class=\"form-control\" id=\"server_phone\" name=\"server_phone\" placeholder=\"Phone #\">\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"server_address\" class=\"col-sm-2 control-label\">Address</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"server_address\" name=\"server_address\" placeholder=\"Server's Address\" required>\n					</div>\n				</div>\n				<div class=\"alert alert-danger hide col-sm-offset-2 col-sm-10\"></div>\n				<div class=\"form-group\">\n					<div class=\"col-sm-offset-2 col-sm-10\">\n						<button type=\"submit\" class=\"btn btn-default btn-block\">Submit</button>\n					</div>\n				</div>\n			</form>\n		</div>\n	</div>\n</div>\n";
+  });
+},{"handlebars/runtime":60}],38:[function(require,module,exports){
+var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
+  this.compilerInfo = [4,'>= 1.0.0'];
+helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
+  
+
+
+  return "<div class=\"container-fluid\" style=\"position: relative\">\n    <img class=\"img-responsive\"  src=\"app/images/tag_logo.jpg\"/>\n    <p class=\"text-right col-md-8\" style=\"position: absolute; bottom: 0; right: 0; margin-bottom: 0px;\">\n        <small id=\"login-message\">You're currently not logged in.</small>\n    </p>\n</div>\n";
+  });
+},{"handlebars/runtime":60}],39:[function(require,module,exports){
+var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
+  this.compilerInfo = [4,'>= 1.0.0'];
+helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
+  
+
+
+  return "<div class=\"container-fluid\">\n	<div class=\"row\">\n		<div class=\"col-md-6 col-xs-12\">\n			<img class=\"img-rounded img-responsive pull-left col-md-6 col-xs-12\" src=\"app/images/header_img1.jpg\">\n			<h3 style=\"margin-top: 0px;\" class=\"col-md-6 text-left\">We have over 11 years of experience in the process serving.</h3>\n		</div>\n		<div class=\"col-md-6 col-xs-12\">\n			<h3 style=\"margin-top: 0px;\">Changing the way of process serving</h3>                                                                                                                                                                                            \n			<h3>GREAT CUSTOMER SERVICE</h3>                                                                                                                                                                                                         \n			<p class=\"text-info\">With over 11 years of experience, TAG Process Service llc<br>                                                                                                                                                       \n				We specialize in serving all documents. Through our technology <br>\n				Which establish us as the leader in the process industry.</p>                                                                                                                                                                                                                                      \n		</div>\n	</div>\n	<hr>\n	<div class=\"row\">\n		<div class=\"col-md-6 col-xs-12\">\n			<img class=\"img-rounded img-responsive pull-left col-md-6 col-xs-12\" src=\"app/images/technology.png\">\n			<h3 style=\"margin-top: 0px;\" class=\"col-md-6 text-left\">We are the leaders in Technology in the Process Serving Industry.</h3>\n		</div>  \n		<div class=\"col-md-6 col-xs-12\">\n			<img class=\"img-rounded img-response pull-right\" src=\"app/images/ts_logo.jpg\">\n			<h3 style=\"margin-top: 0px;\">We are looking forward to working with you.</h3>\n			<p class=\"text-info\">For more information on our technology click <a href=\"#aboutus\">About Us</a> </p>\n			<p class=\"text-info\">Here is a complete company directory <br>\n				Or contact us via email by completing the <br>\n				<a href=\"#contactus\">contact us</a> form. </p>\n		</div>\n	</div>\n</div>\n";
+  });
+},{"handlebars/runtime":60}],40:[function(require,module,exports){
+var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
+  this.compilerInfo = [4,'>= 1.0.0'];
+helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
+  var buffer = "", stack1, functionType="function", escapeExpression=this.escapeExpression, self=this, helperMissing=helpers.helperMissing;
+
+function program1(depth0,data) {
+  
+  var buffer = "", stack1, helper, options;
+  buffer += "\n						<tr>\n							<th>";
+  stack1 = (helper = helpers.parse || (depth0 && depth0.parse),options={hash:{},inverse:self.noop,fn:self.program(2, program2, data),data:data},helper ? helper.call(depth0, (data == null || data === false ? data : data.key), options) : helperMissing.call(depth0, "parse", (data == null || data === false ? data : data.key), options));
+  if(stack1 || stack1 === 0) { buffer += stack1; }
+  buffer += "</th>\n							<td>\n								<div class=\"col-md-10 col-xs-10 noOverflow\">";
+  stack1 = helpers['if'].call(depth0, (depth0 && depth0.value), {hash:{},inverse:self.program(6, program6, data),fn:self.program(4, program4, data),data:data});
+  if(stack1 || stack1 === 0) { buffer += stack1; }
+  buffer += "</div>\n								<form class=\"form-inline col-md-10 col-xs-10 hide formEdit\" role=\"form\">\n									<div class=\"form-group col-md-10 col-xs-10\">\n										<div class=\"input-group col-md-12 col-xs-12\">\n											<label class=\"sr-only\" for=\""
+    + escapeExpression(((stack1 = (data == null || data === false ? data : data.key)),typeof stack1 === functionType ? stack1.apply(depth0) : stack1))
+    + "\">";
+  stack1 = (helper = helpers.parse || (depth0 && depth0.parse),options={hash:{},inverse:self.noop,fn:self.program(2, program2, data),data:data},helper ? helper.call(depth0, (data == null || data === false ? data : data.key), options) : helperMissing.call(depth0, "parse", (data == null || data === false ? data : data.key), options));
+  if(stack1 || stack1 === 0) { buffer += stack1; }
+  buffer += "</label>\n											<input class=\"form-control\" type=\"text\" name=\""
+    + escapeExpression(((stack1 = (data == null || data === false ? data : data.key)),typeof stack1 === functionType ? stack1.apply(depth0) : stack1))
+    + "\" id=\""
+    + escapeExpression(((stack1 = (data == null || data === false ? data : data.key)),typeof stack1 === functionType ? stack1.apply(depth0) : stack1))
+    + "\" value=\""
+    + escapeExpression(((stack1 = (depth0 && depth0.value)),typeof stack1 === functionType ? stack1.apply(depth0) : stack1))
+    + "\">\n										</div>\n									</div>\n									<button type=\"submit\" class=\"btn btn-default\">\n										<span class=\"glyphicon glyphicon-floppy-disk\"></span>\n									</button>\n									<button type=\"button\" class=\"btn btn-default edit\">\n										<span class=\"glyphicon glyphicon-remove\"></span>\n									</button>\n								</form>\n								";
+  stack1 = helpers['if'].call(depth0, (depth0 && depth0.editable), {hash:{},inverse:self.noop,fn:self.program(8, program8, data),data:data});
+  if(stack1 || stack1 === 0) { buffer += stack1; }
+  buffer += "\n							</td>\n						</tr>\n					";
+  return buffer;
+  }
+function program2(depth0,data) {
+  
+  var buffer = "";
+  return buffer;
+  }
+
+function program4(depth0,data) {
+  
+  var buffer = "", stack1;
+  buffer += " "
+    + escapeExpression(((stack1 = (depth0 && depth0.value)),typeof stack1 === functionType ? stack1.apply(depth0) : stack1))
+    + " ";
+  return buffer;
+  }
+
+function program6(depth0,data) {
+  
+  
+  return " N/A ";
+  }
+
+function program8(depth0,data) {
+  
+  
+  return "\n									<a href=\"#\" class=\"edit col-md-2 col-xs-2 text-right\"><span class=\"glyphicon glyphicon-pencil\" style=\"color: goldenrod;\"></span></a>\n								";
+  }
+
+function program10(depth0,data) {
+  
+  var buffer = "", stack1;
+  buffer += "\n					<h3>Attachments</h3>\n					<table class=\"table table-bordered table-condensed table-hover table-striped\">\n						<thead>\n							<tr>\n								<th>Type</th>\n								<th>Name</th>\n							</tr>\n						</thead>\n						<tbody>\n						";
+  stack1 = helpers.each.call(depth0, (depth0 && depth0.attachments), {hash:{},inverse:self.noop,fn:self.program(11, program11, data),data:data});
+  if(stack1 || stack1 === 0) { buffer += stack1; }
+  buffer += "\n						</tbody>\n					</table>\n				";
+  return buffer;
+  }
+function program11(depth0,data) {
+  
+  var buffer = "", stack1, helper, options;
+  buffer += "\n							<tr>\n								<td>";
+  stack1 = (helper = helpers.parseAttachmentType || (depth0 && depth0.parseAttachmentType),options={hash:{},inverse:self.noop,fn:self.program(2, program2, data),data:data},helper ? helper.call(depth0, (depth0 && depth0.type), options) : helperMissing.call(depth0, "parseAttachmentType", (depth0 && depth0.type), options));
+  if(stack1 || stack1 === 0) { buffer += stack1; }
+  buffer += "</td>\n								<td><a href=\"/tagproc/";
+  if (helper = helpers.url) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.url); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "\" target=\"_blank\">";
+  if (helper = helpers.name) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.name); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "</a></td>\n							</tr>\n						";
+  return buffer;
+  }
+
+  buffer += "<div class=\"container-fluid\">\n    <div class=\"row\">\n		<div id=\"tools\" class=\"col-md-2\">\n			<ul class=\"nav nav-stacked nav-pills\">\n				<li><a href=\"#\" id=\"viewDetails\">Serve Details</a></li>\n				<li><a href=\"#\" id=\"addComment\">Add a Comment</a></li>\n			</ul>\n		</div>\n        <div class=\"col-md-10\">\n			<div class=\"row table-responsive\">\n				<table class=\"table table-bordered table-condensed table-hover table-striped\">\n					<tbody>\n					";
+  stack1 = helpers.each.call(depth0, (depth0 && depth0.job), {hash:{},inverse:self.noop,fn:self.program(1, program1, data),data:data});
+  if(stack1 || stack1 === 0) { buffer += stack1; }
+  buffer += "\n					</tbody>\n				</table>\n			</div>\n			<div class=\"row table-responsive\">\n				";
+  stack1 = helpers['if'].call(depth0, (depth0 && depth0.attachments), {hash:{},inverse:self.noop,fn:self.program(10, program10, data),data:data});
+  if(stack1 || stack1 === 0) { buffer += stack1; }
+  buffer += "\n			</div>\n        </div>\n    </div>\n</div>\n\n";
+  return buffer;
+  });
+},{"handlebars/runtime":60}],41:[function(require,module,exports){
+var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
+  this.compilerInfo = [4,'>= 1.0.0'];
+helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
+  var buffer = "", stack1, functionType="function", escapeExpression=this.escapeExpression, self=this;
+
+function program1(depth0,data) {
+  
+  
+  return "\n<div class=\"container-fluid\">\n    <div class=\"row text-center\">\n		<div class=\"well well-lg\">\n			<span class=\"glyphicon glyphicon-ban-circle glyphicon-big-alert\"></span>\n			<p class=\"text-danger\">You do not have the required access right now.</p>\n		</div>\n	</div>\n</div>\n";
+  }
+
+function program3(depth0,data) {
+  
+  var buffer = "", stack1;
+  buffer += "\n<div class=\"container-fluid\">\n	<div class=\"row\">\n		<div class=\"col-md-2 sidebar\"></div>\n		<div class=\"col-md-10\">\n			<div class=\"row\">\n				<form class=\"form-horizontal col-sm-8\" role=\"form\">\n					<div class=\"form-group\">\n						<div class=\"input-group\">\n							<span class=\"input-group-addon\">\n								<i class=\"glyphicon glyphicon-search\"></i>\n							</span>\n							<input id=\"search\" type=\"text\" class=\"form-control\" placeholder=\"Search\" value=\""
+    + escapeExpression(((stack1 = ((stack1 = (depth0 && depth0.form)),stack1 == null || stack1 === false ? stack1 : stack1.q)),typeof stack1 === functionType ? stack1.apply(depth0) : stack1))
+    + "\" AUTOFOCUS>\n							<span class=\"input-group-btn\">\n								<button class=\"btn btn-default dropdown-toggle\" data-toggle=\"dropdown\" type=\"button\">\n									<span id=\"search-by-text\">";
+  stack1 = helpers['if'].call(depth0, ((stack1 = (depth0 && depth0.form)),stack1 == null || stack1 === false ? stack1 : stack1.searchby), {hash:{},inverse:self.program(6, program6, data),fn:self.program(4, program4, data),data:data});
+  if(stack1 || stack1 === 0) { buffer += stack1; }
+  buffer += "</span>\n									<span class=\"caret\"></span>\n								</button>\n								<ul class=\"dropdown-menu pull-right\" id=\"searchby\">\n									<li><a href=\"#\" data-value=\"jobnumber\">Job Number</a></li>\n									<li><a href=\"#\" data-value=\"account\">Client</a></li>\n									<li><a href=\"#\" data-value=\"casenumber\">Case</a></li>\n								</ul>\n							</span>\n						</div>\n					</div>\n				</form>\n				<div class=\"text-right col-sm-4\" style=\"font-size: 24px;\">\n					<a href=\"#\" class=\"switch-page\"  data-offset=\"-10\" title=\"Previous\">\n						<span class=\"glyphicon glyphicon-chevron-left\"></span>\n					</a>\n					<a href=\"#\" class=\"switch-page\" data-offset=\"10\" title=\"Next\">\n						<span class=\"glyphicon glyphicon-chevron-right\"></span>\n					</a>\n				</div>\n				<br>\n			</div>\n			<div class=\"row\">\n				<div class=\"table-responsive\">\n					<table class=\"table table-bordered table-condensed table-hover table-striped\">\n						<thead>\n							<tr>\n								<th>Job #</th>\n								<th>Account</th>\n								<th>Reference</th>\n								<th>To Serve On</th>\n								<th>Court Date</th>\n								<th>Completed</th>\n								<th>Type of Service</th>\n								<th>Date Received</th>\n							</tr>\n						</thead>\n						<tbody>\n						";
+  stack1 = helpers['if'].call(depth0, (depth0 && depth0.items), {hash:{},inverse:self.program(11, program11, data),fn:self.program(8, program8, data),data:data});
+  if(stack1 || stack1 === 0) { buffer += stack1; }
+  buffer += "\n						</tbody>\n					</table>\n				</div>\n			</div>\n		</div>\n	</div>\n</div>\n";
+  return buffer;
+  }
+function program4(depth0,data) {
+  
+  var buffer = "", stack1;
+  buffer += " "
+    + escapeExpression(((stack1 = ((stack1 = (depth0 && depth0.form)),stack1 == null || stack1 === false ? stack1 : stack1.searchby)),typeof stack1 === functionType ? stack1.apply(depth0) : stack1))
+    + "  ";
+  return buffer;
+  }
+
+function program6(depth0,data) {
+  
+  
+  return " Search By ";
+  }
+
+function program8(depth0,data) {
+  
+  var buffer = "", stack1;
+  buffer += "\n							";
+  stack1 = helpers.each.call(depth0, (depth0 && depth0.items), {hash:{},inverse:self.noop,fn:self.program(9, program9, data),data:data});
+  if(stack1 || stack1 === 0) { buffer += stack1; }
+  buffer += "\n						";
+  return buffer;
+  }
+function program9(depth0,data) {
+  
+  var buffer = "", stack1, helper;
+  buffer += "\n								<tr>\n									<td><a href=\"#jobs/";
+  if (helper = helpers.jobnumber) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.jobnumber); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "\">";
+  if (helper = helpers.jobnumber) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.jobnumber); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "</a></td>\n									<td>";
+  if (helper = helpers.account) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.account); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "</td>\n									<td></td>\n									<td>";
+  if (helper = helpers.served_party) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.served_party); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "</td>\n									<td>";
+  if (helper = helpers.date_court) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.date_court); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "</td>\n									<td>";
+  if (helper = helpers.date_served) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.date_served); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "</td>\n									<td>";
+  if (helper = helpers.served_documents) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.served_documents); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "</td>\n									<td>";
+  if (helper = helpers.date_received) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.date_received); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "</td>\n								</tr>\n							";
+  return buffer;
+  }
+
+function program11(depth0,data) {
+  
+  
+  return "\n							<tr>\n								<td colspan=\"8\"><em>No Jobs found.</em></td>\n							</tr>\n						";
+  }
+
+  stack1 = helpers['if'].call(depth0, (depth0 && depth0.no_access), {hash:{},inverse:self.program(3, program3, data),fn:self.program(1, program1, data),data:data});
+  if(stack1 || stack1 === 0) { buffer += stack1; }
+  buffer += "\n";
+  return buffer;
+  });
+},{"handlebars/runtime":60}],42:[function(require,module,exports){
+var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
+  this.compilerInfo = [4,'>= 1.0.0'];
+helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
+  
+
+
+  return "<div id=\"loginbox\" class=\"col-md-6 col-md-offset-3 col-sm-8 col-sm-offset-2\">\n	<div class=\"panel panel-info\" >\n		<div class=\"panel-heading\">\n			<div class=\"panel-title\">Sign In</div>\n		</div>\n		<div class=\"panel-body\">\n			<div id=\"login-alert\" class=\"alert alert-danger hide col-sm-12\"></div>\n			<form id=\"loginform\" class=\"form-horizontal\" role=\"form\">\n				<div class=\"form-group col-sm-12\">\n					<div class=\"input-group\">\n						<span class=\"input-group-addon\"><i class=\"glyphicon glyphicon-user\"></i></span>\n						<input id=\"username\" type=\"text\" class=\"form-control\" name=\"username\" value=\"\" placeholder=\"username\" required>                                   \n					</div>\n				</div>\n				<div class=\"form-group col-sm-12\">\n					<div class=\"input-group\">\n						<span class=\"input-group-addon\"><i class=\"glyphicon glyphicon-lock\"></i></span>\n						<input id=\"password\" type=\"password\" class=\"form-control\" name=\"password\" placeholder=\"password\" required>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<div class=\"col-sm-12 controls\">\n						<button id=\"btn-login\" class=\"btn btn-default btn-block\" type=\"submit\">Login  </a>\n					</div>\n				</div>\n			</form> \n		</div>                     \n	</div>  \n</div>\n";
+  });
+},{"handlebars/runtime":60}],43:[function(require,module,exports){
+var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
+  this.compilerInfo = [4,'>= 1.0.0'];
+helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
+  var buffer = "", stack1, helper, functionType="function", escapeExpression=this.escapeExpression;
+
+
+  buffer += "<div class=\"modal-dialog ";
+  if (helper = helpers.size) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.size); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "\">\n	<div class=\"modal-content\">\n		<div class=\"modal-header\">";
+  if (helper = helpers.header) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.header); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "</div>\n		<div class=\"modal-body\">";
+  if (helper = helpers.body) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.body); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "</div>\n		<div class=\"modal-footer\">";
+  if (helper = helpers.footer) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.footer); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "</div>\n	</div>\n</div>\n";
+  return buffer;
+  });
+},{"handlebars/runtime":60}],44:[function(require,module,exports){
+var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
+  this.compilerInfo = [4,'>= 1.0.0'];
+helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
+  var buffer = "", stack1, functionType="function", escapeExpression=this.escapeExpression, self=this, helperMissing=helpers.helperMissing;
+
+function program1(depth0,data) {
+  
+  var buffer = "", stack1, helper, options;
+  buffer += "\n	<div class=\"row\">\n		<div class=\"table-responsive\">\n			<table class=\"table table-bordered table-condensed table-hover table-striped\">\n				<thead>\n					<tr>\n						<th>Date</th>\n						<th>Comment</th>\n						<th>Latitude</th>\n						<th>Longitude</th>\n					</tr>\n				</thead>\n				<tbody>\n					<tr>\n						<td>";
+  if (helper = helpers.date) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.date); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "</td>\n						<td>";
+  if (helper = helpers.comment) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.comment); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "</td>\n						<td>";
+  if (helper = helpers.latitude) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.latitude); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "</td>\n						<td>";
+  if (helper = helpers.longitude) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.longitude); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "</td>\n					</tr>\n				</tbody>\n			</table>\n		</div>\n	</div>\n	<div class=\"row\">\n		<img src=\"";
+  if (helper = helpers.street) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.street); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "\" class=\"img-responsive col-md-6\">\n		<img src=\"";
+  if (helper = helpers.satellite) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.satellite); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "\" class=\"img-responsive col-md-6\">\n	</div>\n	<div class=\"row\">\n	    ";
+  stack1 = (helper = helpers.parseImageOrVideo || (depth0 && depth0.parseImageOrVideo),options={hash:{},inverse:self.noop,fn:self.program(2, program2, data),data:data},helper ? helper.call(depth0, (depth0 && depth0.image), "img-responsive col-md-12", options) : helperMissing.call(depth0, "parseImageOrVideo", (depth0 && depth0.image), "img-responsive col-md-12", options));
+  if(stack1 || stack1 === 0) { buffer += stack1; }
+  buffer += "\n	</div>\n";
+  return buffer;
+  }
+function program2(depth0,data) {
+  
+  var buffer = "";
+  return buffer;
+  }
+
+function program4(depth0,data) {
+  
+  var buffer = "", stack1, helper, options;
+  buffer += "\n	<div class=\"row\">\n		<div class=\"col-md-6\">\n			<div class=\"table-responsive\">\n				<table class=\"table table-bordered table-condensed table-hover table-striped\">\n					<tbody>\n						<tr>\n							<th>Date</th>\n							<td>";
+  if (helper = helpers.timestamp) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.timestamp); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "</td>\n						</tr>\n						<tr>\n							<th>GPS Location</th>\n							<td>";
+  if (helper = helpers.latitude) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.latitude); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + ", ";
+  if (helper = helpers.longitude) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.longitude); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "</td>\n						</tr>\n						<tr>\n							<th>Served On</th>\n							<td>";
+  if (helper = helpers.served_person) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.served_person); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "</td>\n						</tr>\n						<tr>\n							<th>Gender</th>\n							<td>";
+  if (helper = helpers.gender) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.gender); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "</td>\n						</tr>	\n						<tr>\n							<th>Age</th>\n							<td>";
+  if (helper = helpers.age) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.age); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "</td>\n						</tr>\n						<tr>\n							<th>Race</th>\n							<td>";
+  if (helper = helpers.race) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.race); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "</td>\n						</tr>\n						<tr>\n							<th>Height</th>\n							<td>";
+  if (helper = helpers.height) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.height); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "</td>\n						</tr>\n						<tr>\n							<th>Weight</th>\n							<td>";
+  if (helper = helpers.weight) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.weight); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "</td>\n						</tr>\n						<tr>\n							<th>Hair</th>\n							<td>";
+  if (helper = helpers.hair) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.hair); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "</td>\n						</tr>\n						<tr>\n							<th>Glasses</th>\n							<td>";
+  if (helper = helpers.glasses) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.glasses); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "</td>\n						</tr>\n					</tbody>\n				</table>\n			</div>\n		</div>\n		";
+  stack1 = (helper = helpers.parseImageOrVideo || (depth0 && depth0.parseImageOrVideo),options={hash:{},inverse:self.noop,fn:self.program(2, program2, data),data:data},helper ? helper.call(depth0, (depth0 && depth0.image), "img-responsive col-md-6", options) : helperMissing.call(depth0, "parseImageOrVideo", (depth0 && depth0.image), "img-responsive col-md-6", options));
+  if(stack1 || stack1 === 0) { buffer += stack1; }
+  buffer += "\n	</div>\n	<div class=\"row\">\n		<img src=\"";
+  if (helper = helpers.street) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.street); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "\" class=\"img-responsive col-md-6\">\n		<img src=\"";
+  if (helper = helpers.satellite) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.satellite); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "\" class=\"img-responsive col-md-6\">\n	</div>\n";
+  return buffer;
+  }
+
+  buffer += "<div class=\"container-fluid\">\n	<a href=\"#\" class=\"openList\"><span class=\"glyphicon glyphicon-arrow-left\"></span></a>\n";
+  stack1 = helpers['if'].call(depth0, (depth0 && depth0.comment), {hash:{},inverse:self.program(4, program4, data),fn:self.program(1, program1, data),data:data});
+  if(stack1 || stack1 === 0) { buffer += stack1; }
+  buffer += "\n</div>\n\n";
+  return buffer;
+  });
+},{"handlebars/runtime":60}],45:[function(require,module,exports){
+var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
+  this.compilerInfo = [4,'>= 1.0.0'];
+helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
+  var buffer = "", stack1, functionType="function", escapeExpression=this.escapeExpression, self=this;
+
+function program1(depth0,data) {
+  
+  var buffer = "", stack1, helper;
+  buffer += "\n					<tr>\n						<td>";
+  if (helper = helpers.date) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.date); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "</td>\n						<td>";
+  if (helper = helpers.image) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.image); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "</td>\n						<td>Comment</td>\n						<td class=\"text-right\">\n							<a href=\"#\" class=\"openDetails\" data-type=\"comment\" data-id=\"";
+  if (helper = helpers.id) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.id); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "\"><span class=\"glyphicon glyphicon-search\"></span></a>\n						</td>\n					</tr>\n					";
+  return buffer;
+  }
+
+  buffer += "<div class=\"container-fluid\">\n	<div class=\"row\">\n		<div class=\"table-responsive\">\n			<table class=\"table table-bordered table-condensed table-hover table-striped\">\n				<thead>\n					<tr>\n						<th>Date</th>\n						<th>Image Name</th>\n						<th>Type</th>\n						<th>Options</th>\n					</tr>\n				</thead>\n				<tbody>\n					<tr>\n						<td>"
+    + escapeExpression(((stack1 = ((stack1 = (depth0 && depth0.serve)),stack1 == null || stack1 === false ? stack1 : stack1.timestamp)),typeof stack1 === functionType ? stack1.apply(depth0) : stack1))
+    + "</td>\n						<td>"
+    + escapeExpression(((stack1 = ((stack1 = (depth0 && depth0.serve)),stack1 == null || stack1 === false ? stack1 : stack1.image)),typeof stack1 === functionType ? stack1.apply(depth0) : stack1))
+    + "</td>\n						<td>Serve</td>\n						<td class=\"text-right\">\n							<a href=\"#\" class=\"openDetails\" data-type=\"serve\"><span class=\"glyphicon glyphicon-search\"></span></a>\n						</td>\n					</tr>\n					";
+  stack1 = helpers.each.call(depth0, (depth0 && depth0.comments), {hash:{},inverse:self.noop,fn:self.program(1, program1, data),data:data});
+  if(stack1 || stack1 === 0) { buffer += stack1; }
+  buffer += "\n				</tbody>\n			</table>\n		</div>	\n	</div>\n</div>\n";
+  return buffer;
+  });
+},{"handlebars/runtime":60}],46:[function(require,module,exports){
+var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
+  this.compilerInfo = [4,'>= 1.0.0'];
+helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
+  
+
+
+  return "<nav class=\"navbar navbar-default\" role=\"navigation\">\n	<div class=\"container-fluid\">\n		<div class=\"navbar-header\">\n			<button type=\"button\" class=\"navbar-toggle\" data-toggle=\"collapse\" data-target=\"#nav-links\">\n				<span class=\"sr-only\">Toggle Navigation</span>\n				<span class=\"icon-bar\"></span>\n				<span class=\"icon-bar\"></span>\n				<span class=\"icon-bar\"></span>\n			</button>\n			<a class=\"navbar-brand\" href=\"#home\">TagProcess</a>\n		</div>\n		<div class=\"collapse navbar-collapse\" id=\"nav-links\">\n			<ul class=\"nav navbar-nav\" id=\"nav-ul\"></ul>\n			<ul class=\"nav navbar-nav navbar-right\">\n				<button type=\"button\" onclick=\"location.href='#login'\" class=\"btn btn-default navbar-btn\">Sign In</button>\n				<li class=\"dropdown hide\" id=\"user-dropdown\">\n					<a href=\"#\" class=\"dropdown-toggle\" data-toggle=\"dropdown\">\n						<span class=\"glyphicon glyphicon-user\"></span>\n						<span id=\"name-text\"> User</span>\n						<b class=\"caret\"></b>\n					</a>\n					<ul class=\"dropdown-menu\">\n						<li>\n							<a href=\"#\" id=\"logout\"><span class=\"glyphicon glyphicon-log-out\"></span> Log Out...</a>\n						</li>\n					</ul>\n				</li>\n			</ul>\n		</div>\n	</div>\n</nav>\n";
+  });
+},{"handlebars/runtime":60}],47:[function(require,module,exports){
+var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
+  this.compilerInfo = [4,'>= 1.0.0'];
+helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
+  var buffer = "", stack1, helper, functionType="function", escapeExpression=this.escapeExpression;
+
+
+  buffer += "<a href=\"";
+  if (helper = helpers.href) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.href); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "\">";
+  if (helper = helpers.name) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.name); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "</a>";
+  return buffer;
+  });
+},{"handlebars/runtime":60}],48:[function(require,module,exports){
+var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
+  this.compilerInfo = [4,'>= 1.0.0'];
+helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
+  
+
+
+  return "<div id=\"services\" class=\"container-fluid\">\n        <div class=\"row\">\n            <div class=\"col-md-8\">\n                <h2>TAG PROCESS SERVICES LLC</h2>\n                <p>Our competitors may offer numerous services, both related and unrelated to the service of process, TAG PROCESS flat rate pricing include many of the services you currently pay extra for with other process serving companies.</p>\n                <h2>Our Price Includes:</h2>\n                <ul>\n                    <li>Picking up documents at your office</li>\n                    <li>Issuing documents at respective courts</li>\n                    <li>Effecting service</li>\n                    <li>Skip trace bad addresses*</li>\n                    <li>File return of service with respective court</li>\n                </ul>\n            </div>\n            <div class=\"col-md-4 text-right\">\n                <img class=\"img-rounded img-responsive pull-left col-md-7 col-xs-12\" src=\"app/images/android.jpg\" style=\"height: 160px;\"></img>\n                <p class=\"text-info col-md-5 col-xs-12 text-left\">The technology we have is designed to save our clients time and money. <a href=\"#contactus\">Contact us</a> for more information and your 1st two jobs are FREE.</p>\n            </div>\n        </div>\n        <h2>In Addition, Our Clients Enjoy:</h2>\n        <h3>THE MOST COMPREHENSIVE WEBSITE</h3>\n        <p>Featuring real-time information on every paper</p>\n        <h3>PHOTOGRAPHIC, GPS COORDINATES, DATE AND TIME STAMPED EVIDENCE</h3>\n        <p>Every attempt and serves available for viewing and printing at all times.</p>\n        <h3>UNIFIED CALENDAR</h3>\n        <p>See and print your pretrial/deposition calendar for any range of dates you select or export the entire calendar along with case and court information needed to manage appearances and outside counsel.</p>\n        <h3>SKIP TRACING</h3>\n        <p>By using our exclusive skip trace queue, clients can give feedback on any paper that's in our system requiring a skip trace. Also have full control of number of skips attempts and allowed on address before \"Non- Serving.\"</p>\n        <h3>VIEW AND PRINT AFFIDAVIT OF SERVICE</h3>\n        <p>Copies of affidavits always available for download.</p>\n        <h3>SEARCH AND REPORT</h3>\n        <p>Search and reports feature allows our clients to search our database. Which allows our clients to give feed back on specific report with the requested information in the format you select.</p>\n        <h3>DOWNLOAD CENTER</h3>\n        <p>Our daily reports are delivered in the format needed, which allows our clients to view and manage their files. Which can then be imported into your collection software allowing you to update your files instantly.</p>\n        <h3>INSTANT COMMUNICATION</h3>\n        <p>By Sending an instant message directly to the desktop of your account manager for immediate action.</p>\n        <h3>EASY FILE ACCESS</h3>\n        <p>View cases and court information on current files</p>\n</div>\n";
+  });
+},{"handlebars/runtime":60}],49:[function(require,module,exports){
+var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
+  this.compilerInfo = [4,'>= 1.0.0'];
+helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
+  var buffer = "", stack1, self=this, functionType="function", escapeExpression=this.escapeExpression;
+
+function program1(depth0,data) {
+  
+  var buffer = "", stack1, helper;
+  buffer += "\n		<li ";
+  stack1 = helpers['if'].call(depth0, (depth0 && depth0.active), {hash:{},inverse:self.noop,fn:self.program(2, program2, data),data:data});
+  if(stack1 || stack1 === 0) { buffer += stack1; }
+  buffer += "><a href=\"";
+  if (helper = helpers.href) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.href); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "\"> ";
+  if (helper = helpers.name) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.name); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + " </a></li>\n	";
+  return buffer;
+  }
+function program2(depth0,data) {
+  
+  
+  return " class=\"active\" ";
+  }
+
+  buffer += "<ul class=\"nav nav-pills nav-stacked\">\n	";
+  stack1 = helpers.each.call(depth0, (depth0 && depth0.locations), {hash:{},inverse:self.noop,fn:self.program(1, program1, data),data:data});
+  if(stack1 || stack1 === 0) { buffer += stack1; }
+  buffer += "\n</ul>\n";
+  return buffer;
+  });
+},{"handlebars/runtime":60}],50:[function(require,module,exports){
+var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
+  this.compilerInfo = [4,'>= 1.0.0'];
+helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
+  
+
+
+  return "<div id=\"about\" class=\"container-fluid\">\n    <div class=\"row\">\n        <div class=\"col-md-6\">\n            <h2>Technology</h2>\n            <h3>Now available on Android and iPhone!</h3>\n            <h4>TAG Serve makes Tag Process number 1 in the country</h4>\n            <p>Can your process serving company show you proof of service using a time-stamped picture? Or do you have to call them and wait for them to give you a response on what the status is? With our new software Tag Serve, clients will no longer have to wait on status since it's updated real-time and you have 24 hour access!</p>\n        </div>\n        <div class=\"col-md-6\">\n            <img class=\"img-rounded img-responsive\" src=\"app/images/network.jpg\"></img>\n        </div>\n    </div>\n</div>";
+  });
+},{"handlebars/runtime":60}],51:[function(require,module,exports){
 //     Backbone.js 1.1.1
 
 //     (c) 2010-2014 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
@@ -1609,7 +8830,7 @@
 
 }));
 
-},{"jquery":13,"underscore":2}],2:[function(require,module,exports){
+},{"jquery":63,"underscore":52}],52:[function(require,module,exports){
 //     Underscore.js 1.6.0
 //     http://underscorejs.org
 //     (c) 2009-2014 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
@@ -2954,7 +10175,7 @@
   }
 }).call(this);
 
-},{}],3:[function(require,module,exports){
+},{}],53:[function(require,module,exports){
 var exports = module.exports = function (doc) {
     if (!doc) doc = {};
     if (typeof doc === 'string') doc = { cookie: doc };
@@ -2988,7 +10209,7 @@ if (typeof document !== 'undefined') {
     exports.set = cookie.set;
 }
 
-},{}],4:[function(require,module,exports){
+},{}],54:[function(require,module,exports){
 "use strict";
 /*globals Handlebars: true */
 var base = require("./handlebars/base");
@@ -3021,7 +10242,7 @@ var Handlebars = create();
 Handlebars.create = create;
 
 exports["default"] = Handlebars;
-},{"./handlebars/base":5,"./handlebars/exception":6,"./handlebars/runtime":7,"./handlebars/safe-string":8,"./handlebars/utils":9}],5:[function(require,module,exports){
+},{"./handlebars/base":55,"./handlebars/exception":56,"./handlebars/runtime":57,"./handlebars/safe-string":58,"./handlebars/utils":59}],55:[function(require,module,exports){
 "use strict";
 var Utils = require("./utils");
 var Exception = require("./exception")["default"];
@@ -3202,7 +10423,7 @@ exports.log = log;var createFrame = function(object) {
   return obj;
 };
 exports.createFrame = createFrame;
-},{"./exception":6,"./utils":9}],6:[function(require,module,exports){
+},{"./exception":56,"./utils":59}],56:[function(require,module,exports){
 "use strict";
 
 var errorProps = ['description', 'fileName', 'lineNumber', 'message', 'name', 'number', 'stack'];
@@ -3231,7 +10452,7 @@ function Exception(message, node) {
 Exception.prototype = new Error();
 
 exports["default"] = Exception;
-},{}],7:[function(require,module,exports){
+},{}],57:[function(require,module,exports){
 "use strict";
 var Utils = require("./utils");
 var Exception = require("./exception")["default"];
@@ -3369,7 +10590,7 @@ exports.program = program;function invokePartial(partial, name, context, helpers
 exports.invokePartial = invokePartial;function noop() { return ""; }
 
 exports.noop = noop;
-},{"./base":5,"./exception":6,"./utils":9}],8:[function(require,module,exports){
+},{"./base":55,"./exception":56,"./utils":59}],58:[function(require,module,exports){
 "use strict";
 // Build out our basic SafeString type
 function SafeString(string) {
@@ -3381,7 +10602,7 @@ SafeString.prototype.toString = function() {
 };
 
 exports["default"] = SafeString;
-},{}],9:[function(require,module,exports){
+},{}],59:[function(require,module,exports){
 "use strict";
 /*jshint -W004 */
 var SafeString = require("./safe-string")["default"];
@@ -3458,12 +10679,12 @@ exports.escapeExpression = escapeExpression;function isEmpty(value) {
 }
 
 exports.isEmpty = isEmpty;
-},{"./safe-string":8}],10:[function(require,module,exports){
+},{"./safe-string":58}],60:[function(require,module,exports){
 // Create a simple path alias to allow browserify to resolve
 // the runtime on a supported path.
 module.exports = require('./dist/cjs/handlebars.runtime');
 
-},{"./dist/cjs/handlebars.runtime":4}],11:[function(require,module,exports){
+},{"./dist/cjs/handlebars.runtime":54}],61:[function(require,module,exports){
 /*! jQuery UI - v1.11.0pre - 2013-09-27
 * http://jqueryui.com
 * Includes: jquery.ui.core.js, jquery.ui.widget.js, jquery.ui.mouse.js, jquery.ui.draggable.js, jquery.ui.droppable.js, jquery.ui.resizable.js, jquery.ui.selectable.js, jquery.ui.sortable.js, jquery.ui.effect.js, jquery.ui.accordion.js, jquery.ui.autocomplete.js, jquery.ui.button.js, jquery.ui.datepicker.js, jquery.ui.dialog.js, jquery.ui.effect-blind.js, jquery.ui.effect-bounce.js, jquery.ui.effect-clip.js, jquery.ui.effect-drop.js, jquery.ui.effect-explode.js, jquery.ui.effect-fade.js, jquery.ui.effect-fold.js, jquery.ui.effect-highlight.js, jquery.ui.effect-puff.js, jquery.ui.effect-pulsate.js, jquery.ui.effect-scale.js, jquery.ui.effect-shake.js, jquery.ui.effect-size.js, jquery.ui.effect-slide.js, jquery.ui.effect-transfer.js, jquery.ui.menu.js, jquery.ui.position.js, jquery.ui.progressbar.js, jquery.ui.slider.js, jquery.ui.spinner.js, jquery.ui.tabs.js, jquery.ui.tooltip.js
@@ -18569,10 +25790,10 @@ $.widget( "ui.tooltip", {
 
 }( jQuery ) );*/
 
-},{}],12:[function(require,module,exports){
+},{}],62:[function(require,module,exports){
 $ = jQuery = require('jquery');
 module.exports = require('./dist/jquery-ui.js');
-},{"./dist/jquery-ui.js":11,"jquery":13}],13:[function(require,module,exports){
+},{"./dist/jquery-ui.js":61,"jquery":63}],63:[function(require,module,exports){
 /*!
  * jQuery JavaScript Library v2.1.0
  * http://jquery.com/
@@ -27685,7153 +34906,6 @@ return jQuery;
 
 }));
 
-},{}],14:[function(require,module,exports){
-module.exports=require(2)
-},{}],15:[function(require,module,exports){
-var _ = require('underscore'),
-	Backbone = require('backbone');
-
-module.exports = (function () {
-	'use strict';
-	return Backbone.Model.extend({
-        defaults: {
-            username: 'John Doe'
-        },
-		url: '/api/user',
-        parse: function (response) {
-            return _.result(response, 'data');
-		},
-        hasPermission: function (need) {
-            return _.indexOf(this.get('permissions'), need) !== -1;
-        }
-    });
-}());
-
-},{"backbone":1,"underscore":14}],16:[function(require,module,exports){
-var Backbone = require('backbone'),
-    AboutUsTemplate = require('../../templates/aboutus.hbs');
-
-module.exports = {
-	View: Backbone.View.extend({
-		initialize: function () {
-			this.template = AboutUsTemplate();
-		},
-		render: function () {
-			this.$el.empty().append(this.template);
-			return this;
-		}
-	})
-};
-
-},{"../../templates/aboutus.hbs":43,"backbone":1}],17:[function(require,module,exports){
-var _ = require('underscore'),
-	Backbone = require('backbone'),
-	$ = jQuery = require('jquery'),
-	CONST = require('./constants.js'),
-	cookie = require('cookie-cutter'),
-	User = require('../models/user');
-
-require('jquery-ui-browserify');
-
-module.exports = (function () {
-	return {
-		signedIn: false,
-
-		signInMessage: 'You\'re currently not logged in.',
-
-		updateSignInMessage: function (message) {
-			$('#login-message').html(message).effect('highlight', 2000);
-			return this;
-		},
-
-		_doSignIn: function (options) {
-			var _this = this,
-				defaults = { url: '/tagproc/api/login', type: 'POST', contentType: 'application/json', processData: false, async: false },
-				settings = _.extend(defaults, options),
-				TagProcess = require('../tagprocess');
-			return $
-				.ajax(settings)
-				.done(
-					function (response, status, xhr) {
-						_this.signedIn = true;
-						_this.updateSignInMessage('');
-						_this.user = new User(response.data);
-						TagProcess.vent.trigger('signInSuccess', response, status, xhr);
-					}
-				)
-				.fail(
-					function (xhr, status, error) {
-						TagProcess.vent.trigger('signInError', xhr, status, error);
-                    }
-				)
-                .always(
-                    function (xhr, status) {
-                        TagProcess.vent.trigger('signInComplete', xhr, status);
-                    }
-                );
-            },
-
-            signIn: function (username, password) {
-                return this._doSignIn({
-                    data: JSON.stringify({
-                        username: username,
-                        password: password
-                    })
-                });
-            },
-
-            rememberMeSignIn: function () {
-                if (cookie(CONST.COOKIE.AUTH)) {
-                    return this._doSignIn({
-                        data: JSON.stringify({
-                            uri: 42 // Preparing for future use case
-                        }),
-                        error: this.forgetLogin
-                    });
-                }
-                return false;
-            },
-
-            signOut: function () {
-                var _this = this,
-					TagProcess = require('../tagprocess');
-                return $
-                    .ajax({
-                        url: '/tagproc/api/logout',
-                        type: 'get'
-                    })
-                    .done(
-                        function () {
-                            _this.forgetLogin();
-                            TagProcess.vent.trigger('signOutSuccess');
-                        }
-                    )
-                    .fail(
-                        function (response, status) {
-                            TagProcess.vent.trigger('signOutError', status);
-                        }
-                    )
-                    .always(
-                        function () {
-                            TagProcess.vent.trigger('signOutComplete');
-                        }
-                    )
-                ;
-            },
-
-            forgetLogin: function () {
-                cookie.set(CONST.COOKIE.AUTH, {expires: new Date(0)});
-                this.signedIn = false;
-                this.user = null;
-                return this;
-            }
-	};
-}());
-
-},{"../models/user":15,"../tagprocess":35,"./constants.js":19,"backbone":1,"cookie-cutter":3,"jquery":13,"jquery-ui-browserify":12,"underscore":14}],18:[function(require,module,exports){
-var _ = require('underscore'),
-	$ = require('jquery'),
-	Backbone = require('backbone'),
-	Sidebar = require('./sidebar'),
-    ClientTemplate = require('../../templates/jobs.hbs');
-
-module.exports = (function () {
-	'use strict';
-	var exports = {},
-		helpers = {
-			parseFormParams: function (params) {
-				var options = {
-					'account': 'Client',
-					'casenumber': 'Case',
-					'jobnumber': 'Job Number'
-				}, result = _.clone(params);
-				result.searchby = options[params.searchby];
-				return result;
-			}
-		};
-	_.extend(exports, {
-		Collection: Backbone.Collection.extend({
-			params: {
-				count: 10,
-				offset: 0
-			},
-			baseUrl: '/tagproc/api/jobs',
-			url: function () {
-				return this.baseUrl + '?' + $.param(this.params);
-			},
-			parse: function (response, xhr) {
-                this.status = xhr.xhr.status;
-				return response;
-			}
-		}),
-		View: Backbone.View.extend({
-			initialize: function () {
-                var that = this;
-				this.template = ClientTemplate;
-				this.collection = new exports.Collection();
-				this.sidebar = new Sidebar.View({active: '#client'});
-				delete this.collection.params.q;
-				delete this.collection.params.searchby;
-				this.listenTo(this.collection, 'sync', this.render);
-				this.collection.fetch();
-			},
-			events: {
-				'click #searchby a'				: 'setSearchBy',
-				'keyup #search'					: 'debouncedSearch',
-                'submit form'					: 'search',
-				'click .switch-page'			: 'switchPage'
-			},
-			render: function () {
-				var data = this.collection.toJSON(),
-					payload = {
-					items: _.isEmpty(data) ? null : data,
-					form: helpers.parseFormParams(this.collection.params),
-                    no_access: _.isUndefined(this.collection.status) || this.collection.status === 401
-				};
-				this.$el.empty().append(this.template(payload));
-				this.$('.sidebar').html(this.sidebar.render().$el);
-				this.$('.switch-page').tooltip();
-				return this;
-			},
-			setSearchBy: function (event) {
-				event.preventDefault();
-				var $target = $(event.currentTarget),
-					$button = $target.parents('ul').siblings();
-				$button.find('#search-by-text').html($target.html());
-				this.collection.params.searchby = $target.data('value');
-			},
-            debouncedSearch: _.debounce(function (event) {
-                this.search(event);
-            }, 1000),
-			search: function (event) {
-                event.preventDefault();
-				this.collection.params.offset = 0;
-				this.collection.params.q = this.$('#search').val();
-				this.collection.params.searchby = this.collection.params.searchby ? this.collection.params.searchby : 'jobnumber';
-				this.collection.fetch();
-			},
-			switchPage: function (event) {
-				event.preventDefault();
-				var offset = parseInt($(event.currentTarget).data('offset'), 10);
-				this.collection.params.offset = this.collection.params.offset + offset >= 0 ? this.collection.params.offset + offset : 0;
-				this.collection.fetch();
-			}
-		})
-	});
-	return exports;
-}());
-
-},{"../../templates/jobs.hbs":54,"./sidebar":32,"backbone":1,"jquery":13,"underscore":14}],19:[function(require,module,exports){
-module.exports = {
-	COOKIE: {
-		AUTH: 'user'
-	},
-	KEYS: {
-		ENTER: 13,
-		ESCAPE: 27
-	},
-	THROTTLE: 400
-};
-
-},{}],20:[function(require,module,exports){
-var Backbone = require('backbone'),
-    ContactUsTemplate = require('../../templates/contactus.hbs'),
-	Helpers = require('../utilities/helpers');
-
-module.exports = {
-	View: Backbone.View.extend({
-		initialize: function () {
-			this.template = ContactUsTemplate();
-		},
-		events: {
-			'submit form' : 'submit'
-		},
-		render: function () {
-			this.$el.empty().append(this.template);
-			return this;
-		},
-		submit: function (event) {
-			event.preventDefault();
-			var $form = $(event.currentTarget),
-				data = Helpers.serializeObject($form.serializeArray()),
-				$alert = $form.find('.alert');
-			$.ajax({
-				url: '/tagproc/api/contact',
-				type: 'POST',
-				data: data,
-				success: function (response) {
-					$alert.removeClass('hide alert-danger').addClass('alert-success').html('Message sent.');
-					$form[0].reset();
-				},
-				error: function (e) {
-					$alert.removeClass('hide alert-success').addClass('alert-danger').html(e.statusText);
-				}
-			});
-		}
-	})
-};
-
-},{"../../templates/contactus.hbs":44,"../utilities/helpers":36,"backbone":1}],21:[function(require,module,exports){
-var $ = require('jquery'),
-	Backbone = require('backbone'),
-	FooterTemplate = require('../../templates/footer.hbs');
-
-module.exports = {
-	View: Backbone.View.extend({
-		id: 'footer',
-		className: 'footer',
-		tagName: 'footer',
-		initialize: function () {
-			this.template = FooterTemplate();
-		},
-		render: function () {
-			this.$el.empty().append(this.template);
-
-            return this;
-		}
-	})
-};
-
-},{"../../templates/footer.hbs":45,"backbone":1,"jquery":13}],22:[function(require,module,exports){
-var $ = require('jquery'),
-	Backbone = require('backbone'),
-	HeaderTemplate = require('../../templates/header.hbs');
-
-module.exports = {
-	View: Backbone.View.extend({
-        tagName: 'header',
-        id: 'header',
-        className: 'page-header container',
-		initialize: function () {
-			this.template = HeaderTemplate();
-		},
-		render: function () {
-			var template = this.template;
-			this.$el.empty().append(template);
-
-            return this;
-		}
-	})
-};
-
-},{"../../templates/header.hbs":51,"backbone":1,"jquery":13}],23:[function(require,module,exports){
-var Backbone = require('backbone'),
-	HomeTemplate = require('../../templates/home.hbs');
-
-'use strict';
-module.exports = {
-    View: Backbone.View.extend({
-        initialize: function () {
-            this.template = HomeTemplate();
-        },
-        render: function () {
-            this.$el.empty().append(this.template);
-
-            return this;
-        }
-    })
-};
-
-},{"../../templates/home.hbs":52,"backbone":1}],24:[function(require,module,exports){
-var _ = require('underscore'),
-    $ = jQuery = require('jquery'),
-    Backbone = require('backbone'),
-    JoBDetailsTemplate = require('../../templates/jobDetails.hbs'),
-    Handlebars = require('handlebars/runtime').default,
-	Notify = require('../utilities/notify'),
-	Helpers = require('../utilities/helpers'),
-	ServeDetails = require('./modals/serveDetails');
-
-module.exports = (function () {
-    'use strict';
-    var exports = {
-        Model: Backbone.Model.extend({
-            baseUrl: '/tagproc/api/job',
-            url: function () {
-                return this.baseUrl + '?' + $.param(this.toJSON());
-            },
-            parse: function (response) {
-                return response[0];
-            }
-        })
-    }, helpers = {}, isEditable = {
-        'served_party': true,
-        'served_person': true,
-        'date_received': true,
-        'time_received': true,
-        'served_documents': true,
-        'date_court': true,
-        'casenumber': true,
-        'judge': true,
-        'plaintiff': true,
-        'defendant': true,
-        'attorney': true,
-        'date_casefiled': true,
-        'date_amendedfiled': true,
-        'state': true,
-        'county': true,
-        'court_type': true,
-        'serverid': true,
-        'date_served': true,
-        'time_served': true,
-        'method_service': true,
-        'detailed_service': true,
-        'service_address': true,
-        'servedon': true,
-        'servee_address': true,
-        'comments': true
-    };
-
-    _.extend(helpers, {
-        parseEditable: function (object) {
-            var temp = {};
-            _.each(object, function (value, key) {
-                temp[key] = {value: value, editable: isEditable[key]};
-            });
-            return temp;
-        },
-		parseKey: function (name) {
-			return name.replace('_', ' ').toUpperCase();
-		},
-		parseAttachmentType: function (type) {
-			var validTypes = {
-				'doc': 'Documents',
-				'ros': 'Return of Service',
-				'completejob': 'Complete Job',
-				'courtreceipt': 'Court Receipt'
-			};
-			return validTypes[type];
-		}
-    });
-	Handlebars.registerHelper('parse', helpers.parseKey);
-	Handlebars.registerHelper('parseAttachmentType', helpers.parseAttachmentType);
-	_.extend(exports, {
-        View: Backbone.View.extend({
-            initialize: function (options) {
-                this.id = options.id;
-                this.template = JoBDetailsTemplate;
-				this.details = new ServeDetails({id: this.id});
-                this.model = new exports.Model({jobnumber: this.id});
-                this.listenTo(this.model, 'sync', this.render);
-                this.model.fetch();
-            },
-            events: {
-                'click .edit': 'toggleEdit',
-                'submit form': 'edit',
-				'click #viewDetails': 'openDetailsModal'
-            },
-            render: function () {
-                var data = this.model.toJSON(),
-                    payload = {
-                        job: _.omit(helpers.parseEditable(data), 'attachments'),
-						attachments: data.attachments || []
-                    };
-                this.$el.empty().append(this.template(payload));
-                return this;
-            },
-			openDetailsModal: function (event) {
-				event.preventDefault();
-				this.$el.append(this.details.open().$el);
-			},
-            toggleEdit: function (event) {
-                if (_.isFunction(event.preventDefault)) { event.preventDefault(); }
-                var $target = $(event.currentTarget).parents('td');
-                $target.children(':not(a)').toggleClass('hide').find('input').focus();
-            },
-            edit: function (event) {
-                event.preventDefault();
-				var $form = $(event.currentTarget),
-					data = Helpers.serializeObject($form.serializeArray()),
-					key = Object.keys(data)[0],
-					value = data[key],
-                    that = this;
-				 $.ajax({
-					url: '/tagproc/api/job',
-					data: _.extend(data, {jobnumber: that.model.get('jobnumber')}),
-					type: 'POST',
-					success: function (response) {
-						var field = response[0].data;
-                        $form.siblings('div').html(field[key]);
-                        Notify.create({title: 'Saved', body: 'Field ' + helpers.parseKey(key) + ' has been updated to ' + value, tag: key, icon: 'app/images/save.png'});
-                        that.toggleEdit({currentTarget: $form.siblings('a')});
-					}
-				 });
-            }
-        })
-    });
-    return exports;
-}());
-
-},{"../../templates/jobDetails.hbs":53,"../utilities/helpers":36,"../utilities/notify":37,"./modals/serveDetails":27,"backbone":1,"handlebars/runtime":10,"jquery":13,"underscore":14}],25:[function(require,module,exports){
-var Backbone = require('backbone'),
-	TagProcess = require('../tagprocess'),
-	LoginTemplate = require('../../templates/login.hbs');
-
-module.exports = {
-	View: Backbone.View.extend({
-		initialize: function () {
-			this.template = LoginTemplate();
-			setTimeout(function () {
-				if (TagProcess.Auth.signedIn) {
-					TagProcess.Auth.updateSignInMessage(TagProcess.Auth.signInMessage);
-					Backbone.history.navigate('client', {trigger: true});
-				}
-			}, 0);
-		},
-		events: {
-			'submit form' : 'authenticate'
-		},
-		render: function () {
-			this.$el.empty().append(this.template);
-			return this;
-		},
-		renderError: function (error) {
-			this.$('.alert')
-				.toggleClass('hide', !error)
-				.html(error)
-			;
-			this.$(':valid')
-				.closest('.form-group')
-					.toggleClass('has-error', false)
-			;
-			this.$(':invalid')
-				.closest('.form-group')
-					.toggleClass('has-error', true)
-				.end()
-				.first()
-					.focus()
-			;
-			return this;
-		},
-		signIn: function (input) {
-			var view = this,
-				$button = this.$('button[type="submit"]').attr('disabled', true);
-			this.renderError();
-			TagProcess.Auth.forgetLogin().signIn(input.name, input.password).then(
-				function () {
-					var attemptedRoute = TagProcess.Auth.attemptedRoute;
-					if (attemptedRoute) {
-						Backbone.history.navigate(attemptedRoute, {trigger: true});
-						TagProcess.Auth.attemptedRoute = null;
-					} else {
-						Backbone.history.navigate('client', {trigger: true});
-					}
-				},
-				function (jqxhr, status, message) {
-					var loginResponse;
-					if (jqxhr.status === 401) {
-						loginResponse = 'Invalid username and/or password.';
-					} else {
-						loginResponse = message;
-					}
-					view.renderError(loginResponse);
-					$button.attr('disabled', false);
-					return this;
-				}
-			);
-			return this;
-		},
-		authenticate: function (event) {
-			event.preventDefault();
-			var inputs = {
-				name: this.$('#username').val(),
-				password: this.$('#password').val()
-			};
-			this.signIn(inputs);
-			return this;
-		}
-	})
-};
-
-},{"../../templates/login.hbs":55,"../tagprocess":35,"backbone":1}],26:[function(require,module,exports){
-var _ = require('underscore'),
-	Backbone = require('backbone'),
-	ModalTemplate = require('../../../templates/modals/modal.hbs');
-
-module.exports = (function () {
-	'use strict';
-	var validOptions = ['backdrop', 'keyboard', 'show', 'remote'];
-	var exports =  Backbone.View.extend({
-		backdrop: true,
-		keyboard: true,
-		show: true,
-		remote: false,
-		footerHTML: '<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>',
-		template:  ModalTemplate,
-		tagName: 'div',
-		className: 'modal fade',
-		attributes: {
-			'tabindex': '-1',
-			'role': 'dialog',
-			'aria-hidden': true,
-			'aria-labelledby': 'ServeDetails'
-		},
-		initialize: function (options) {
-			if (_.isObject(options)) {
-				_.extend(this, _.pick(options, validOptions));
-			}
-		},
-		events: {
-			'hidden.bs.modal': 'close'
-		},
-		render: function () {
-			this.$el.empty().append(this.template());
-			this.setFooterHTML(this.footerHTML);
-			return this;
-		},
-		setHTML: function (selector, html) {
-			this.$(selector).empty().append(html);
-			return this;
-		},
-		setContentHTML: function (html) {
-			this.setHTML('.modal-body', html);
-			return this;
-		},
-		setHeaderHTML: function (html) {
-			this.setHTML('.modal-header', html);
-			return this;
-		},
-		setFooterHTML: function (html) {
-			this.setHTML('.modal-footer', html);
-			return this;
-		},
-		isShown: function () {
-			var data = this.$el.data('bs.modal');
-			return _.isUndefined(data) ? false : data.isShown;
-		},
-		hide: function () {
-			this.$el.modal('hide');
-			return this;
-		},
-		close: function () {
-			if (!this.isClosed) {
-				if (this.isShown()) {
-					this.hide();
-					Backbone.View.prototype.close.apply(this, arguments);
-				}
-			}
-			return this;
-		},
-		open: function () {
-			if (!this.isShown()) {
-				this.$el.modal(_.pick(this, validOptions));
-			}
-			return this;
-		}
-	});
-
-	return exports;
-}());
-
-},{"../../../templates/modals/modal.hbs":56,"backbone":1,"underscore":14}],27:[function(require,module,exports){
-var Modal = require('./modal'),
-	ListTemplate = require('../../../templates/modals/serveList.hbs'),
-	DetailsTemplate = require('../../../templates/modals/serveDetails.hbs'),
-	_ = require('underscore'),
-	Backbone = require('backbone');
-
-module.exports = (function () {
-	'use strict';
-	var Model = Backbone.Model.extend({
-			baseUrl: '/tagproc/api/serve_details',
-			url: function () {
-				return this.baseUrl + '?' + $.param(this.toJSON());
-			}
-		}),
-		exports = Backbone.View.extend({
-			template: ListTemplate,
-			detailsTemplate: DetailsTemplate,
-			initialize: function () {
-				this.modal = new Modal();
-				this.model = new Model({jobnumber: this.id});
-				this.listenTo(this.model, 'sync', this.render);
-				this.model.fetch();
-			},
-			events: {
-				'click .openDetails': 'openDetails',
-				'click .openList'	: 'openList'
-			},
-			render: function () {
-				var data = this.model.toJSON();
-				this.modal.render()
-					.setHeaderHTML('<h4>Details</h4>')
-					.setContentHTML(this.template(data));
-				this.$el.empty().append(this.modal.$el);
-				return this.delegateEvents();
-			},
-			open: function () {
-				this.render().modal.open();
-				return this;
-			},
-			openDetails: function (event) {
-				event.preventDefault();
-				var id = $(event.currentTarget).data('id'),
-					data = id ? _.findWhere(this.model.get('comments'), {id: id.toString()}) : this.model.get('serve');
-				this.modal.setContentHTML(this.detailsTemplate(data));
-				return this.delegateEvents();
-			},
-			openList: function (event) {
-				event.preventDefault();
-				var data = this.model.toJSON();
-				this.modal.setContentHTML(this.template(data));
-				return this.delegateEvents();
-			}
-	});
-	return exports;
-}());
-
-},{"../../../templates/modals/serveDetails.hbs":57,"../../../templates/modals/serveList.hbs":58,"./modal":26,"backbone":1,"underscore":14}],28:[function(require,module,exports){
-var $ = jQuery = require('jquery'),
-	_ = require('underscore'),
-	Backbone = require('backbone'),
-	TagProcess = require('../tagprocess'),
-	NavBarTemplate = require('../../templates/navbar.hbs'),
-    NavButton = require('./navbutton');
-
-require('../../libs/bootstrap/bootstrap.js');
-module.exports = {
-    Collection: Backbone.Collection.extend({
-        model: NavButton.Model
-    }),
-	View: Backbone.View.extend({
-        tagName: 'div',
-        className: 'container',
-        id: 'navbar',
-        template: NavBarTemplate,
-		initialize: function () {
-            this.collection = new module.exports.Collection(TagProcess.locations);
-            this.listenTo(TagProcess.vent, 'domchange:page', this.setActive);
-			this.listenTo(TagProcess.vent, 'signInSuccess', this.toggleUserDropdown);
-			this.listenTo(TagProcess.vent, 'signOutSuccess', this.toggleUserDropdown);
-		},
-		events: {
-			'click #logout': 'logout'
-		},
-		render: function () {
-            var that = this;
-			this.$el.empty().append(this.template());
-            _.each(this.collection.models, function (item) {
-                that.renderButton(item);
-            }, this);
-
-            return this;
-		},
-        renderButton: function (item) {
-            var buttonView = new NavButton.View({
-                model: item
-            });
-            this.$('#nav-ul').append(buttonView.render().el);
-        },
-        setActive: function (options) {
-            // Optimization needed. See tabNavigation.js
-            _.each(this.collection.models, function (model) {
-                model.set('active', model.get('href') === options.hash);
-            });
-        },
-		toggleUserDropdown: function (data) {
-			var text = _.isEmpty(data) || _.isUndefined(data) ? '' : data.data.name;
-			this.$('#name-text').html(text);
-			this.$('#user-dropdown').toggleClass('hide').siblings().toggleClass('hide');
-		},
-		logout: function () {
-			TagProcess.Auth.signOut();
-			TagProcess.Auth.updateSignInMessage('You\'re currently not logged in');
-		}
-	})
-};
-
-},{"../../libs/bootstrap/bootstrap.js":40,"../../templates/navbar.hbs":59,"../tagprocess":35,"./navbutton":29,"backbone":1,"jquery":13,"underscore":14}],29:[function(require,module,exports){
-var $ = require('jquery'),
-    Backbone = require('backbone'),
-    ButtonTemplate = require('../../templates/navbutton.hbs');
-
-module.exports = (function () {
-    'use strict';
-    return {
-        Model: Backbone.Model.extend({
-            defaults: {
-                active: false
-            }
-        }),
-        View: Backbone.View.extend({
-            tagName: "li",
-            className: "",
-            template: ButtonTemplate,
-            initialize: function () {
-                this.listenTo(this.model, 'change:active', this.setActive);
-            },
-            render: function () {
-                this.$el.html(this.template(this.model.toJSON())).toggleClass('active', this.model.get('active'));
-                return this;
-            },
-            setActive: function () {
-                $(this.el).toggleClass('active', this.model.get('active'));
-            }
-        })
-    }
-}());
-
-},{"../../templates/navbutton.hbs":60,"backbone":1,"jquery":13}],30:[function(require,module,exports){
-var _ = require('underscore'),
-    $ = jQuery = require('jquery'),
-    Backbone = require('backbone'),
-    Sidebar = require('./sidebar'),
-    Helpers = require('../utilities/helpers');
-require('../../libs/selectize/js/standalone/selectize.js');
-
-module.exports = (function (){
-    'use strict';
-    var exports = {},
-		helpers = {
-			setFormat: function (item, escape) {
-				return '<div>' + escape(item.firstname + ' ' + item.lastname + ': ' + item.uniqueid + ' - ' + item.county)  + '</div>';
-			}
-		};
-
-	_.extend(helpers, {
-		customOptionRender: {
-			'server': {
-				'option': helpers.setFormat,
-				'item': helpers.setFormat
-			}
-		}
-	});
-
-    _.extend(exports, {
-        View: Backbone.View.extend({
-            forms: {
-                'employee': require('../../templates/forms/employee.hbs'),
-                'client': require('../../templates/forms/client.hbs'),
-                'server': require('../../templates/forms/server.hbs'),
-                'case': require('../../templates/forms/case.hbs'),
-                'attorney': require('../../templates/forms/attorney.hbs')
-            },
-            initialize: function (options) {
-                if (!options.form) {
-                    throw new Error('You must pass a form.');
-                }
-                this.form = options.form;
-                this.template = this.forms[options.form];
-                this.sidebar = new Sidebar.View({active: '#forms/' + this.form});
-            },
-			events: {
-				'submit form': 'submit'
-			},
-			render: function () {
-				this.$el.empty().append(this.template());
-				this.$('.sidebar').html(this.sidebar.render().$el);
-                this.initInputs();
-				return this;
-			},
-            initInputs: function () {
-				var $select = this.$('select');
-				$select.each(function () {
-					var options = $(this).data() || {},
-						that = this;
-					$(this).selectize({
-						valueField: options.value || 'value',
-						labelField: options.label || 'text',
-						searchField: options.search ? options.search.split(',') : 'text',
-						preload: true,
-						create: false,
-						load: function (query, callback) {
-							if (options.url) {
-								$.ajax({
-									url: options.url,
-									type: 'GET',
-									success: function (response) {
-										callback(response);
-									},
-									error: function (e) {
-										console.log('error', e);
-									}
-								});
-							} else {
-								callback();
-							}
-						},
-						render: helpers.customOptionRender[that.name]
-					});
-				});
-            },
-			submit: function (event) {
-				event.preventDefault();
-				var $form = $(event.currentTarget),
-                    url = $form.data('url'),
-					data = Helpers.serializeObject($form.serializeArray()),
-					$alert = $form.find('.alert');
-				//PENDING CREATE NEW CLIENT API
-				/*
-				$.ajax({
-					url: url,
-					type: 'POST',
-					data: data,
-					success: function (response) {
-						console.log(response);
-						$alert.removeClass('hide alert-danger').addClass('alert-success').html('Client Created');
-						$form[0].reset();
-					},
-					error: function (e) {
-						$alert.removeClass('hide alert-success').addClass('alert-danger').html(e.statusText);
-					}
-				});
-				*/
-			   $alert.removeClass('hide').html('Pending create new ' + this.form + ' api');
-			}
-        })
-    });
-    return exports;
-}());
-
-},{"../../libs/selectize/js/standalone/selectize.js":41,"../../templates/forms/attorney.hbs":46,"../../templates/forms/case.hbs":47,"../../templates/forms/client.hbs":48,"../../templates/forms/employee.hbs":49,"../../templates/forms/server.hbs":50,"../utilities/helpers":36,"./sidebar":32,"backbone":1,"jquery":13,"underscore":14}],31:[function(require,module,exports){
-var Backbone = require('backbone'),
-    ServicesTemplate = require('../../templates/services.hbs');
-
-module.exports = {
-    View: Backbone.View.extend({
-        initialize: function () {
-            this.template = ServicesTemplate();
-        },
-        render: function () {
-            this.$el.empty().append(this.template);
-
-            return this;
-        }
-    })
-};
-},{"../../templates/services.hbs":61,"backbone":1}],32:[function(require,module,exports){
-var _ = require('underscore'),
-	Backbone = require('backbone'),
-	TagProcess = require('../tagprocess'),
-	SidebarTemplate = require('../../templates/sidebar.hbs');
-
-module.exports = (function () {
-	'use strict';
-	var exports = {};
-	_.extend(exports, {
-		View: Backbone.View.extend({
-			id: 'sidebar',
-			template: SidebarTemplate,
-			initialize: function (options) {
-				this.collection = TagProcess.sidebar;
-				if (options.active) {
-					this.setActive(options.active);
-				}
-			},
-			render: function () {
-				var payload = {
-					locations: this.collection.toJSON()
-				}
-				this.$el.empty().append(this.template(payload));
-				return this;
-			},
-			setActive: function (href) {
-				_.each(this.collection.models, function (model) {
-					model.set('active', model.get('href') === href);
-				});
-				return this;
-			}
-		})
-	});
-	return exports;
-}());
-
-},{"../../templates/sidebar.hbs":62,"../tagprocess":35,"backbone":1,"underscore":14}],33:[function(require,module,exports){
-var Backbone = require('backbone'),
-    TechnologyTemplate = require('../../templates/technology.hbs');
-
-module.exports = {
-	View: Backbone.View.extend({
-		initialize: function () {
-			this.template = TechnologyTemplate();
-		},
-		render: function () {
-			this.$el.empty().append(this.template);
-			return this;
-		}
-	})
-};
-
-},{"../../templates/technology.hbs":63,"backbone":1}],34:[function(require,module,exports){
-var Backbone = require('backbone'),
-	TagProcess = require('./tagprocess'),
-    _ = require('underscore');
-
-module.exports = (function () {
-	'use strict';
-	var Router = Backbone.Router.extend({
-		routes: {
-			''			    : 'showIndex',
-			'home'		    : 'showIndex',
-			'services'		: 'showServices',
-			'technology'	: 'showTechnology',
-			'aboutus'		: 'showAboutUs',
-			'contactus'		: 'showContactUs',
-			'login'			: 'showLogin',
-			'client'		: 'showClient',
-            'jobs/:id'      : 'showClientID',
-            'forms/:form'   : 'showForm'
-		},
-		initialize: function () {
-			this.viewTarget = '#content';
-			this.viewManager = new TagProcess.ViewManager({'selector': this.viewTarget});
-		},
-		showIndex: function () {
-            var view = require('./modules/home');
-			this.show({hash: '#home', title: 'Home', view: new view.View(), viewOptions: {needsPermission: false}});
-		},
-		showServices: function () {
-			var view = require('./modules/services');
-			this.show({hash: '#services', title: 'Services', view: new view.View(), viewOptions: {needsPermission: false}});
-		},
-		showTechnology: function () {
-			var view = require('./modules/technology');
-			this.show({hash: '#technology', title: 'Technology', view: new view.View(), viewOptions: {needsPermission: false}});
-		},
-		showAboutUs: function () {
-			var view = require('./modules/aboutus');
-			this.show({hash: '#aboutus', title: 'About Us', view: new view.View(), viewOptions: {needsPermission: false}});
-		},
-		showContactUs: function () {
-			var view = require('./modules/contactus');
-			this.show({hash: '#contactus', title: 'Contact Us', view: new view.View(), viewOptions: {needsPermission: false}});
-		},
-		showLogin: function () {
-			var view = require('./modules/login');
-			this.show({hash: '#login', title: 'Log In', view: new view.View(), viewOptions: {needsPermission: false}});
-		},
-		showClient: function () {
-			var view = require('./modules/client');
-			this.show({hash: '#client', title: 'Client', view: new view.View(), viewOptions: {needsPermission: false}});
-		},
-        showClientID: function (id) {
-            var view = require('./modules/jobDetails');
-            this.show({hash: '#client', title: 'Job Details', view: new view.View({id: id}), viewOptions: {needsPermission: true}})
-        },
-        showForm: function (form) {
-            var view = require('./modules/newForms');
-            this.show({hash: '#client', title: 'New ' + form, view: new view.View({form: form}), viewOptions: {needsPermission: true}});
-        },
-		show: function (options) {
-			var that = this,
-                settings = _.extend({
-				hash: undefined,
-				title: '',
-				view: undefined,
-				viewOptions: {}
-			}, options);
-            if (!TagProcess.Auth.signedIn && settings.viewOptions.needsPermission) {
-                this.navigate('login');
-                return;
-            }
-            TagProcess.vent.trigger('domchange:page', settings);
-            if (settings.view instanceof Backbone.View) {
-				that.viewManager.showView(settings.view);
-			}
-			return this;
-		}
-	});
-	return {
-		initialize: function () {
-			TagProcess.router = new Router();
-			Backbone.history.start();
-		}
-	};
-}());
-
-},{"./modules/aboutus":16,"./modules/client":18,"./modules/contactus":20,"./modules/home":23,"./modules/jobDetails":24,"./modules/login":25,"./modules/newForms":30,"./modules/services":31,"./modules/technology":33,"./tagprocess":35,"backbone":1,"underscore":14}],35:[function(require,module,exports){
-var $ = require('jquery'),
-	Backbone = require('backbone')
-    ViewManager = require('./utilities/viewmanager'),
-    Vent = require('./utilities/vent'),
-	Authenticate = require('./modules/authenticate');
-module.exports = {
-	Auth: Authenticate,
-	ViewManager: ViewManager,
-	baseUrl: 'dev1.xertigo.net',
-    $doc: $(document),
-    title: $(document).attr('title'),
-    vent: Vent,
-	locations: [
-		{
-			'href': '#services',
-			'name': 'Services'
-		},
-		{
-			'href': '#technology',
-			'name': 'Technology'
-		},
-        {
-			'href': '#aboutus',
-			'name': 'About Us'
-		},
-        {
-			'href': '#contactus',
-			'name': 'Contact Us'
-		},
-        {
-			'href': '#client',
-			'name': 'Client'
-		}
-	],
-	sidebar: new Backbone.Collection([
-		{
-			'href': '#client',
-			'active': false,
-			'name': 'Jobs'
-		},
-		{
-			'href': '#forms/case',
-			'active': false,
-			'name': 'New Case'
-		},
-		{
-			'href': '#forms/client',
-			'active': false,
-			'name': 'New Client'
-		},
-		{
-			'href': '#forms/server',
-			'active': false,
-			'name': 'New Server'
-		},
-		{
-			'href': '#forms/employee',
-			'active': false,
-			'name': 'New Employee'
-		},
-        {
-            'href': '#forms/attorney',
-            'active': false,
-            'name': 'New Attorney'
-        },
-		{
-			'href': '#',
-			'active': false,
-			'name': 'Client Statement'
-		},
-		{
-			'href': '#',
-			'active': false,
-			'name': 'Server Report'
-		},
-		{
-			'href': '#',
-			'active': false,
-			'name': 'Client Receivables Report'
-		}
-	])
-};
-
-},{"./modules/authenticate":17,"./utilities/vent":38,"./utilities/viewmanager":39,"backbone":1,"jquery":13}],36:[function(require,module,exports){
-var _ = require('underscore');
-
-module.exports = {
-	serializeObject: function (array) {
-		var object = {};
-		_.each(array, function (item) {
-			if (object[item.name] !== undefined) {
-				if (!object[item.name].push) {
-					object[item.name] = [object[item.name]];
-				}
-				object[item.name].push(item.value || '');
-			} else {
-				object[item.name] = item.value || '';
-			}
-		});
-		return object;
-	}
-};
-
-},{"underscore":14}],37:[function(require,module,exports){
-var _ = require('underscore');
-
-module.exports = (function () {
-	'use strict';
-	var exports = {};
-	_.extend(exports, {
-		enabled: false,
-		timeOut: 5000,
-		init: function (callback) {
-			if (!window.Notification) {
-				return;
-			}
-			if (Notification.permission === 'default') {
-				Notification.requestPermission(function () {
-					exports.init();
-					if (_.isFunction(callback)) { callback(); };
-				});
-			} else if (Notification.permission === 'granted') {
-				this.enabled = true;
-			} else if (Notification.permission === 'denied') {
-				return;
-			}
-		},
-		create: function (options) {
-			var validOptions = ['body', 'tag', 'icon'],
-				title = options.title || '',
-				options = _.pick(options, validOptions);
-			if (this.enabled) {
-				this._currentNotification = new Notification(title, options);
-			} else {
-				exports.init(this.create.bind(this, options));
-			}
-			this._currentNotification.onshow = this.onShow.bind(this);
-		},
-		onShow: function (event) {
-			setTimeout(function () { event.currentTarget.close(); }, this.timeOut);
-		}
-	});
-	exports.init();
-	return exports;
-}());
-
-},{"underscore":14}],38:[function(require,module,exports){
-var _ = require('underscore'),
-    Backbone = require('backbone');
-
-module.exports = (function () {
-    "use strict";
-    return _.extend({}, Backbone.Events);
-}());
-
-},{"backbone":1,"underscore":14}],39:[function(require,module,exports){
-var _ = require('underscore'),
-    $ = require('jquery'),
-	Backbone = require('backbone');
-module.exports = (function () {
-    'use strict';
-
-    _.extend(Backbone.View.prototype, {
-        addSubViews: function () {
-            if (!_.isArray(this.subViews)) {
-                this.subViews = [];
-            }
-            Array.prototype.push.apply(this.subViews, arguments);
-            return this;
-        },
-        // Zombie Prevention Part 1
-        // Add close function to Backbone.View to prevent "Zombies"
-        // Inspired by: Derick Bailey
-        // See: http://bit.ly/odAfKo
-        close: function () {
-            if (this.__closing) { return this; }
-            this.__closing = true;
-            if (this.beforeClose && _.isFunction(this.beforeClose)) {
-                this.beforeClose();
-            }
-            if (_.isArray(this.subViews)) {
-                _.each(this.subViews, function (subView) {
-                    if (_.isFunction(subView.close)) {
-                        subView.close();
-                    }
-                });
-            }
-            this.remove();
-            this.unbind();
-            this.__closing = false;
-            return this;
-        }
-    });
-    // Zombie Prevention Part 2
-    // Object to manage transitions between views
-    // Inspired by: Derick Bailey
-    // See: http://bit.ly/odAfKo
-    return function (options) {
-        var that = this,
-            allowed = ['selector'],
-            extender,
-            finish,
-            lastSelect;
-        that.selector = 'body';
-        that.$selector = undefined;
-        that.set = function (opts) { extender(opts); finish(); };
-        that.get = function (name) { return that[name]; };
-        that.showView = function (view) {
-            if (this.currentView) {
-                this.currentView.close();
-            }
-            that.$selector.html(view.render().el);
-            this.currentView = view;
-            return view;
-        };
-
-        // Self invoking function that extends this object
-        // with options passed to the constructor
-        extender = (function (opts) {
-            _.extend(that, _.pick(opts, allowed));
-        }(options));
-
-        // Self invoking function for final set up
-        // - Set '$selector' based on 'selector'
-        finish = (function () {
-            if ($.type(that.selector) === 'string' && that.selector !== lastSelect) {
-                that.$selector = $(that.selector);
-                lastSelect = that.selector;
-            }
-        }());
-    };
-}());
-
-},{"backbone":1,"jquery":13,"underscore":14}],40:[function(require,module,exports){
-/*!
- * Bootstrap v3.1.1 (http://getbootstrap.com)
- * Copyright 2011-2014 Twitter, Inc.
- * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
- */
-
-if (typeof jQuery === 'undefined') { throw new Error('Bootstrap\'s JavaScript requires jQuery') }
-
-/* ========================================================================
- * Bootstrap: transition.js v3.1.1
- * http://getbootstrap.com/javascript/#transitions
- * ========================================================================
- * Copyright 2011-2014 Twitter, Inc.
- * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
- * ======================================================================== */
-
-
-+function ($) {
-  'use strict';
-
-  // CSS TRANSITION SUPPORT (Shoutout: http://www.modernizr.com/)
-  // ============================================================
-
-  function transitionEnd() {
-    var el = document.createElement('bootstrap')
-
-    var transEndEventNames = {
-      'WebkitTransition' : 'webkitTransitionEnd',
-      'MozTransition'    : 'transitionend',
-      'OTransition'      : 'oTransitionEnd otransitionend',
-      'transition'       : 'transitionend'
-    }
-
-    for (var name in transEndEventNames) {
-      if (el.style[name] !== undefined) {
-        return { end: transEndEventNames[name] }
-      }
-    }
-
-    return false // explicit for ie8 (  ._.)
-  }
-
-  // http://blog.alexmaccaw.com/css-transitions
-  $.fn.emulateTransitionEnd = function (duration) {
-    var called = false, $el = this
-    $(this).one($.support.transition.end, function () { called = true })
-    var callback = function () { if (!called) $($el).trigger($.support.transition.end) }
-    setTimeout(callback, duration)
-    return this
-  }
-
-  $(function () {
-    $.support.transition = transitionEnd()
-  })
-
-}(jQuery);
-
-/* ========================================================================
- * Bootstrap: alert.js v3.1.1
- * http://getbootstrap.com/javascript/#alerts
- * ========================================================================
- * Copyright 2011-2014 Twitter, Inc.
- * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
- * ======================================================================== */
-
-
-+function ($) {
-  'use strict';
-
-  // ALERT CLASS DEFINITION
-  // ======================
-
-  var dismiss = '[data-dismiss="alert"]'
-  var Alert   = function (el) {
-    $(el).on('click', dismiss, this.close)
-  }
-
-  Alert.prototype.close = function (e) {
-    var $this    = $(this)
-    var selector = $this.attr('data-target')
-
-    if (!selector) {
-      selector = $this.attr('href')
-      selector = selector && selector.replace(/.*(?=#[^\s]*$)/, '') // strip for ie7
-    }
-
-    var $parent = $(selector)
-
-    if (e) e.preventDefault()
-
-    if (!$parent.length) {
-      $parent = $this.hasClass('alert') ? $this : $this.parent()
-    }
-
-    $parent.trigger(e = $.Event('close.bs.alert'))
-
-    if (e.isDefaultPrevented()) return
-
-    $parent.removeClass('in')
-
-    function removeElement() {
-      $parent.trigger('closed.bs.alert').remove()
-    }
-
-    $.support.transition && $parent.hasClass('fade') ?
-      $parent
-        .one($.support.transition.end, removeElement)
-        .emulateTransitionEnd(150) :
-      removeElement()
-  }
-
-
-  // ALERT PLUGIN DEFINITION
-  // =======================
-
-  var old = $.fn.alert
-
-  $.fn.alert = function (option) {
-    return this.each(function () {
-      var $this = $(this)
-      var data  = $this.data('bs.alert')
-
-      if (!data) $this.data('bs.alert', (data = new Alert(this)))
-      if (typeof option == 'string') data[option].call($this)
-    })
-  }
-
-  $.fn.alert.Constructor = Alert
-
-
-  // ALERT NO CONFLICT
-  // =================
-
-  $.fn.alert.noConflict = function () {
-    $.fn.alert = old
-    return this
-  }
-
-
-  // ALERT DATA-API
-  // ==============
-
-  $(document).on('click.bs.alert.data-api', dismiss, Alert.prototype.close)
-
-}(jQuery);
-
-/* ========================================================================
- * Bootstrap: button.js v3.1.1
- * http://getbootstrap.com/javascript/#buttons
- * ========================================================================
- * Copyright 2011-2014 Twitter, Inc.
- * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
- * ======================================================================== */
-
-
-+function ($) {
-  'use strict';
-
-  // BUTTON PUBLIC CLASS DEFINITION
-  // ==============================
-
-  var Button = function (element, options) {
-    this.$element  = $(element)
-    this.options   = $.extend({}, Button.DEFAULTS, options)
-    this.isLoading = false
-  }
-
-  Button.DEFAULTS = {
-    loadingText: 'loading...'
-  }
-
-  Button.prototype.setState = function (state) {
-    var d    = 'disabled'
-    var $el  = this.$element
-    var val  = $el.is('input') ? 'val' : 'html'
-    var data = $el.data()
-
-    state = state + 'Text'
-
-    if (!data.resetText) $el.data('resetText', $el[val]())
-
-    $el[val](data[state] || this.options[state])
-
-    // push to event loop to allow forms to submit
-    setTimeout($.proxy(function () {
-      if (state == 'loadingText') {
-        this.isLoading = true
-        $el.addClass(d).attr(d, d)
-      } else if (this.isLoading) {
-        this.isLoading = false
-        $el.removeClass(d).removeAttr(d)
-      }
-    }, this), 0)
-  }
-
-  Button.prototype.toggle = function () {
-    var changed = true
-    var $parent = this.$element.closest('[data-toggle="buttons"]')
-
-    if ($parent.length) {
-      var $input = this.$element.find('input')
-      if ($input.prop('type') == 'radio') {
-        if ($input.prop('checked') && this.$element.hasClass('active')) changed = false
-        else $parent.find('.active').removeClass('active')
-      }
-      if (changed) $input.prop('checked', !this.$element.hasClass('active')).trigger('change')
-    }
-
-    if (changed) this.$element.toggleClass('active')
-  }
-
-
-  // BUTTON PLUGIN DEFINITION
-  // ========================
-
-  var old = $.fn.button
-
-  $.fn.button = function (option) {
-    return this.each(function () {
-      var $this   = $(this)
-      var data    = $this.data('bs.button')
-      var options = typeof option == 'object' && option
-
-      if (!data) $this.data('bs.button', (data = new Button(this, options)))
-
-      if (option == 'toggle') data.toggle()
-      else if (option) data.setState(option)
-    })
-  }
-
-  $.fn.button.Constructor = Button
-
-
-  // BUTTON NO CONFLICT
-  // ==================
-
-  $.fn.button.noConflict = function () {
-    $.fn.button = old
-    return this
-  }
-
-
-  // BUTTON DATA-API
-  // ===============
-
-  $(document).on('click.bs.button.data-api', '[data-toggle^=button]', function (e) {
-    var $btn = $(e.target)
-    if (!$btn.hasClass('btn')) $btn = $btn.closest('.btn')
-    $btn.button('toggle')
-    e.preventDefault()
-  })
-
-}(jQuery);
-
-/* ========================================================================
- * Bootstrap: carousel.js v3.1.1
- * http://getbootstrap.com/javascript/#carousel
- * ========================================================================
- * Copyright 2011-2014 Twitter, Inc.
- * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
- * ======================================================================== */
-
-
-+function ($) {
-  'use strict';
-
-  // CAROUSEL CLASS DEFINITION
-  // =========================
-
-  var Carousel = function (element, options) {
-    this.$element    = $(element)
-    this.$indicators = this.$element.find('.carousel-indicators')
-    this.options     = options
-    this.paused      =
-    this.sliding     =
-    this.interval    =
-    this.$active     =
-    this.$items      = null
-
-    this.options.pause == 'hover' && this.$element
-      .on('mouseenter', $.proxy(this.pause, this))
-      .on('mouseleave', $.proxy(this.cycle, this))
-  }
-
-  Carousel.DEFAULTS = {
-    interval: 5000,
-    pause: 'hover',
-    wrap: true
-  }
-
-  Carousel.prototype.cycle =  function (e) {
-    e || (this.paused = false)
-
-    this.interval && clearInterval(this.interval)
-
-    this.options.interval
-      && !this.paused
-      && (this.interval = setInterval($.proxy(this.next, this), this.options.interval))
-
-    return this
-  }
-
-  Carousel.prototype.getActiveIndex = function () {
-    this.$active = this.$element.find('.item.active')
-    this.$items  = this.$active.parent().children()
-
-    return this.$items.index(this.$active)
-  }
-
-  Carousel.prototype.to = function (pos) {
-    var that        = this
-    var activeIndex = this.getActiveIndex()
-
-    if (pos > (this.$items.length - 1) || pos < 0) return
-
-    if (this.sliding)       return this.$element.one('slid.bs.carousel', function () { that.to(pos) })
-    if (activeIndex == pos) return this.pause().cycle()
-
-    return this.slide(pos > activeIndex ? 'next' : 'prev', $(this.$items[pos]))
-  }
-
-  Carousel.prototype.pause = function (e) {
-    e || (this.paused = true)
-
-    if (this.$element.find('.next, .prev').length && $.support.transition) {
-      this.$element.trigger($.support.transition.end)
-      this.cycle(true)
-    }
-
-    this.interval = clearInterval(this.interval)
-
-    return this
-  }
-
-  Carousel.prototype.next = function () {
-    if (this.sliding) return
-    return this.slide('next')
-  }
-
-  Carousel.prototype.prev = function () {
-    if (this.sliding) return
-    return this.slide('prev')
-  }
-
-  Carousel.prototype.slide = function (type, next) {
-    var $active   = this.$element.find('.item.active')
-    var $next     = next || $active[type]()
-    var isCycling = this.interval
-    var direction = type == 'next' ? 'left' : 'right'
-    var fallback  = type == 'next' ? 'first' : 'last'
-    var that      = this
-
-    if (!$next.length) {
-      if (!this.options.wrap) return
-      $next = this.$element.find('.item')[fallback]()
-    }
-
-    if ($next.hasClass('active')) return this.sliding = false
-
-    var e = $.Event('slide.bs.carousel', { relatedTarget: $next[0], direction: direction })
-    this.$element.trigger(e)
-    if (e.isDefaultPrevented()) return
-
-    this.sliding = true
-
-    isCycling && this.pause()
-
-    if (this.$indicators.length) {
-      this.$indicators.find('.active').removeClass('active')
-      this.$element.one('slid.bs.carousel', function () {
-        var $nextIndicator = $(that.$indicators.children()[that.getActiveIndex()])
-        $nextIndicator && $nextIndicator.addClass('active')
-      })
-    }
-
-    if ($.support.transition && this.$element.hasClass('slide')) {
-      $next.addClass(type)
-      $next[0].offsetWidth // force reflow
-      $active.addClass(direction)
-      $next.addClass(direction)
-      $active
-        .one($.support.transition.end, function () {
-          $next.removeClass([type, direction].join(' ')).addClass('active')
-          $active.removeClass(['active', direction].join(' '))
-          that.sliding = false
-          setTimeout(function () { that.$element.trigger('slid.bs.carousel') }, 0)
-        })
-        .emulateTransitionEnd($active.css('transition-duration').slice(0, -1) * 1000)
-    } else {
-      $active.removeClass('active')
-      $next.addClass('active')
-      this.sliding = false
-      this.$element.trigger('slid.bs.carousel')
-    }
-
-    isCycling && this.cycle()
-
-    return this
-  }
-
-
-  // CAROUSEL PLUGIN DEFINITION
-  // ==========================
-
-  var old = $.fn.carousel
-
-  $.fn.carousel = function (option) {
-    return this.each(function () {
-      var $this   = $(this)
-      var data    = $this.data('bs.carousel')
-      var options = $.extend({}, Carousel.DEFAULTS, $this.data(), typeof option == 'object' && option)
-      var action  = typeof option == 'string' ? option : options.slide
-
-      if (!data) $this.data('bs.carousel', (data = new Carousel(this, options)))
-      if (typeof option == 'number') data.to(option)
-      else if (action) data[action]()
-      else if (options.interval) data.pause().cycle()
-    })
-  }
-
-  $.fn.carousel.Constructor = Carousel
-
-
-  // CAROUSEL NO CONFLICT
-  // ====================
-
-  $.fn.carousel.noConflict = function () {
-    $.fn.carousel = old
-    return this
-  }
-
-
-  // CAROUSEL DATA-API
-  // =================
-
-  $(document).on('click.bs.carousel.data-api', '[data-slide], [data-slide-to]', function (e) {
-    var $this   = $(this), href
-    var $target = $($this.attr('data-target') || (href = $this.attr('href')) && href.replace(/.*(?=#[^\s]+$)/, '')) //strip for ie7
-    var options = $.extend({}, $target.data(), $this.data())
-    var slideIndex = $this.attr('data-slide-to')
-    if (slideIndex) options.interval = false
-
-    $target.carousel(options)
-
-    if (slideIndex = $this.attr('data-slide-to')) {
-      $target.data('bs.carousel').to(slideIndex)
-    }
-
-    e.preventDefault()
-  })
-
-  $(window).on('load', function () {
-    $('[data-ride="carousel"]').each(function () {
-      var $carousel = $(this)
-      $carousel.carousel($carousel.data())
-    })
-  })
-
-}(jQuery);
-
-/* ========================================================================
- * Bootstrap: collapse.js v3.1.1
- * http://getbootstrap.com/javascript/#collapse
- * ========================================================================
- * Copyright 2011-2014 Twitter, Inc.
- * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
- * ======================================================================== */
-
-
-+function ($) {
-  'use strict';
-
-  // COLLAPSE PUBLIC CLASS DEFINITION
-  // ================================
-
-  var Collapse = function (element, options) {
-    this.$element      = $(element)
-    this.options       = $.extend({}, Collapse.DEFAULTS, options)
-    this.transitioning = null
-
-    if (this.options.parent) this.$parent = $(this.options.parent)
-    if (this.options.toggle) this.toggle()
-  }
-
-  Collapse.DEFAULTS = {
-    toggle: true
-  }
-
-  Collapse.prototype.dimension = function () {
-    var hasWidth = this.$element.hasClass('width')
-    return hasWidth ? 'width' : 'height'
-  }
-
-  Collapse.prototype.show = function () {
-    if (this.transitioning || this.$element.hasClass('in')) return
-
-    var startEvent = $.Event('show.bs.collapse')
-    this.$element.trigger(startEvent)
-    if (startEvent.isDefaultPrevented()) return
-
-    var actives = this.$parent && this.$parent.find('> .panel > .in')
-
-    if (actives && actives.length) {
-      var hasData = actives.data('bs.collapse')
-      if (hasData && hasData.transitioning) return
-      actives.collapse('hide')
-      hasData || actives.data('bs.collapse', null)
-    }
-
-    var dimension = this.dimension()
-
-    this.$element
-      .removeClass('collapse')
-      .addClass('collapsing')
-      [dimension](0)
-
-    this.transitioning = 1
-
-    var complete = function () {
-      this.$element
-        .removeClass('collapsing')
-        .addClass('collapse in')
-        [dimension]('auto')
-      this.transitioning = 0
-      this.$element.trigger('shown.bs.collapse')
-    }
-
-    if (!$.support.transition) return complete.call(this)
-
-    var scrollSize = $.camelCase(['scroll', dimension].join('-'))
-
-    this.$element
-      .one($.support.transition.end, $.proxy(complete, this))
-      .emulateTransitionEnd(350)
-      [dimension](this.$element[0][scrollSize])
-  }
-
-  Collapse.prototype.hide = function () {
-    if (this.transitioning || !this.$element.hasClass('in')) return
-
-    var startEvent = $.Event('hide.bs.collapse')
-    this.$element.trigger(startEvent)
-    if (startEvent.isDefaultPrevented()) return
-
-    var dimension = this.dimension()
-
-    this.$element
-      [dimension](this.$element[dimension]())
-      [0].offsetHeight
-
-    this.$element
-      .addClass('collapsing')
-      .removeClass('collapse')
-      .removeClass('in')
-
-    this.transitioning = 1
-
-    var complete = function () {
-      this.transitioning = 0
-      this.$element
-        .trigger('hidden.bs.collapse')
-        .removeClass('collapsing')
-        .addClass('collapse')
-    }
-
-    if (!$.support.transition) return complete.call(this)
-
-    this.$element
-      [dimension](0)
-      .one($.support.transition.end, $.proxy(complete, this))
-      .emulateTransitionEnd(350)
-  }
-
-  Collapse.prototype.toggle = function () {
-    this[this.$element.hasClass('in') ? 'hide' : 'show']()
-  }
-
-
-  // COLLAPSE PLUGIN DEFINITION
-  // ==========================
-
-  var old = $.fn.collapse
-
-  $.fn.collapse = function (option) {
-    return this.each(function () {
-      var $this   = $(this)
-      var data    = $this.data('bs.collapse')
-      var options = $.extend({}, Collapse.DEFAULTS, $this.data(), typeof option == 'object' && option)
-
-      if (!data && options.toggle && option == 'show') option = !option
-      if (!data) $this.data('bs.collapse', (data = new Collapse(this, options)))
-      if (typeof option == 'string') data[option]()
-    })
-  }
-
-  $.fn.collapse.Constructor = Collapse
-
-
-  // COLLAPSE NO CONFLICT
-  // ====================
-
-  $.fn.collapse.noConflict = function () {
-    $.fn.collapse = old
-    return this
-  }
-
-
-  // COLLAPSE DATA-API
-  // =================
-
-  $(document).on('click.bs.collapse.data-api', '[data-toggle=collapse]', function (e) {
-    var $this   = $(this), href
-    var target  = $this.attr('data-target')
-        || e.preventDefault()
-        || (href = $this.attr('href')) && href.replace(/.*(?=#[^\s]+$)/, '') //strip for ie7
-    var $target = $(target)
-    var data    = $target.data('bs.collapse')
-    var option  = data ? 'toggle' : $this.data()
-    var parent  = $this.attr('data-parent')
-    var $parent = parent && $(parent)
-
-    if (!data || !data.transitioning) {
-      if ($parent) $parent.find('[data-toggle=collapse][data-parent="' + parent + '"]').not($this).addClass('collapsed')
-      $this[$target.hasClass('in') ? 'addClass' : 'removeClass']('collapsed')
-    }
-
-    $target.collapse(option)
-  })
-
-}(jQuery);
-
-/* ========================================================================
- * Bootstrap: dropdown.js v3.1.1
- * http://getbootstrap.com/javascript/#dropdowns
- * ========================================================================
- * Copyright 2011-2014 Twitter, Inc.
- * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
- * ======================================================================== */
-
-
-+function ($) {
-  'use strict';
-
-  // DROPDOWN CLASS DEFINITION
-  // =========================
-
-  var backdrop = '.dropdown-backdrop'
-  var toggle   = '[data-toggle=dropdown]'
-  var Dropdown = function (element) {
-    $(element).on('click.bs.dropdown', this.toggle)
-  }
-
-  Dropdown.prototype.toggle = function (e) {
-    var $this = $(this)
-
-    if ($this.is('.disabled, :disabled')) return
-
-    var $parent  = getParent($this)
-    var isActive = $parent.hasClass('open')
-
-    clearMenus()
-
-    if (!isActive) {
-      if ('ontouchstart' in document.documentElement && !$parent.closest('.navbar-nav').length) {
-        // if mobile we use a backdrop because click events don't delegate
-        $('<div class="dropdown-backdrop"/>').insertAfter($(this)).on('click', clearMenus)
-      }
-
-      var relatedTarget = { relatedTarget: this }
-      $parent.trigger(e = $.Event('show.bs.dropdown', relatedTarget))
-
-      if (e.isDefaultPrevented()) return
-
-      $parent
-        .toggleClass('open')
-        .trigger('shown.bs.dropdown', relatedTarget)
-
-      $this.focus()
-    }
-
-    return false
-  }
-
-  Dropdown.prototype.keydown = function (e) {
-    if (!/(38|40|27)/.test(e.keyCode)) return
-
-    var $this = $(this)
-
-    e.preventDefault()
-    e.stopPropagation()
-
-    if ($this.is('.disabled, :disabled')) return
-
-    var $parent  = getParent($this)
-    var isActive = $parent.hasClass('open')
-
-    if (!isActive || (isActive && e.keyCode == 27)) {
-      if (e.which == 27) $parent.find(toggle).focus()
-      return $this.click()
-    }
-
-    var desc = ' li:not(.divider):visible a'
-    var $items = $parent.find('[role=menu]' + desc + ', [role=listbox]' + desc)
-
-    if (!$items.length) return
-
-    var index = $items.index($items.filter(':focus'))
-
-    if (e.keyCode == 38 && index > 0)                 index--                        // up
-    if (e.keyCode == 40 && index < $items.length - 1) index++                        // down
-    if (!~index)                                      index = 0
-
-    $items.eq(index).focus()
-  }
-
-  function clearMenus(e) {
-    $(backdrop).remove()
-    $(toggle).each(function () {
-      var $parent = getParent($(this))
-      var relatedTarget = { relatedTarget: this }
-      if (!$parent.hasClass('open')) return
-      $parent.trigger(e = $.Event('hide.bs.dropdown', relatedTarget))
-      if (e.isDefaultPrevented()) return
-      $parent.removeClass('open').trigger('hidden.bs.dropdown', relatedTarget)
-    })
-  }
-
-  function getParent($this) {
-    var selector = $this.attr('data-target')
-
-    if (!selector) {
-      selector = $this.attr('href')
-      selector = selector && /#[A-Za-z]/.test(selector) && selector.replace(/.*(?=#[^\s]*$)/, '') //strip for ie7
-    }
-
-    var $parent = selector && $(selector)
-
-    return $parent && $parent.length ? $parent : $this.parent()
-  }
-
-
-  // DROPDOWN PLUGIN DEFINITION
-  // ==========================
-
-  var old = $.fn.dropdown
-
-  $.fn.dropdown = function (option) {
-    return this.each(function () {
-      var $this = $(this)
-      var data  = $this.data('bs.dropdown')
-
-      if (!data) $this.data('bs.dropdown', (data = new Dropdown(this)))
-      if (typeof option == 'string') data[option].call($this)
-    })
-  }
-
-  $.fn.dropdown.Constructor = Dropdown
-
-
-  // DROPDOWN NO CONFLICT
-  // ====================
-
-  $.fn.dropdown.noConflict = function () {
-    $.fn.dropdown = old
-    return this
-  }
-
-
-  // APPLY TO STANDARD DROPDOWN ELEMENTS
-  // ===================================
-
-  $(document)
-    .on('click.bs.dropdown.data-api', clearMenus)
-    .on('click.bs.dropdown.data-api', '.dropdown form', function (e) { e.stopPropagation() })
-    .on('click.bs.dropdown.data-api', toggle, Dropdown.prototype.toggle)
-    .on('keydown.bs.dropdown.data-api', toggle + ', [role=menu], [role=listbox]', Dropdown.prototype.keydown)
-
-}(jQuery);
-
-/* ========================================================================
- * Bootstrap: modal.js v3.1.1
- * http://getbootstrap.com/javascript/#modals
- * ========================================================================
- * Copyright 2011-2014 Twitter, Inc.
- * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
- * ======================================================================== */
-
-
-+function ($) {
-  'use strict';
-
-  // MODAL CLASS DEFINITION
-  // ======================
-
-  var Modal = function (element, options) {
-    this.options   = options
-    this.$element  = $(element)
-    this.$backdrop =
-    this.isShown   = null
-
-    if (this.options.remote) {
-      this.$element
-        .find('.modal-content')
-        .load(this.options.remote, $.proxy(function () {
-          this.$element.trigger('loaded.bs.modal')
-        }, this))
-    }
-  }
-
-  Modal.DEFAULTS = {
-    backdrop: true,
-    keyboard: true,
-    show: true
-  }
-
-  Modal.prototype.toggle = function (_relatedTarget) {
-    return this[!this.isShown ? 'show' : 'hide'](_relatedTarget)
-  }
-
-  Modal.prototype.show = function (_relatedTarget) {
-    var that = this
-    var e    = $.Event('show.bs.modal', { relatedTarget: _relatedTarget })
-
-    this.$element.trigger(e)
-
-    if (this.isShown || e.isDefaultPrevented()) return
-
-    this.isShown = true
-
-    this.escape()
-
-    this.$element.on('click.dismiss.bs.modal', '[data-dismiss="modal"]', $.proxy(this.hide, this))
-
-    this.backdrop(function () {
-      var transition = $.support.transition && that.$element.hasClass('fade')
-
-      if (!that.$element.parent().length) {
-        that.$element.appendTo(document.body) // don't move modals dom position
-      }
-
-      that.$element
-        .show()
-        .scrollTop(0)
-
-      if (transition) {
-        that.$element[0].offsetWidth // force reflow
-      }
-
-      that.$element
-        .addClass('in')
-        .attr('aria-hidden', false)
-
-      that.enforceFocus()
-
-      var e = $.Event('shown.bs.modal', { relatedTarget: _relatedTarget })
-
-      transition ?
-        that.$element.find('.modal-dialog') // wait for modal to slide in
-          .one($.support.transition.end, function () {
-            that.$element.focus().trigger(e)
-          })
-          .emulateTransitionEnd(300) :
-        that.$element.focus().trigger(e)
-    })
-  }
-
-  Modal.prototype.hide = function (e) {
-    if (e) e.preventDefault()
-
-    e = $.Event('hide.bs.modal')
-
-    this.$element.trigger(e)
-
-    if (!this.isShown || e.isDefaultPrevented()) return
-
-    this.isShown = false
-
-    this.escape()
-
-    $(document).off('focusin.bs.modal')
-
-    this.$element
-      .removeClass('in')
-      .attr('aria-hidden', true)
-      .off('click.dismiss.bs.modal')
-
-    $.support.transition && this.$element.hasClass('fade') ?
-      this.$element
-        .one($.support.transition.end, $.proxy(this.hideModal, this))
-        .emulateTransitionEnd(300) :
-      this.hideModal()
-  }
-
-  Modal.prototype.enforceFocus = function () {
-    $(document)
-      .off('focusin.bs.modal') // guard against infinite focus loop
-      .on('focusin.bs.modal', $.proxy(function (e) {
-        if (this.$element[0] !== e.target && !this.$element.has(e.target).length) {
-          this.$element.focus()
-        }
-      }, this))
-  }
-
-  Modal.prototype.escape = function () {
-    if (this.isShown && this.options.keyboard) {
-      this.$element.on('keyup.dismiss.bs.modal', $.proxy(function (e) {
-        e.which == 27 && this.hide()
-      }, this))
-    } else if (!this.isShown) {
-      this.$element.off('keyup.dismiss.bs.modal')
-    }
-  }
-
-  Modal.prototype.hideModal = function () {
-    var that = this
-    this.$element.hide()
-    this.backdrop(function () {
-      that.removeBackdrop()
-      that.$element.trigger('hidden.bs.modal')
-    })
-  }
-
-  Modal.prototype.removeBackdrop = function () {
-    this.$backdrop && this.$backdrop.remove()
-    this.$backdrop = null
-  }
-
-  Modal.prototype.backdrop = function (callback) {
-    var animate = this.$element.hasClass('fade') ? 'fade' : ''
-
-    if (this.isShown && this.options.backdrop) {
-      var doAnimate = $.support.transition && animate
-
-      this.$backdrop = $('<div class="modal-backdrop ' + animate + '" />')
-        .appendTo(document.body)
-
-      this.$element.on('click.dismiss.bs.modal', $.proxy(function (e) {
-        if (e.target !== e.currentTarget) return
-        this.options.backdrop == 'static'
-          ? this.$element[0].focus.call(this.$element[0])
-          : this.hide.call(this)
-      }, this))
-
-      if (doAnimate) this.$backdrop[0].offsetWidth // force reflow
-
-      this.$backdrop.addClass('in')
-
-      if (!callback) return
-
-      doAnimate ?
-        this.$backdrop
-          .one($.support.transition.end, callback)
-          .emulateTransitionEnd(150) :
-        callback()
-
-    } else if (!this.isShown && this.$backdrop) {
-      this.$backdrop.removeClass('in')
-
-      $.support.transition && this.$element.hasClass('fade') ?
-        this.$backdrop
-          .one($.support.transition.end, callback)
-          .emulateTransitionEnd(150) :
-        callback()
-
-    } else if (callback) {
-      callback()
-    }
-  }
-
-
-  // MODAL PLUGIN DEFINITION
-  // =======================
-
-  var old = $.fn.modal
-
-  $.fn.modal = function (option, _relatedTarget) {
-    return this.each(function () {
-      var $this   = $(this)
-      var data    = $this.data('bs.modal')
-      var options = $.extend({}, Modal.DEFAULTS, $this.data(), typeof option == 'object' && option)
-
-      if (!data) $this.data('bs.modal', (data = new Modal(this, options)))
-      if (typeof option == 'string') data[option](_relatedTarget)
-      else if (options.show) data.show(_relatedTarget)
-    })
-  }
-
-  $.fn.modal.Constructor = Modal
-
-
-  // MODAL NO CONFLICT
-  // =================
-
-  $.fn.modal.noConflict = function () {
-    $.fn.modal = old
-    return this
-  }
-
-
-  // MODAL DATA-API
-  // ==============
-
-  $(document).on('click.bs.modal.data-api', '[data-toggle="modal"]', function (e) {
-    var $this   = $(this)
-    var href    = $this.attr('href')
-    var $target = $($this.attr('data-target') || (href && href.replace(/.*(?=#[^\s]+$)/, ''))) //strip for ie7
-    var option  = $target.data('bs.modal') ? 'toggle' : $.extend({ remote: !/#/.test(href) && href }, $target.data(), $this.data())
-
-    if ($this.is('a')) e.preventDefault()
-
-    $target
-      .modal(option, this)
-      .one('hide', function () {
-        $this.is(':visible') && $this.focus()
-      })
-  })
-
-  $(document)
-    .on('show.bs.modal', '.modal', function () { $(document.body).addClass('modal-open') })
-    .on('hidden.bs.modal', '.modal', function () { $(document.body).removeClass('modal-open') })
-
-}(jQuery);
-
-/* ========================================================================
- * Bootstrap: tooltip.js v3.1.1
- * http://getbootstrap.com/javascript/#tooltip
- * Inspired by the original jQuery.tipsy by Jason Frame
- * ========================================================================
- * Copyright 2011-2014 Twitter, Inc.
- * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
- * ======================================================================== */
-
-
-+function ($) {
-  'use strict';
-
-  // TOOLTIP PUBLIC CLASS DEFINITION
-  // ===============================
-
-  var Tooltip = function (element, options) {
-    this.type       =
-    this.options    =
-    this.enabled    =
-    this.timeout    =
-    this.hoverState =
-    this.$element   = null
-
-    this.init('tooltip', element, options)
-  }
-
-  Tooltip.DEFAULTS = {
-    animation: true,
-    placement: 'top',
-    selector: false,
-    template: '<div class="tooltip"><div class="tooltip-arrow"></div><div class="tooltip-inner"></div></div>',
-    trigger: 'hover focus',
-    title: '',
-    delay: 0,
-    html: false,
-    container: false
-  }
-
-  Tooltip.prototype.init = function (type, element, options) {
-    this.enabled  = true
-    this.type     = type
-    this.$element = $(element)
-    this.options  = this.getOptions(options)
-
-    var triggers = this.options.trigger.split(' ')
-
-    for (var i = triggers.length; i--;) {
-      var trigger = triggers[i]
-
-      if (trigger == 'click') {
-        this.$element.on('click.' + this.type, this.options.selector, $.proxy(this.toggle, this))
-      } else if (trigger != 'manual') {
-        var eventIn  = trigger == 'hover' ? 'mouseenter' : 'focusin'
-        var eventOut = trigger == 'hover' ? 'mouseleave' : 'focusout'
-
-        this.$element.on(eventIn  + '.' + this.type, this.options.selector, $.proxy(this.enter, this))
-        this.$element.on(eventOut + '.' + this.type, this.options.selector, $.proxy(this.leave, this))
-      }
-    }
-
-    this.options.selector ?
-      (this._options = $.extend({}, this.options, { trigger: 'manual', selector: '' })) :
-      this.fixTitle()
-  }
-
-  Tooltip.prototype.getDefaults = function () {
-    return Tooltip.DEFAULTS
-  }
-
-  Tooltip.prototype.getOptions = function (options) {
-    options = $.extend({}, this.getDefaults(), this.$element.data(), options)
-
-    if (options.delay && typeof options.delay == 'number') {
-      options.delay = {
-        show: options.delay,
-        hide: options.delay
-      }
-    }
-
-    return options
-  }
-
-  Tooltip.prototype.getDelegateOptions = function () {
-    var options  = {}
-    var defaults = this.getDefaults()
-
-    this._options && $.each(this._options, function (key, value) {
-      if (defaults[key] != value) options[key] = value
-    })
-
-    return options
-  }
-
-  Tooltip.prototype.enter = function (obj) {
-    var self = obj instanceof this.constructor ?
-      obj : $(obj.currentTarget)[this.type](this.getDelegateOptions()).data('bs.' + this.type)
-
-    clearTimeout(self.timeout)
-
-    self.hoverState = 'in'
-
-    if (!self.options.delay || !self.options.delay.show) return self.show()
-
-    self.timeout = setTimeout(function () {
-      if (self.hoverState == 'in') self.show()
-    }, self.options.delay.show)
-  }
-
-  Tooltip.prototype.leave = function (obj) {
-    var self = obj instanceof this.constructor ?
-      obj : $(obj.currentTarget)[this.type](this.getDelegateOptions()).data('bs.' + this.type)
-
-    clearTimeout(self.timeout)
-
-    self.hoverState = 'out'
-
-    if (!self.options.delay || !self.options.delay.hide) return self.hide()
-
-    self.timeout = setTimeout(function () {
-      if (self.hoverState == 'out') self.hide()
-    }, self.options.delay.hide)
-  }
-
-  Tooltip.prototype.show = function () {
-    var e = $.Event('show.bs.' + this.type)
-
-    if (this.hasContent() && this.enabled) {
-      this.$element.trigger(e)
-
-      if (e.isDefaultPrevented()) return
-      var that = this;
-
-      var $tip = this.tip()
-
-      this.setContent()
-
-      if (this.options.animation) $tip.addClass('fade')
-
-      var placement = typeof this.options.placement == 'function' ?
-        this.options.placement.call(this, $tip[0], this.$element[0]) :
-        this.options.placement
-
-      var autoToken = /\s?auto?\s?/i
-      var autoPlace = autoToken.test(placement)
-      if (autoPlace) placement = placement.replace(autoToken, '') || 'top'
-
-      $tip
-        .detach()
-        .css({ top: 0, left: 0, display: 'block' })
-        .addClass(placement)
-
-      this.options.container ? $tip.appendTo(this.options.container) : $tip.insertAfter(this.$element)
-
-      var pos          = this.getPosition()
-      var actualWidth  = $tip[0].offsetWidth
-      var actualHeight = $tip[0].offsetHeight
-
-      if (autoPlace) {
-        var $parent = this.$element.parent()
-
-        var orgPlacement = placement
-        var docScroll    = document.documentElement.scrollTop || document.body.scrollTop
-        var parentWidth  = this.options.container == 'body' ? window.innerWidth  : $parent.outerWidth()
-        var parentHeight = this.options.container == 'body' ? window.innerHeight : $parent.outerHeight()
-        var parentLeft   = this.options.container == 'body' ? 0 : $parent.offset().left
-
-        placement = placement == 'bottom' && pos.top   + pos.height  + actualHeight - docScroll > parentHeight  ? 'top'    :
-                    placement == 'top'    && pos.top   - docScroll   - actualHeight < 0                         ? 'bottom' :
-                    placement == 'right'  && pos.right + actualWidth > parentWidth                              ? 'left'   :
-                    placement == 'left'   && pos.left  - actualWidth < parentLeft                               ? 'right'  :
-                    placement
-
-        $tip
-          .removeClass(orgPlacement)
-          .addClass(placement)
-      }
-
-      var calculatedOffset = this.getCalculatedOffset(placement, pos, actualWidth, actualHeight)
-
-      this.applyPlacement(calculatedOffset, placement)
-      this.hoverState = null
-
-      var complete = function() {
-        that.$element.trigger('shown.bs.' + that.type)
-      }
-
-      $.support.transition && this.$tip.hasClass('fade') ?
-        $tip
-          .one($.support.transition.end, complete)
-          .emulateTransitionEnd(150) :
-        complete()
-    }
-  }
-
-  Tooltip.prototype.applyPlacement = function (offset, placement) {
-    var replace
-    var $tip   = this.tip()
-    var width  = $tip[0].offsetWidth
-    var height = $tip[0].offsetHeight
-
-    // manually read margins because getBoundingClientRect includes difference
-    var marginTop = parseInt($tip.css('margin-top'), 10)
-    var marginLeft = parseInt($tip.css('margin-left'), 10)
-
-    // we must check for NaN for ie 8/9
-    if (isNaN(marginTop))  marginTop  = 0
-    if (isNaN(marginLeft)) marginLeft = 0
-
-    offset.top  = offset.top  + marginTop
-    offset.left = offset.left + marginLeft
-
-    // $.fn.offset doesn't round pixel values
-    // so we use setOffset directly with our own function B-0
-    $.offset.setOffset($tip[0], $.extend({
-      using: function (props) {
-        $tip.css({
-          top: Math.round(props.top),
-          left: Math.round(props.left)
-        })
-      }
-    }, offset), 0)
-
-    $tip.addClass('in')
-
-    // check to see if placing tip in new offset caused the tip to resize itself
-    var actualWidth  = $tip[0].offsetWidth
-    var actualHeight = $tip[0].offsetHeight
-
-    if (placement == 'top' && actualHeight != height) {
-      replace = true
-      offset.top = offset.top + height - actualHeight
-    }
-
-    if (/bottom|top/.test(placement)) {
-      var delta = 0
-
-      if (offset.left < 0) {
-        delta       = offset.left * -2
-        offset.left = 0
-
-        $tip.offset(offset)
-
-        actualWidth  = $tip[0].offsetWidth
-        actualHeight = $tip[0].offsetHeight
-      }
-
-      this.replaceArrow(delta - width + actualWidth, actualWidth, 'left')
-    } else {
-      this.replaceArrow(actualHeight - height, actualHeight, 'top')
-    }
-
-    if (replace) $tip.offset(offset)
-  }
-
-  Tooltip.prototype.replaceArrow = function (delta, dimension, position) {
-    this.arrow().css(position, delta ? (50 * (1 - delta / dimension) + '%') : '')
-  }
-
-  Tooltip.prototype.setContent = function () {
-    var $tip  = this.tip()
-    var title = this.getTitle()
-
-    $tip.find('.tooltip-inner')[this.options.html ? 'html' : 'text'](title)
-    $tip.removeClass('fade in top bottom left right')
-  }
-
-  Tooltip.prototype.hide = function () {
-    var that = this
-    var $tip = this.tip()
-    var e    = $.Event('hide.bs.' + this.type)
-
-    function complete() {
-      if (that.hoverState != 'in') $tip.detach()
-      that.$element.trigger('hidden.bs.' + that.type)
-    }
-
-    this.$element.trigger(e)
-
-    if (e.isDefaultPrevented()) return
-
-    $tip.removeClass('in')
-
-    $.support.transition && this.$tip.hasClass('fade') ?
-      $tip
-        .one($.support.transition.end, complete)
-        .emulateTransitionEnd(150) :
-      complete()
-
-    this.hoverState = null
-
-    return this
-  }
-
-  Tooltip.prototype.fixTitle = function () {
-    var $e = this.$element
-    if ($e.attr('title') || typeof($e.attr('data-original-title')) != 'string') {
-      $e.attr('data-original-title', $e.attr('title') || '').attr('title', '')
-    }
-  }
-
-  Tooltip.prototype.hasContent = function () {
-    return this.getTitle()
-  }
-
-  Tooltip.prototype.getPosition = function () {
-    var el = this.$element[0]
-    return $.extend({}, (typeof el.getBoundingClientRect == 'function') ? el.getBoundingClientRect() : {
-      width: el.offsetWidth,
-      height: el.offsetHeight
-    }, this.$element.offset())
-  }
-
-  Tooltip.prototype.getCalculatedOffset = function (placement, pos, actualWidth, actualHeight) {
-    return placement == 'bottom' ? { top: pos.top + pos.height,   left: pos.left + pos.width / 2 - actualWidth / 2  } :
-           placement == 'top'    ? { top: pos.top - actualHeight, left: pos.left + pos.width / 2 - actualWidth / 2  } :
-           placement == 'left'   ? { top: pos.top + pos.height / 2 - actualHeight / 2, left: pos.left - actualWidth } :
-        /* placement == 'right' */ { top: pos.top + pos.height / 2 - actualHeight / 2, left: pos.left + pos.width   }
-  }
-
-  Tooltip.prototype.getTitle = function () {
-    var title
-    var $e = this.$element
-    var o  = this.options
-
-    title = $e.attr('data-original-title')
-      || (typeof o.title == 'function' ? o.title.call($e[0]) :  o.title)
-
-    return title
-  }
-
-  Tooltip.prototype.tip = function () {
-    return this.$tip = this.$tip || $(this.options.template)
-  }
-
-  Tooltip.prototype.arrow = function () {
-    return this.$arrow = this.$arrow || this.tip().find('.tooltip-arrow')
-  }
-
-  Tooltip.prototype.validate = function () {
-    if (!this.$element[0].parentNode) {
-      this.hide()
-      this.$element = null
-      this.options  = null
-    }
-  }
-
-  Tooltip.prototype.enable = function () {
-    this.enabled = true
-  }
-
-  Tooltip.prototype.disable = function () {
-    this.enabled = false
-  }
-
-  Tooltip.prototype.toggleEnabled = function () {
-    this.enabled = !this.enabled
-  }
-
-  Tooltip.prototype.toggle = function (e) {
-    var self = e ? $(e.currentTarget)[this.type](this.getDelegateOptions()).data('bs.' + this.type) : this
-    self.tip().hasClass('in') ? self.leave(self) : self.enter(self)
-  }
-
-  Tooltip.prototype.destroy = function () {
-    clearTimeout(this.timeout)
-    this.hide().$element.off('.' + this.type).removeData('bs.' + this.type)
-  }
-
-
-  // TOOLTIP PLUGIN DEFINITION
-  // =========================
-
-  var old = $.fn.tooltip
-
-  $.fn.tooltip = function (option) {
-    return this.each(function () {
-      var $this   = $(this)
-      var data    = $this.data('bs.tooltip')
-      var options = typeof option == 'object' && option
-
-      if (!data && option == 'destroy') return
-      if (!data) $this.data('bs.tooltip', (data = new Tooltip(this, options)))
-      if (typeof option == 'string') data[option]()
-    })
-  }
-
-  $.fn.tooltip.Constructor = Tooltip
-
-
-  // TOOLTIP NO CONFLICT
-  // ===================
-
-  $.fn.tooltip.noConflict = function () {
-    $.fn.tooltip = old
-    return this
-  }
-
-}(jQuery);
-
-/* ========================================================================
- * Bootstrap: popover.js v3.1.1
- * http://getbootstrap.com/javascript/#popovers
- * ========================================================================
- * Copyright 2011-2014 Twitter, Inc.
- * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
- * ======================================================================== */
-
-
-+function ($) {
-  'use strict';
-
-  // POPOVER PUBLIC CLASS DEFINITION
-  // ===============================
-
-  var Popover = function (element, options) {
-    this.init('popover', element, options)
-  }
-
-  if (!$.fn.tooltip) throw new Error('Popover requires tooltip.js')
-
-  Popover.DEFAULTS = $.extend({}, $.fn.tooltip.Constructor.DEFAULTS, {
-    placement: 'right',
-    trigger: 'click',
-    content: '',
-    template: '<div class="popover"><div class="arrow"></div><h3 class="popover-title"></h3><div class="popover-content"></div></div>'
-  })
-
-
-  // NOTE: POPOVER EXTENDS tooltip.js
-  // ================================
-
-  Popover.prototype = $.extend({}, $.fn.tooltip.Constructor.prototype)
-
-  Popover.prototype.constructor = Popover
-
-  Popover.prototype.getDefaults = function () {
-    return Popover.DEFAULTS
-  }
-
-  Popover.prototype.setContent = function () {
-    var $tip    = this.tip()
-    var title   = this.getTitle()
-    var content = this.getContent()
-
-    $tip.find('.popover-title')[this.options.html ? 'html' : 'text'](title)
-    $tip.find('.popover-content')[ // we use append for html objects to maintain js events
-      this.options.html ? (typeof content == 'string' ? 'html' : 'append') : 'text'
-    ](content)
-
-    $tip.removeClass('fade top bottom left right in')
-
-    // IE8 doesn't accept hiding via the `:empty` pseudo selector, we have to do
-    // this manually by checking the contents.
-    if (!$tip.find('.popover-title').html()) $tip.find('.popover-title').hide()
-  }
-
-  Popover.prototype.hasContent = function () {
-    return this.getTitle() || this.getContent()
-  }
-
-  Popover.prototype.getContent = function () {
-    var $e = this.$element
-    var o  = this.options
-
-    return $e.attr('data-content')
-      || (typeof o.content == 'function' ?
-            o.content.call($e[0]) :
-            o.content)
-  }
-
-  Popover.prototype.arrow = function () {
-    return this.$arrow = this.$arrow || this.tip().find('.arrow')
-  }
-
-  Popover.prototype.tip = function () {
-    if (!this.$tip) this.$tip = $(this.options.template)
-    return this.$tip
-  }
-
-
-  // POPOVER PLUGIN DEFINITION
-  // =========================
-
-  var old = $.fn.popover
-
-  $.fn.popover = function (option) {
-    return this.each(function () {
-      var $this   = $(this)
-      var data    = $this.data('bs.popover')
-      var options = typeof option == 'object' && option
-
-      if (!data && option == 'destroy') return
-      if (!data) $this.data('bs.popover', (data = new Popover(this, options)))
-      if (typeof option == 'string') data[option]()
-    })
-  }
-
-  $.fn.popover.Constructor = Popover
-
-
-  // POPOVER NO CONFLICT
-  // ===================
-
-  $.fn.popover.noConflict = function () {
-    $.fn.popover = old
-    return this
-  }
-
-}(jQuery);
-
-/* ========================================================================
- * Bootstrap: scrollspy.js v3.1.1
- * http://getbootstrap.com/javascript/#scrollspy
- * ========================================================================
- * Copyright 2011-2014 Twitter, Inc.
- * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
- * ======================================================================== */
-
-
-+function ($) {
-  'use strict';
-
-  // SCROLLSPY CLASS DEFINITION
-  // ==========================
-
-  function ScrollSpy(element, options) {
-    var href
-    var process  = $.proxy(this.process, this)
-
-    this.$element       = $(element).is('body') ? $(window) : $(element)
-    this.$body          = $('body')
-    this.$scrollElement = this.$element.on('scroll.bs.scroll-spy.data-api', process)
-    this.options        = $.extend({}, ScrollSpy.DEFAULTS, options)
-    this.selector       = (this.options.target
-      || ((href = $(element).attr('href')) && href.replace(/.*(?=#[^\s]+$)/, '')) //strip for ie7
-      || '') + ' .nav li > a'
-    this.offsets        = $([])
-    this.targets        = $([])
-    this.activeTarget   = null
-
-    this.refresh()
-    this.process()
-  }
-
-  ScrollSpy.DEFAULTS = {
-    offset: 10
-  }
-
-  ScrollSpy.prototype.refresh = function () {
-    var offsetMethod = this.$element[0] == window ? 'offset' : 'position'
-
-    this.offsets = $([])
-    this.targets = $([])
-
-    var self     = this
-    var $targets = this.$body
-      .find(this.selector)
-      .map(function () {
-        var $el   = $(this)
-        var href  = $el.data('target') || $el.attr('href')
-        var $href = /^#./.test(href) && $(href)
-
-        return ($href
-          && $href.length
-          && $href.is(':visible')
-          && [[ $href[offsetMethod]().top + (!$.isWindow(self.$scrollElement.get(0)) && self.$scrollElement.scrollTop()), href ]]) || null
-      })
-      .sort(function (a, b) { return a[0] - b[0] })
-      .each(function () {
-        self.offsets.push(this[0])
-        self.targets.push(this[1])
-      })
-  }
-
-  ScrollSpy.prototype.process = function () {
-    var scrollTop    = this.$scrollElement.scrollTop() + this.options.offset
-    var scrollHeight = this.$scrollElement[0].scrollHeight || this.$body[0].scrollHeight
-    var maxScroll    = scrollHeight - this.$scrollElement.height()
-    var offsets      = this.offsets
-    var targets      = this.targets
-    var activeTarget = this.activeTarget
-    var i
-
-    if (scrollTop >= maxScroll) {
-      return activeTarget != (i = targets.last()[0]) && this.activate(i)
-    }
-
-    if (activeTarget && scrollTop <= offsets[0]) {
-      return activeTarget != (i = targets[0]) && this.activate(i)
-    }
-
-    for (i = offsets.length; i--;) {
-      activeTarget != targets[i]
-        && scrollTop >= offsets[i]
-        && (!offsets[i + 1] || scrollTop <= offsets[i + 1])
-        && this.activate( targets[i] )
-    }
-  }
-
-  ScrollSpy.prototype.activate = function (target) {
-    this.activeTarget = target
-
-    $(this.selector)
-      .parentsUntil(this.options.target, '.active')
-      .removeClass('active')
-
-    var selector = this.selector +
-        '[data-target="' + target + '"],' +
-        this.selector + '[href="' + target + '"]'
-
-    var active = $(selector)
-      .parents('li')
-      .addClass('active')
-
-    if (active.parent('.dropdown-menu').length) {
-      active = active
-        .closest('li.dropdown')
-        .addClass('active')
-    }
-
-    active.trigger('activate.bs.scrollspy')
-  }
-
-
-  // SCROLLSPY PLUGIN DEFINITION
-  // ===========================
-
-  var old = $.fn.scrollspy
-
-  $.fn.scrollspy = function (option) {
-    return this.each(function () {
-      var $this   = $(this)
-      var data    = $this.data('bs.scrollspy')
-      var options = typeof option == 'object' && option
-
-      if (!data) $this.data('bs.scrollspy', (data = new ScrollSpy(this, options)))
-      if (typeof option == 'string') data[option]()
-    })
-  }
-
-  $.fn.scrollspy.Constructor = ScrollSpy
-
-
-  // SCROLLSPY NO CONFLICT
-  // =====================
-
-  $.fn.scrollspy.noConflict = function () {
-    $.fn.scrollspy = old
-    return this
-  }
-
-
-  // SCROLLSPY DATA-API
-  // ==================
-
-  $(window).on('load', function () {
-    $('[data-spy="scroll"]').each(function () {
-      var $spy = $(this)
-      $spy.scrollspy($spy.data())
-    })
-  })
-
-}(jQuery);
-
-/* ========================================================================
- * Bootstrap: tab.js v3.1.1
- * http://getbootstrap.com/javascript/#tabs
- * ========================================================================
- * Copyright 2011-2014 Twitter, Inc.
- * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
- * ======================================================================== */
-
-
-+function ($) {
-  'use strict';
-
-  // TAB CLASS DEFINITION
-  // ====================
-
-  var Tab = function (element) {
-    this.element = $(element)
-  }
-
-  Tab.prototype.show = function () {
-    var $this    = this.element
-    var $ul      = $this.closest('ul:not(.dropdown-menu)')
-    var selector = $this.data('target')
-
-    if (!selector) {
-      selector = $this.attr('href')
-      selector = selector && selector.replace(/.*(?=#[^\s]*$)/, '') //strip for ie7
-    }
-
-    if ($this.parent('li').hasClass('active')) return
-
-    var previous = $ul.find('.active:last a')[0]
-    var e        = $.Event('show.bs.tab', {
-      relatedTarget: previous
-    })
-
-    $this.trigger(e)
-
-    if (e.isDefaultPrevented()) return
-
-    var $target = $(selector)
-
-    this.activate($this.parent('li'), $ul)
-    this.activate($target, $target.parent(), function () {
-      $this.trigger({
-        type: 'shown.bs.tab',
-        relatedTarget: previous
-      })
-    })
-  }
-
-  Tab.prototype.activate = function (element, container, callback) {
-    var $active    = container.find('> .active')
-    var transition = callback
-      && $.support.transition
-      && $active.hasClass('fade')
-
-    function next() {
-      $active
-        .removeClass('active')
-        .find('> .dropdown-menu > .active')
-        .removeClass('active')
-
-      element.addClass('active')
-
-      if (transition) {
-        element[0].offsetWidth // reflow for transition
-        element.addClass('in')
-      } else {
-        element.removeClass('fade')
-      }
-
-      if (element.parent('.dropdown-menu')) {
-        element.closest('li.dropdown').addClass('active')
-      }
-
-      callback && callback()
-    }
-
-    transition ?
-      $active
-        .one($.support.transition.end, next)
-        .emulateTransitionEnd(150) :
-      next()
-
-    $active.removeClass('in')
-  }
-
-
-  // TAB PLUGIN DEFINITION
-  // =====================
-
-  var old = $.fn.tab
-
-  $.fn.tab = function ( option ) {
-    return this.each(function () {
-      var $this = $(this)
-      var data  = $this.data('bs.tab')
-
-      if (!data) $this.data('bs.tab', (data = new Tab(this)))
-      if (typeof option == 'string') data[option]()
-    })
-  }
-
-  $.fn.tab.Constructor = Tab
-
-
-  // TAB NO CONFLICT
-  // ===============
-
-  $.fn.tab.noConflict = function () {
-    $.fn.tab = old
-    return this
-  }
-
-
-  // TAB DATA-API
-  // ============
-
-  $(document).on('click.bs.tab.data-api', '[data-toggle="tab"], [data-toggle="pill"]', function (e) {
-    e.preventDefault()
-    $(this).tab('show')
-  })
-
-}(jQuery);
-
-/* ========================================================================
- * Bootstrap: affix.js v3.1.1
- * http://getbootstrap.com/javascript/#affix
- * ========================================================================
- * Copyright 2011-2014 Twitter, Inc.
- * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
- * ======================================================================== */
-
-
-+function ($) {
-  'use strict';
-
-  // AFFIX CLASS DEFINITION
-  // ======================
-
-  var Affix = function (element, options) {
-    this.options = $.extend({}, Affix.DEFAULTS, options)
-    this.$window = $(window)
-      .on('scroll.bs.affix.data-api', $.proxy(this.checkPosition, this))
-      .on('click.bs.affix.data-api',  $.proxy(this.checkPositionWithEventLoop, this))
-
-    this.$element     = $(element)
-    this.affixed      =
-    this.unpin        =
-    this.pinnedOffset = null
-
-    this.checkPosition()
-  }
-
-  Affix.RESET = 'affix affix-top affix-bottom'
-
-  Affix.DEFAULTS = {
-    offset: 0
-  }
-
-  Affix.prototype.getPinnedOffset = function () {
-    if (this.pinnedOffset) return this.pinnedOffset
-    this.$element.removeClass(Affix.RESET).addClass('affix')
-    var scrollTop = this.$window.scrollTop()
-    var position  = this.$element.offset()
-    return (this.pinnedOffset = position.top - scrollTop)
-  }
-
-  Affix.prototype.checkPositionWithEventLoop = function () {
-    setTimeout($.proxy(this.checkPosition, this), 1)
-  }
-
-  Affix.prototype.checkPosition = function () {
-    if (!this.$element.is(':visible')) return
-
-    var scrollHeight = $(document).height()
-    var scrollTop    = this.$window.scrollTop()
-    var position     = this.$element.offset()
-    var offset       = this.options.offset
-    var offsetTop    = offset.top
-    var offsetBottom = offset.bottom
-
-    if (this.affixed == 'top') position.top += scrollTop
-
-    if (typeof offset != 'object')         offsetBottom = offsetTop = offset
-    if (typeof offsetTop == 'function')    offsetTop    = offset.top(this.$element)
-    if (typeof offsetBottom == 'function') offsetBottom = offset.bottom(this.$element)
-
-    var affix = this.unpin   != null && (scrollTop + this.unpin <= position.top) ? false :
-                offsetBottom != null && (position.top + this.$element.height() >= scrollHeight - offsetBottom) ? 'bottom' :
-                offsetTop    != null && (scrollTop <= offsetTop) ? 'top' : false
-
-    if (this.affixed === affix) return
-    if (this.unpin) this.$element.css('top', '')
-
-    var affixType = 'affix' + (affix ? '-' + affix : '')
-    var e         = $.Event(affixType + '.bs.affix')
-
-    this.$element.trigger(e)
-
-    if (e.isDefaultPrevented()) return
-
-    this.affixed = affix
-    this.unpin = affix == 'bottom' ? this.getPinnedOffset() : null
-
-    this.$element
-      .removeClass(Affix.RESET)
-      .addClass(affixType)
-      .trigger($.Event(affixType.replace('affix', 'affixed')))
-
-    if (affix == 'bottom') {
-      this.$element.offset({ top: scrollHeight - offsetBottom - this.$element.height() })
-    }
-  }
-
-
-  // AFFIX PLUGIN DEFINITION
-  // =======================
-
-  var old = $.fn.affix
-
-  $.fn.affix = function (option) {
-    return this.each(function () {
-      var $this   = $(this)
-      var data    = $this.data('bs.affix')
-      var options = typeof option == 'object' && option
-
-      if (!data) $this.data('bs.affix', (data = new Affix(this, options)))
-      if (typeof option == 'string') data[option]()
-    })
-  }
-
-  $.fn.affix.Constructor = Affix
-
-
-  // AFFIX NO CONFLICT
-  // =================
-
-  $.fn.affix.noConflict = function () {
-    $.fn.affix = old
-    return this
-  }
-
-
-  // AFFIX DATA-API
-  // ==============
-
-  $(window).on('load', function () {
-    $('[data-spy="affix"]').each(function () {
-      var $spy = $(this)
-      var data = $spy.data()
-
-      data.offset = data.offset || {}
-
-      if (data.offsetBottom) data.offset.bottom = data.offsetBottom
-      if (data.offsetTop)    data.offset.top    = data.offsetTop
-
-      $spy.affix(data)
-    })
-  })
-
-}(jQuery);
-
-},{}],41:[function(require,module,exports){
-/**
- * sifter.js
- * Copyright (c) 2013 Brian Reavis & contributors
- *
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this
- * file except in compliance with the License. You may obtain a copy of the License at:
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software distributed under
- * the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
- * ANY KIND, either express or implied. See the License for the specific language
- * governing permissions and limitations under the License.
- *
- * @author Brian Reavis <brian@thirdroute.com>
- */
-
-(function(root, factory) {
-	if (typeof define === 'function' && define.amd) {
-		define('sifter', factory);
-	} else if (typeof exports === 'object') {
-		module.exports.Sifter = factory();
-	} else {
-		root.Sifter = factory();
-	}
-}(this, function() {
-
-	/**
-	 * Textually searches arrays and hashes of objects
-	 * by property (or multiple properties). Designed
-	 * specifically for autocomplete.
-	 *
-	 * @constructor
-	 * @param {array|object} items
-	 * @param {object} items
-	 */
-	var Sifter = function(items, settings) {
-		this.items = items;
-		this.settings = settings || {diacritics: true};
-	};
-
-	/**
-	 * Splits a search string into an array of individual
-	 * regexps to be used to match results.
-	 *
-	 * @param {string} query
-	 * @returns {array}
-	 */
-	Sifter.prototype.tokenize = function(query) {
-		query = trim(String(query || '').toLowerCase());
-		if (!query || !query.length) return [];
-
-		var i, n, regex, letter;
-		var tokens = [];
-		var words = query.split(/ +/);
-
-		for (i = 0, n = words.length; i < n; i++) {
-			regex = escape_regex(words[i]);
-			if (this.settings.diacritics) {
-				for (letter in DIACRITICS) {
-					if (DIACRITICS.hasOwnProperty(letter)) {
-						regex = regex.replace(new RegExp(letter, 'g'), DIACRITICS[letter]);
-					}
-				}
-			}
-			tokens.push({
-				string : words[i],
-				regex  : new RegExp(regex, 'i')
-			});
-		}
-
-		return tokens;
-	};
-
-	/**
-	 * Iterates over arrays and hashes.
-	 *
-	 * ```
-	 * this.iterator(this.items, function(item, id) {
-	 *    // invoked for each item
-	 * });
-	 * ```
-	 *
-	 * @param {array|object} object
-	 */
-	Sifter.prototype.iterator = function(object, callback) {
-		var iterator;
-		if (is_array(object)) {
-			iterator = Array.prototype.forEach || function(callback) {
-				for (var i = 0, n = this.length; i < n; i++) {
-					callback(this[i], i, this);
-				}
-			};
-		} else {
-			iterator = function(callback) {
-				for (var key in this) {
-					if (this.hasOwnProperty(key)) {
-						callback(this[key], key, this);
-					}
-				}
-			};
-		}
-
-		iterator.apply(object, [callback]);
-	};
-
-	/**
-	 * Returns a function to be used to score individual results.
-	 *
-	 * Good matches will have a higher score than poor matches.
-	 * If an item is not a match, 0 will be returned by the function.
-	 *
-	 * @param {object|string} search
-	 * @param {object} options (optional)
-	 * @returns {function}
-	 */
-	Sifter.prototype.getScoreFunction = function(search, options) {
-		var self, fields, tokens, token_count;
-
-		self        = this;
-		search      = self.prepareSearch(search, options);
-		tokens      = search.tokens;
-		fields      = search.options.fields;
-		token_count = tokens.length;
-
-		/**
-		 * Calculates how close of a match the
-		 * given value is against a search token.
-		 *
-		 * @param {mixed} value
-		 * @param {object} token
-		 * @return {number}
-		 */
-		var scoreValue = function(value, token) {
-			var score, pos;
-
-			if (!value) return 0;
-			value = String(value || '');
-			pos = value.search(token.regex);
-			if (pos === -1) return 0;
-			score = token.string.length / value.length;
-			if (pos === 0) score += 0.5;
-			return score;
-		};
-
-		/**
-		 * Calculates the score of an object
-		 * against the search query.
-		 *
-		 * @param {object} token
-		 * @param {object} data
-		 * @return {number}
-		 */
-		var scoreObject = (function() {
-			var field_count = fields.length;
-			if (!field_count) {
-				return function() { return 0; };
-			}
-			if (field_count === 1) {
-				return function(token, data) {
-					return scoreValue(data[fields[0]], token);
-				};
-			}
-			return function(token, data) {
-				for (var i = 0, sum = 0; i < field_count; i++) {
-					sum += scoreValue(data[fields[i]], token);
-				}
-				return sum / field_count;
-			};
-		})();
-
-		if (!token_count) {
-			return function() { return 0; };
-		}
-		if (token_count === 1) {
-			return function(data) {
-				return scoreObject(tokens[0], data);
-			};
-		}
-
-		if (search.options.conjunction === 'and') {
-			return function(data) {
-				var score;
-				for (var i = 0, sum = 0; i < token_count; i++) {
-					score = scoreObject(tokens[i], data);
-					if (score <= 0) return 0;
-					sum += score;
-				}
-				return sum / token_count;
-			};
-		} else {
-			return function(data) {
-				for (var i = 0, sum = 0; i < token_count; i++) {
-					sum += scoreObject(tokens[i], data);
-				}
-				return sum / token_count;
-			};
-		}
-	};
-
-	/**
-	 * Returns a function that can be used to compare two
-	 * results, for sorting purposes. If no sorting should
-	 * be performed, `null` will be returned.
-	 *
-	 * @param {string|object} search
-	 * @param {object} options
-	 * @return function(a,b)
-	 */
-	Sifter.prototype.getSortFunction = function(search, options) {
-		var i, n, self, field, fields, fields_count, multiplier, multipliers, get_field, implicit_score, sort;
-
-		self   = this;
-		search = self.prepareSearch(search, options);
-		sort   = (!search.query && options.sort_empty) || options.sort;
-
-		/**
-		 * Fetches the specified sort field value
-		 * from a search result item.
-		 *
-		 * @param  {string} name
-		 * @param  {object} result
-		 * @return {mixed}
-		 */
-		get_field  = function(name, result) {
-			if (name === '$score') return result.score;
-			return self.items[result.id][name];
-		};
-
-		// parse options
-		fields = [];
-		if (sort) {
-			for (i = 0, n = sort.length; i < n; i++) {
-				if (search.query || sort[i].field !== '$score') {
-					fields.push(sort[i]);
-				}
-			}
-		}
-
-		// the "$score" field is implied to be the primary
-		// sort field, unless it's manually specified
-		if (search.query) {
-			implicit_score = true;
-			for (i = 0, n = fields.length; i < n; i++) {
-				if (fields[i].field === '$score') {
-					implicit_score = false;
-					break;
-				}
-			}
-			if (implicit_score) {
-				fields.unshift({field: '$score', direction: 'desc'});
-			}
-		} else {
-			for (i = 0, n = fields.length; i < n; i++) {
-				if (fields[i].field === '$score') {
-					fields.splice(i, 1);
-					break;
-				}
-			}
-		}
-
-		multipliers = [];
-		for (i = 0, n = fields.length; i < n; i++) {
-			multipliers.push(fields[i].direction === 'desc' ? -1 : 1);
-		}
-
-		// build function
-		fields_count = fields.length;
-		if (!fields_count) {
-			return null;
-		} else if (fields_count === 1) {
-			field = fields[0].field;
-			multiplier = multipliers[0];
-			return function(a, b) {
-				return multiplier * cmp(
-					get_field(field, a),
-					get_field(field, b)
-				);
-			};
-		} else {
-			return function(a, b) {
-				var i, result, a_value, b_value, field;
-				for (i = 0; i < fields_count; i++) {
-					field = fields[i].field;
-					result = multipliers[i] * cmp(
-						get_field(field, a),
-						get_field(field, b)
-					);
-					if (result) return result;
-				}
-				return 0;
-			};
-		}
-	};
-
-	/**
-	 * Parses a search query and returns an object
-	 * with tokens and fields ready to be populated
-	 * with results.
-	 *
-	 * @param {string} query
-	 * @param {object} options
-	 * @returns {object}
-	 */
-	Sifter.prototype.prepareSearch = function(query, options) {
-		if (typeof query === 'object') return query;
-
-		options = extend({}, options);
-
-		var option_fields     = options.fields;
-		var option_sort       = options.sort;
-		var option_sort_empty = options.sort_empty;
-
-		if (option_fields && !is_array(option_fields)) options.fields = [option_fields];
-		if (option_sort && !is_array(option_sort)) options.sort = [option_sort];
-		if (option_sort_empty && !is_array(option_sort_empty)) options.sort_empty = [option_sort_empty];
-
-		return {
-			options : options,
-			query   : String(query || '').toLowerCase(),
-			tokens  : this.tokenize(query),
-			total   : 0,
-			items   : []
-		};
-	};
-
-	/**
-	 * Searches through all items and returns a sorted array of matches.
-	 *
-	 * The `options` parameter can contain:
-	 *
-	 *   - fields {string|array}
-	 *   - sort {array}
-	 *   - score {function}
-	 *   - filter {bool}
-	 *   - limit {integer}
-	 *
-	 * Returns an object containing:
-	 *
-	 *   - options {object}
-	 *   - query {string}
-	 *   - tokens {array}
-	 *   - total {int}
-	 *   - items {array}
-	 *
-	 * @param {string} query
-	 * @param {object} options
-	 * @returns {object}
-	 */
-	Sifter.prototype.search = function(query, options) {
-		var self = this, value, score, search, calculateScore;
-		var fn_sort;
-		var fn_score;
-
-		search  = this.prepareSearch(query, options);
-		options = search.options;
-		query   = search.query;
-
-		// generate result scoring function
-		fn_score = options.score || self.getScoreFunction(search);
-
-		// perform search and sort
-		if (query.length) {
-			self.iterator(self.items, function(item, id) {
-				score = fn_score(item);
-				if (options.filter === false || score > 0) {
-					search.items.push({'score': score, 'id': id});
-				}
-			});
-		} else {
-			self.iterator(self.items, function(item, id) {
-				search.items.push({'score': 1, 'id': id});
-			});
-		}
-
-		fn_sort = self.getSortFunction(search, options);
-		if (fn_sort) search.items.sort(fn_sort);
-
-		// apply limits
-		search.total = search.items.length;
-		if (typeof options.limit === 'number') {
-			search.items = search.items.slice(0, options.limit);
-		}
-
-		return search;
-	};
-
-	// utilities
-	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-	var cmp = function(a, b) {
-		if (typeof a === 'number' && typeof b === 'number') {
-			return a > b ? 1 : (a < b ? -1 : 0);
-		}
-		a = String(a || '').toLowerCase();
-		b = String(b || '').toLowerCase();
-		if (a > b) return 1;
-		if (b > a) return -1;
-		return 0;
-	};
-
-	var extend = function(a, b) {
-		var i, n, k, object;
-		for (i = 1, n = arguments.length; i < n; i++) {
-			object = arguments[i];
-			if (!object) continue;
-			for (k in object) {
-				if (object.hasOwnProperty(k)) {
-					a[k] = object[k];
-				}
-			}
-		}
-		return a;
-	};
-
-	var trim = function(str) {
-		return (str + '').replace(/^\s+|\s+$|/g, '');
-	};
-
-	var escape_regex = function(str) {
-		return (str + '').replace(/([.?*+^$[\]\\(){}|-])/g, '\\$1');
-	};
-
-	var is_array = Array.isArray || ($ && $.isArray) || function(object) {
-		return Object.prototype.toString.call(object) === '[object Array]';
-	};
-
-	var DIACRITICS = {
-		'a': '[aÀÁÂÃÄÅàáâãäå]',
-		'c': '[cÇçćĆčČ]',
-		'd': '[dđĐ]',
-		'e': '[eÈÉÊËèéêë]',
-		'i': '[iÌÍÎÏìíîï]',
-		'n': '[nÑñ]',
-		'o': '[oÒÓÔÕÕÖØòóôõöø]',
-		's': '[sŠš]',
-		'u': '[uÙÚÛÜùúûü]',
-		'y': '[yŸÿý]',
-		'z': '[zŽž]'
-	};
-
-	// export
-	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-	return Sifter;
-}));
-
-
-
-/**
- * microplugin.js
- * Copyright (c) 2013 Brian Reavis & contributors
- *
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this
- * file except in compliance with the License. You may obtain a copy of the License at:
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software distributed under
- * the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
- * ANY KIND, either express or implied. See the License for the specific language
- * governing permissions and limitations under the License.
- *
- * @author Brian Reavis <brian@thirdroute.com>
- */
-
-(function(root, factory) {
-	if (typeof define === 'function' && define.amd) {
-		define('microplugin', factory);
-	} else if (typeof exports === 'object') {
-		module.exports.MicroPlugin = factory();
-	} else {
-		root.MicroPlugin = factory();
-	}
-}(this, function() {
-	var MicroPlugin = {};
-
-	MicroPlugin.mixin = function(Interface) {
-		Interface.plugins = {};
-
-		/**
-		 * Initializes the listed plugins (with options).
-		 * Acceptable formats:
-		 *
-		 * List (without options):
-		 *   ['a', 'b', 'c']
-		 *
-		 * List (with options):
-		 *   [{'name': 'a', options: {}}, {'name': 'b', options: {}}]
-		 *
-		 * Hash (with options):
-		 *   {'a': { ... }, 'b': { ... }, 'c': { ... }}
-		 *
-		 * @param {mixed} plugins
-		 */
-		Interface.prototype.initializePlugins = function(plugins) {
-			var i, n, key;
-			var self  = this;
-			var queue = [];
-
-			self.plugins = {
-				names     : [],
-				settings  : {},
-				requested : {},
-				loaded    : {}
-			};
-
-			if (utils.isArray(plugins)) {
-				for (i = 0, n = plugins.length; i < n; i++) {
-					if (typeof plugins[i] === 'string') {
-						queue.push(plugins[i]);
-					} else {
-						self.plugins.settings[plugins[i].name] = plugins[i].options;
-						queue.push(plugins[i].name);
-					}
-				}
-			} else if (plugins) {
-				for (key in plugins) {
-					if (plugins.hasOwnProperty(key)) {
-						self.plugins.settings[key] = plugins[key];
-						queue.push(key);
-					}
-				}
-			}
-
-			while (queue.length) {
-				self.require(queue.shift());
-			}
-		};
-
-		Interface.prototype.loadPlugin = function(name) {
-			var self    = this;
-			var plugins = self.plugins;
-			var plugin  = Interface.plugins[name];
-
-			if (!Interface.plugins.hasOwnProperty(name)) {
-				throw new Error('Unable to find "' +  name + '" plugin');
-			}
-
-			plugins.requested[name] = true;
-			plugins.loaded[name] = plugin.fn.apply(self, [self.plugins.settings[name] || {}]);
-			plugins.names.push(name);
-		};
-
-		/**
-		 * Initializes a plugin.
-		 *
-		 * @param {string} name
-		 */
-		Interface.prototype.require = function(name) {
-			var self = this;
-			var plugins = self.plugins;
-
-			if (!self.plugins.loaded.hasOwnProperty(name)) {
-				if (plugins.requested[name]) {
-					throw new Error('Plugin has circular dependency ("' + name + '")');
-				}
-				self.loadPlugin(name);
-			}
-
-			return plugins.loaded[name];
-		};
-
-		/**
-		 * Registers a plugin.
-		 *
-		 * @param {string} name
-		 * @param {function} fn
-		 */
-		Interface.define = function(name, fn) {
-			Interface.plugins[name] = {
-				'name' : name,
-				'fn'   : fn
-			};
-		};
-	};
-
-	var utils = {
-		isArray: Array.isArray || function(vArg) {
-			return Object.prototype.toString.call(vArg) === '[object Array]';
-		}
-	};
-
-	return MicroPlugin;
-}));
-
-/**
- * selectize.js (v0.8.5)
- * Copyright (c) 2013 Brian Reavis & contributors
- *
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this
- * file except in compliance with the License. You may obtain a copy of the License at:
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software distributed under
- * the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
- * ANY KIND, either express or implied. See the License for the specific language
- * governing permissions and limitations under the License.
- *
- * @author Brian Reavis <brian@thirdroute.com>
- */
-
-/*jshint curly:false */
-/*jshint browser:true */
-
-(function(root, factory) {
-	if (typeof define === 'function' && define.amd) {
-		define('selectize', ['jquery','sifter','microplugin'], factory);
-	} else if (typeof exports === 'object') {
-        module.exports.Selectize = factory(window.jQuery, module.exports.Sifter, module.exports.MicroPlugin);
-    } else {
-		root.Selectize = factory(root.jQuery, root.Sifter, root.MicroPlugin);
-	}
-}(this, function($, Sifter, MicroPlugin) {
-	'use strict';
-
-	var highlight = function($element, pattern) {
-		if (typeof pattern === 'string' && !pattern.length) return;
-		var regex = (typeof pattern === 'string') ? new RegExp(pattern, 'i') : pattern;
-	
-		var highlight = function(node) {
-			var skip = 0;
-			if (node.nodeType === 3) {
-				var pos = node.data.search(regex);
-				if (pos >= 0 && node.data.length > 0) {
-					var match = node.data.match(regex);
-					var spannode = document.createElement('span');
-					spannode.className = 'highlight';
-					var middlebit = node.splitText(pos);
-					var endbit = middlebit.splitText(match[0].length);
-					var middleclone = middlebit.cloneNode(true);
-					spannode.appendChild(middleclone);
-					middlebit.parentNode.replaceChild(spannode, middlebit);
-					skip = 1;
-				}
-			} else if (node.nodeType === 1 && node.childNodes && !/(script|style)/i.test(node.tagName)) {
-				for (var i = 0; i < node.childNodes.length; ++i) {
-					i += highlight(node.childNodes[i]);
-				}
-			}
-			return skip;
-		};
-	
-		return $element.each(function() {
-			highlight(this);
-		});
-	};
-	
-	var MicroEvent = function() {};
-	MicroEvent.prototype = {
-		on: function(event, fct){
-			this._events = this._events || {};
-			this._events[event] = this._events[event] || [];
-			this._events[event].push(fct);
-		},
-		off: function(event, fct){
-			var n = arguments.length;
-			if (n === 0) return delete this._events;
-			if (n === 1) return delete this._events[event];
-	
-			this._events = this._events || {};
-			if (event in this._events === false) return;
-			this._events[event].splice(this._events[event].indexOf(fct), 1);
-		},
-		trigger: function(event /* , args... */){
-			this._events = this._events || {};
-			if (event in this._events === false) return;
-			for (var i = 0; i < this._events[event].length; i++){
-				this._events[event][i].apply(this, Array.prototype.slice.call(arguments, 1));
-			}
-		}
-	};
-	
-	/**
-	 * Mixin will delegate all MicroEvent.js function in the destination object.
-	 *
-	 * - MicroEvent.mixin(Foobar) will make Foobar able to use MicroEvent
-	 *
-	 * @param {object} the object which will support MicroEvent
-	 */
-	MicroEvent.mixin = function(destObject){
-		var props = ['on', 'off', 'trigger'];
-		for (var i = 0; i < props.length; i++){
-			destObject.prototype[props[i]] = MicroEvent.prototype[props[i]];
-		}
-	};
-	
-	var IS_MAC        = /Mac/.test(navigator.userAgent);
-	
-	var KEY_A         = 65;
-	var KEY_COMMA     = 188;
-	var KEY_RETURN    = 13;
-	var KEY_ESC       = 27;
-	var KEY_LEFT      = 37;
-	var KEY_UP        = 38;
-	var KEY_RIGHT     = 39;
-	var KEY_DOWN      = 40;
-	var KEY_BACKSPACE = 8;
-	var KEY_DELETE    = 46;
-	var KEY_SHIFT     = 16;
-	var KEY_CMD       = IS_MAC ? 91 : 17;
-	var KEY_CTRL      = IS_MAC ? 18 : 17;
-	var KEY_TAB       = 9;
-	
-	var TAG_SELECT    = 1;
-	var TAG_INPUT     = 2;
-	
-	var isset = function(object) {
-		return typeof object !== 'undefined';
-	};
-	
-	/**
-	 * Converts a scalar to its best string representation
-	 * for hash keys and HTML attribute values.
-	 *
-	 * Transformations:
-	 *   'str'     -> 'str'
-	 *   null      -> ''
-	 *   undefined -> ''
-	 *   true      -> '1'
-	 *   false     -> '0'
-	 *   0         -> '0'
-	 *   1         -> '1'
-	 *
-	 * @param {string} value
-	 * @returns {string}
-	 */
-	var hash_key = function(value) {
-		if (typeof value === 'undefined' || value === null) return '';
-		if (typeof value === 'boolean') return value ? '1' : '0';
-		return value + '';
-	};
-	
-	/**
-	 * Escapes a string for use within HTML.
-	 *
-	 * @param {string} str
-	 * @returns {string}
-	 */
-	var escape_html = function(str) {
-		return (str + '')
-			.replace(/&/g, '&amp;')
-			.replace(/</g, '&lt;')
-			.replace(/>/g, '&gt;')
-			.replace(/"/g, '&quot;');
-	};
-	
-	/**
-	 * Escapes "$" characters in replacement strings.
-	 *
-	 * @param {string} str
-	 * @returns {string}
-	 */
-	var escape_replace = function(str) {
-		return (str + '').replace(/\$/g, '$$$$');
-	};
-	
-	var hook = {};
-	
-	/**
-	 * Wraps `method` on `self` so that `fn`
-	 * is invoked before the original method.
-	 *
-	 * @param {object} self
-	 * @param {string} method
-	 * @param {function} fn
-	 */
-	hook.before = function(self, method, fn) {
-		var original = self[method];
-		self[method] = function() {
-			fn.apply(self, arguments);
-			return original.apply(self, arguments);
-		};
-	};
-	
-	/**
-	 * Wraps `method` on `self` so that `fn`
-	 * is invoked after the original method.
-	 *
-	 * @param {object} self
-	 * @param {string} method
-	 * @param {function} fn
-	 */
-	hook.after = function(self, method, fn) {
-		var original = self[method];
-		self[method] = function() {
-			var result = original.apply(self, arguments);
-			fn.apply(self, arguments);
-			return result;
-		};
-	};
-	
-	/**
-	 * Builds a hash table out of an array of
-	 * objects, using the specified `key` within
-	 * each object.
-	 *
-	 * @param {string} key
-	 * @param {mixed} objects
-	 */
-	var build_hash_table = function(key, objects) {
-		if (!$.isArray(objects)) return objects;
-		var i, n, table = {};
-		for (i = 0, n = objects.length; i < n; i++) {
-			if (objects[i].hasOwnProperty(key)) {
-				table[objects[i][key]] = objects[i];
-			}
-		}
-		return table;
-	};
-	
-	/**
-	 * Wraps `fn` so that it can only be invoked once.
-	 *
-	 * @param {function} fn
-	 * @returns {function}
-	 */
-	var once = function(fn) {
-		var called = false;
-		return function() {
-			if (called) return;
-			called = true;
-			fn.apply(this, arguments);
-		};
-	};
-	
-	/**
-	 * Wraps `fn` so that it can only be called once
-	 * every `delay` milliseconds (invoked on the falling edge).
-	 *
-	 * @param {function} fn
-	 * @param {int} delay
-	 * @returns {function}
-	 */
-	var debounce = function(fn, delay) {
-		var timeout;
-		return function() {
-			var self = this;
-			var args = arguments;
-			window.clearTimeout(timeout);
-			timeout = window.setTimeout(function() {
-				fn.apply(self, args);
-			}, delay);
-		};
-	};
-	
-	/**
-	 * Debounce all fired events types listed in `types`
-	 * while executing the provided `fn`.
-	 *
-	 * @param {object} self
-	 * @param {array} types
-	 * @param {function} fn
-	 */
-	var debounce_events = function(self, types, fn) {
-		var type;
-		var trigger = self.trigger;
-		var event_args = {};
-	
-		// override trigger method
-		self.trigger = function() {
-			var type = arguments[0];
-			if (types.indexOf(type) !== -1) {
-				event_args[type] = arguments;
-			} else {
-				return trigger.apply(self, arguments);
-			}
-		};
-	
-		// invoke provided function
-		fn.apply(self, []);
-		self.trigger = trigger;
-	
-		// trigger queued events
-		for (type in event_args) {
-			if (event_args.hasOwnProperty(type)) {
-				trigger.apply(self, event_args[type]);
-			}
-		}
-	};
-	
-	/**
-	 * A workaround for http://bugs.jquery.com/ticket/6696
-	 *
-	 * @param {object} $parent - Parent element to listen on.
-	 * @param {string} event - Event name.
-	 * @param {string} selector - Descendant selector to filter by.
-	 * @param {function} fn - Event handler.
-	 */
-	var watchChildEvent = function($parent, event, selector, fn) {
-		$parent.on(event, selector, function(e) {
-			var child = e.target;
-			while (child && child.parentNode !== $parent[0]) {
-				child = child.parentNode;
-			}
-			e.currentTarget = child;
-			return fn.apply(this, [e]);
-		});
-	};
-	
-	/**
-	 * Determines the current selection within a text input control.
-	 * Returns an object containing:
-	 *   - start
-	 *   - length
-	 *
-	 * @param {object} input
-	 * @returns {object}
-	 */
-	var getSelection = function(input) {
-		var result = {};
-		if ('selectionStart' in input) {
-			result.start = input.selectionStart;
-			result.length = input.selectionEnd - result.start;
-		} else if (document.selection) {
-			input.focus();
-			var sel = document.selection.createRange();
-			var selLen = document.selection.createRange().text.length;
-			sel.moveStart('character', -input.value.length);
-			result.start = sel.text.length - selLen;
-			result.length = selLen;
-		}
-		return result;
-	};
-	
-	/**
-	 * Copies CSS properties from one element to another.
-	 *
-	 * @param {object} $from
-	 * @param {object} $to
-	 * @param {array} properties
-	 */
-	var transferStyles = function($from, $to, properties) {
-		var i, n, styles = {};
-		if (properties) {
-			for (i = 0, n = properties.length; i < n; i++) {
-				styles[properties[i]] = $from.css(properties[i]);
-			}
-		} else {
-			styles = $from.css();
-		}
-		$to.css(styles);
-	};
-	
-	/**
-	 * Measures the width of a string within a
-	 * parent element (in pixels).
-	 *
-	 * @param {string} str
-	 * @param {object} $parent
-	 * @returns {int}
-	 */
-	var measureString = function(str, $parent) {
-		var $test = $('<test>').css({
-			position: 'absolute',
-			top: -99999,
-			left: -99999,
-			width: 'auto',
-			padding: 0,
-			whiteSpace: 'pre'
-		}).text(str).appendTo('body');
-	
-		transferStyles($parent, $test, [
-			'letterSpacing',
-			'fontSize',
-			'fontFamily',
-			'fontWeight',
-			'textTransform'
-		]);
-	
-		var width = $test.width();
-		$test.remove();
-	
-		return width;
-	};
-	
-	/**
-	 * Sets up an input to grow horizontally as the user
-	 * types. If the value is changed manually, you can
-	 * trigger the "update" handler to resize:
-	 *
-	 * $input.trigger('update');
-	 *
-	 * @param {object} $input
-	 */
-	var autoGrow = function($input) {
-		var update = function(e) {
-			var value, keyCode, printable, placeholder, width;
-			var shift, character, selection;
-			e = e || window.event || {};
-	
-			if (e.metaKey || e.altKey) return;
-			if ($input.data('grow') === false) return;
-	
-			value = $input.val();
-			if (e.type && e.type.toLowerCase() === 'keydown') {
-				keyCode = e.keyCode;
-				printable = (
-					(keyCode >= 97 && keyCode <= 122) || // a-z
-					(keyCode >= 65 && keyCode <= 90)  || // A-Z
-					(keyCode >= 48 && keyCode <= 57)  || // 0-9
-					keyCode === 32 // space
-				);
-	
-				if (keyCode === KEY_DELETE || keyCode === KEY_BACKSPACE) {
-					selection = getSelection($input[0]);
-					if (selection.length) {
-						value = value.substring(0, selection.start) + value.substring(selection.start + selection.length);
-					} else if (keyCode === KEY_BACKSPACE && selection.start) {
-						value = value.substring(0, selection.start - 1) + value.substring(selection.start + 1);
-					} else if (keyCode === KEY_DELETE && typeof selection.start !== 'undefined') {
-						value = value.substring(0, selection.start) + value.substring(selection.start + 1);
-					}
-				} else if (printable) {
-					shift = e.shiftKey;
-					character = String.fromCharCode(e.keyCode);
-					if (shift) character = character.toUpperCase();
-					else character = character.toLowerCase();
-					value += character;
-				}
-			}
-	
-			placeholder = $input.attr('placeholder') || '';
-			if (!value.length && placeholder.length) {
-				value = placeholder;
-			}
-	
-			width = measureString(value, $input) + 4;
-			if (width !== $input.width()) {
-				$input.width(width);
-				$input.triggerHandler('resize');
-			}
-		};
-	
-		$input.on('keydown keyup update blur', update);
-		update();
-	};
-	
-	var Selectize = function($input, settings) {
-		var key, i, n, dir, input, self = this;
-		input = $input[0];
-		input.selectize = self;
-	
-		// detect rtl environment
-		dir = window.getComputedStyle ? window.getComputedStyle(input, null).getPropertyValue('direction') : input.currentStyle && input.currentStyle.direction;
-		dir = dir || $input.parents('[dir]:first').attr('dir') || '';
-	
-		// setup default state
-		$.extend(self, {
-			settings         : settings,
-			$input           : $input,
-			tagType          : input.tagName.toLowerCase() === 'select' ? TAG_SELECT : TAG_INPUT,
-			rtl              : /rtl/i.test(dir),
-	
-			eventNS          : '.selectize' + (++Selectize.count),
-			highlightedValue : null,
-			isOpen           : false,
-			isDisabled       : false,
-			isRequired       : $input.is('[required]'),
-			isInvalid        : false,
-			isLocked         : false,
-			isFocused        : false,
-			isInputHidden    : false,
-			isSetup          : false,
-			isShiftDown      : false,
-			isCmdDown        : false,
-			isCtrlDown       : false,
-			ignoreFocus      : false,
-			ignoreHover      : false,
-			hasOptions       : false,
-			currentResults   : null,
-			lastValue        : '',
-			caretPos         : 0,
-			loading          : 0,
-			loadedSearches   : {},
-	
-			$activeOption    : null,
-			$activeItems     : [],
-	
-			optgroups        : {},
-			options          : {},
-			userOptions      : {},
-			items            : [],
-			renderCache      : {},
-			onSearchChange   : debounce(self.onSearchChange, settings.loadThrottle)
-		});
-	
-		// search system
-		self.sifter = new Sifter(this.options, {diacritics: settings.diacritics});
-	
-		// build options table
-		$.extend(self.options, build_hash_table(settings.valueField, settings.options));
-		delete self.settings.options;
-	
-		// build optgroup table
-		$.extend(self.optgroups, build_hash_table(settings.optgroupValueField, settings.optgroups));
-		delete self.settings.optgroups;
-	
-		// option-dependent defaults
-		self.settings.mode = self.settings.mode || (self.settings.maxItems === 1 ? 'single' : 'multi');
-		if (typeof self.settings.hideSelected !== 'boolean') {
-			self.settings.hideSelected = self.settings.mode === 'multi';
-		}
-	
-		self.initializePlugins(self.settings.plugins);
-		self.setupCallbacks();
-		self.setupTemplates();
-		self.setup();
-	};
-	
-	// mixins
-	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-	
-	MicroEvent.mixin(Selectize);
-	MicroPlugin.mixin(Selectize);
-	
-	// methods
-	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-	
-	$.extend(Selectize.prototype, {
-	
-		/**
-		 * Creates all elements and sets up event bindings.
-		 */
-		setup: function() {
-			var self      = this;
-			var settings  = self.settings;
-			var eventNS   = self.eventNS;
-			var $window   = $(window);
-			var $document = $(document);
-	
-			var $wrapper;
-			var $control;
-			var $control_input;
-			var $dropdown;
-			var $dropdown_content;
-			var $dropdown_parent;
-			var inputMode;
-			var timeout_blur;
-			var timeout_focus;
-			var tab_index;
-			var classes;
-			var classes_plugins;
-	
-			inputMode         = self.settings.mode;
-			tab_index         = self.$input.attr('tabindex') || '';
-			classes           = self.$input.attr('class') || '';
-	
-			$wrapper          = $('<div>').addClass(settings.wrapperClass).addClass(classes).addClass(inputMode);
-			$control          = $('<div>').addClass(settings.inputClass).addClass('items').appendTo($wrapper);
-			$control_input    = $('<input type="text" autocomplete="off">').appendTo($control).attr('tabindex', tab_index);
-			$dropdown_parent  = $(settings.dropdownParent || $wrapper);
-			$dropdown         = $('<div>').addClass(settings.dropdownClass).addClass(classes).addClass(inputMode).hide().appendTo($dropdown_parent);
-			$dropdown_content = $('<div>').addClass(settings.dropdownContentClass).appendTo($dropdown);
-	
-			$wrapper.css({
-				width: self.$input[0].style.width
-			});
-	
-			if (self.plugins.names.length) {
-				classes_plugins = 'plugin-' + self.plugins.names.join(' plugin-');
-				$wrapper.addClass(classes_plugins);
-				$dropdown.addClass(classes_plugins);
-			}
-	
-			if ((settings.maxItems === null || settings.maxItems > 1) && self.tagType === TAG_SELECT) {
-				self.$input.attr('multiple', 'multiple');
-			}
-	
-			if (self.settings.placeholder) {
-				$control_input.attr('placeholder', settings.placeholder);
-			}
-	
-			self.$wrapper          = $wrapper;
-			self.$control          = $control;
-			self.$control_input    = $control_input;
-			self.$dropdown         = $dropdown;
-			self.$dropdown_content = $dropdown_content;
-	
-			$dropdown.on('mouseenter', '[data-selectable]', function() { return self.onOptionHover.apply(self, arguments); });
-			$dropdown.on('mousedown', '[data-selectable]', function() { return self.onOptionSelect.apply(self, arguments); });
-			watchChildEvent($control, 'mousedown', '*:not(input)', function() { return self.onItemSelect.apply(self, arguments); });
-			autoGrow($control_input);
-	
-			$control.on({
-				mousedown : function() { return self.onMouseDown.apply(self, arguments); },
-				click     : function() { return self.onClick.apply(self, arguments); }
-			});
-	
-			$control_input.on({
-				mousedown : function(e) { e.stopPropagation(); },
-				keydown   : function() { return self.onKeyDown.apply(self, arguments); },
-				keyup     : function() { return self.onKeyUp.apply(self, arguments); },
-				keypress  : function() { return self.onKeyPress.apply(self, arguments); },
-				resize    : function() { self.positionDropdown.apply(self, []); },
-				blur      : function() { return self.onBlur.apply(self, arguments); },
-				focus     : function() { return self.onFocus.apply(self, arguments); }
-			});
-	
-			$document.on('keydown' + eventNS, function(e) {
-				self.isCmdDown = e[IS_MAC ? 'metaKey' : 'ctrlKey'];
-				self.isCtrlDown = e[IS_MAC ? 'altKey' : 'ctrlKey'];
-				self.isShiftDown = e.shiftKey;
-			});
-	
-			$document.on('keyup' + eventNS, function(e) {
-				if (e.keyCode === KEY_CTRL) self.isCtrlDown = false;
-				if (e.keyCode === KEY_SHIFT) self.isShiftDown = false;
-				if (e.keyCode === KEY_CMD) self.isCmdDown = false;
-			});
-	
-			$document.on('mousedown' + eventNS, function(e) {
-				if (self.isFocused) {
-					// prevent events on the dropdown scrollbar from causing the control to blur
-					if (e.target === self.$dropdown[0] || e.target.parentNode === self.$dropdown[0]) {
-						return false;
-					}
-					// blur on click outside
-					if (!self.$control.has(e.target).length && e.target !== self.$control[0]) {
-						self.blur();
-					}
-				}
-			});
-	
-			$window.on(['scroll' + eventNS, 'resize' + eventNS].join(' '), function() {
-				if (self.isOpen) {
-					self.positionDropdown.apply(self, arguments);
-				}
-			});
-			$window.on('mousemove' + eventNS, function() {
-				self.ignoreHover = false;
-			});
-	
-			// store original children and tab index so that they can be
-			// restored when the destroy() method is called.
-			this.revertSettings = {
-				$children : self.$input.children().detach(),
-				tabindex  : self.$input.attr('tabindex')
-			};
-	
-			self.$input.attr('tabindex', -1).hide().after(self.$wrapper);
-	
-			if ($.isArray(settings.items)) {
-				self.setValue(settings.items);
-				delete settings.items;
-			}
-	
-			// feature detect for the validation API
-			if (self.$input[0].validity) {
-				self.$input.on('invalid' + eventNS, function(e) {
-					e.preventDefault();
-					self.isInvalid = true;
-					self.refreshState();
-				});
-			}
-	
-			self.updateOriginalInput();
-			self.refreshItems();
-			self.refreshState();
-			self.updatePlaceholder();
-			self.isSetup = true;
-	
-			if (self.$input.is(':disabled')) {
-				self.disable();
-			}
-	
-			self.on('change', this.onChange);
-			self.trigger('initialize');
-	
-			// preload options
-			if (settings.preload) {
-				self.onSearchChange('');
-			}
-		},
-	
-		/**
-		 * Sets up default rendering functions.
-		 */
-		setupTemplates: function() {
-			var self = this;
-			var field_label = self.settings.labelField;
-			var field_optgroup = self.settings.optgroupLabelField;
-	
-			var templates = {
-				'optgroup': function(data) {
-					return '<div class="optgroup">' + data.html + '</div>';
-				},
-				'optgroup_header': function(data, escape) {
-					return '<div class="optgroup-header">' + escape(data[field_optgroup]) + '</div>';
-				},
-				'option': function(data, escape) {
-					return '<div class="option">' + escape(data[field_label]) + '</div>';
-				},
-				'item': function(data, escape) {
-					return '<div class="item">' + escape(data[field_label]) + '</div>';
-				},
-				'option_create': function(data, escape) {
-					return '<div class="create">Add <strong>' + escape(data.input) + '</strong>&hellip;</div>';
-				}
-			};
-	
-			self.settings.render = $.extend({}, templates, self.settings.render);
-		},
-	
-		/**
-		 * Maps fired events to callbacks provided
-		 * in the settings used when creating the control.
-		 */
-		setupCallbacks: function() {
-			var key, fn, callbacks = {
-				'initialize'     : 'onInitialize',
-				'change'         : 'onChange',
-				'item_add'       : 'onItemAdd',
-				'item_remove'    : 'onItemRemove',
-				'clear'          : 'onClear',
-				'option_add'     : 'onOptionAdd',
-				'option_remove'  : 'onOptionRemove',
-				'option_clear'   : 'onOptionClear',
-				'dropdown_open'  : 'onDropdownOpen',
-				'dropdown_close' : 'onDropdownClose',
-				'type'           : 'onType'
-			};
-	
-			for (key in callbacks) {
-				if (callbacks.hasOwnProperty(key)) {
-					fn = this.settings[callbacks[key]];
-					if (fn) this.on(key, fn);
-				}
-			}
-		},
-	
-		/**
-		 * Triggered when the main control element
-		 * has a click event.
-		 *
-		 * @param {object} e
-		 * @return {boolean}
-		 */
-		onClick: function(e) {
-			var self = this;
-	
-			// necessary for mobile webkit devices (manual focus triggering
-			// is ignored unless invoked within a click event)
-			if (!self.isFocused) {
-				self.focus();
-				e.preventDefault();
-			}
-		},
-	
-		/**
-		 * Triggered when the main control element
-		 * has a mouse down event.
-		 *
-		 * @param {object} e
-		 * @return {boolean}
-		 */
-		onMouseDown: function(e) {
-			var self = this;
-			var defaultPrevented = e.isDefaultPrevented();
-			var $target = $(e.target);
-	
-			if (self.isFocused) {
-				// retain focus by preventing native handling. if the
-				// event target is the input it should not be modified.
-				// otherwise, text selection within the input won't work.
-				if (e.target !== self.$control_input[0]) {
-					if (self.settings.mode === 'single') {
-						// toggle dropdown
-						self.isOpen ? self.close() : self.open();
-					} else if (!defaultPrevented) {
-						self.setActiveItem(null);
-					}
-					return false;
-				}
-			} else {
-				// give control focus
-				if (!defaultPrevented) {
-					window.setTimeout(function() {
-						self.focus();
-					}, 0);
-				}
-			}
-		},
-	
-		/**
-		 * Triggered when the value of the control has been changed.
-		 * This should propagate the event to the original DOM
-		 * input / select element.
-		 */
-		onChange: function() {
-			this.$input.trigger('change');
-		},
-	
-		/**
-		 * Triggered on <input> keypress.
-		 *
-		 * @param {object} e
-		 * @returns {boolean}
-		 */
-		onKeyPress: function(e) {
-			if (this.isLocked) return e && e.preventDefault();
-			var character = String.fromCharCode(e.keyCode || e.which);
-			if (this.settings.create && character === this.settings.delimiter) {
-				this.createItem();
-				e.preventDefault();
-				return false;
-			}
-		},
-	
-		/**
-		 * Triggered on <input> keydown.
-		 *
-		 * @param {object} e
-		 * @returns {boolean}
-		 */
-		onKeyDown: function(e) {
-			var isInput = e.target === this.$control_input[0];
-			var self = this;
-	
-			if (self.isLocked) {
-				if (e.keyCode !== KEY_TAB) {
-					e.preventDefault();
-				}
-				return;
-			}
-	
-			switch (e.keyCode) {
-				case KEY_A:
-					if (self.isCmdDown) {
-						self.selectAll();
-						return;
-					}
-					break;
-				case KEY_ESC:
-					self.close();
-					return;
-				case KEY_DOWN:
-					if (!self.isOpen && self.hasOptions) {
-						self.open();
-					} else if (self.$activeOption) {
-						self.ignoreHover = true;
-						var $next = self.getAdjacentOption(self.$activeOption, 1);
-						if ($next.length) self.setActiveOption($next, true, true);
-					}
-					e.preventDefault();
-					return;
-				case KEY_UP:
-					if (self.$activeOption) {
-						self.ignoreHover = true;
-						var $prev = self.getAdjacentOption(self.$activeOption, -1);
-						if ($prev.length) self.setActiveOption($prev, true, true);
-					}
-					e.preventDefault();
-					return;
-				case KEY_RETURN:
-					if (self.isOpen && self.$activeOption) {
-						self.onOptionSelect({currentTarget: self.$activeOption});
-					}
-					e.preventDefault();
-					return;
-				case KEY_LEFT:
-					self.advanceSelection(-1, e);
-					return;
-				case KEY_RIGHT:
-					self.advanceSelection(1, e);
-					return;
-				case KEY_TAB:
-					if (self.settings.create && self.createItem()) {
-						e.preventDefault();
-					}
-					return;
-				case KEY_BACKSPACE:
-				case KEY_DELETE:
-					self.deleteSelection(e);
-					return;
-			}
-			if (self.isFull() || self.isInputHidden) {
-				e.preventDefault();
-				return;
-			}
-		},
-	
-		/**
-		 * Triggered on <input> keyup.
-		 *
-		 * @param {object} e
-		 * @returns {boolean}
-		 */
-		onKeyUp: function(e) {
-			var self = this;
-	
-			if (self.isLocked) return e && e.preventDefault();
-			var value = self.$control_input.val() || '';
-			if (self.lastValue !== value) {
-				self.lastValue = value;
-				self.onSearchChange(value);
-				self.refreshOptions();
-				self.trigger('type', value);
-			}
-		},
-	
-		/**
-		 * Invokes the user-provide option provider / loader.
-		 *
-		 * Note: this function is debounced in the Selectize
-		 * constructor (by `settings.loadDelay` milliseconds)
-		 *
-		 * @param {string} value
-		 */
-		onSearchChange: function(value) {
-			var self = this;
-			var fn = self.settings.load;
-			if (!fn) return;
-			if (self.loadedSearches.hasOwnProperty(value)) return;
-			self.loadedSearches[value] = true;
-			self.load(function(callback) {
-				fn.apply(self, [value, callback]);
-			});
-		},
-	
-		/**
-		 * Triggered on <input> focus.
-		 *
-		 * @param {object} e (optional)
-		 * @returns {boolean}
-		 */
-		onFocus: function(e) {
-			var self = this;
-	
-			self.isFocused = true;
-			if (self.isDisabled) {
-				self.blur();
-				e && e.preventDefault();
-				return false;
-			}
-	
-			if (self.ignoreFocus) return;
-			if (self.settings.preload === 'focus') self.onSearchChange('');
-	
-			if (!self.$activeItems.length) {
-				self.showInput();
-				self.setActiveItem(null);
-				self.refreshOptions(!!self.settings.openOnFocus);
-			}
-	
-			self.refreshState();
-		},
-	
-		/**
-		 * Triggered on <input> blur.
-		 *
-		 * @param {object} e
-		 * @returns {boolean}
-		 */
-		onBlur: function(e) {
-			var self = this;
-			self.isFocused = false;
-			if (self.ignoreFocus) return;
-	
-			if (self.settings.create && self.settings.createOnBlur) {
-				self.createItem();
-			}
-	
-			self.close();
-			self.setTextboxValue('');
-			self.setActiveItem(null);
-			self.setActiveOption(null);
-			self.setCaret(self.items.length);
-			self.refreshState();
-		},
-	
-		/**
-		 * Triggered when the user rolls over
-		 * an option in the autocomplete dropdown menu.
-		 *
-		 * @param {object} e
-		 * @returns {boolean}
-		 */
-		onOptionHover: function(e) {
-			if (this.ignoreHover) return;
-			this.setActiveOption(e.currentTarget, false);
-		},
-	
-		/**
-		 * Triggered when the user clicks on an option
-		 * in the autocomplete dropdown menu.
-		 *
-		 * @param {object} e
-		 * @returns {boolean}
-		 */
-		onOptionSelect: function(e) {
-			var value, $target, $option, self = this;
-	
-			if (e.preventDefault) {
-				e.preventDefault();
-				e.stopPropagation();
-			}
-	
-			$target = $(e.currentTarget);
-			if ($target.hasClass('create')) {
-				self.createItem();
-			} else {
-				value = $target.attr('data-value');
-				if (value) {
-					self.lastQuery = null;
-					self.setTextboxValue('');
-					self.addItem(value);
-					if (!self.settings.hideSelected && e.type && /mouse/.test(e.type)) {
-						self.setActiveOption(self.getOption(value));
-					}
-				}
-			}
-		},
-	
-		/**
-		 * Triggered when the user clicks on an item
-		 * that has been selected.
-		 *
-		 * @param {object} e
-		 * @returns {boolean}
-		 */
-		onItemSelect: function(e) {
-			var self = this;
-	
-			if (self.isLocked) return;
-			if (self.settings.mode === 'multi') {
-				e.preventDefault();
-				self.setActiveItem(e.currentTarget, e);
-			}
-		},
-	
-		/**
-		 * Invokes the provided method that provides
-		 * results to a callback---which are then added
-		 * as options to the control.
-		 *
-		 * @param {function} fn
-		 */
-		load: function(fn) {
-			var self = this;
-			var $wrapper = self.$wrapper.addClass('loading');
-	
-			self.loading++;
-			fn.apply(self, [function(results) {
-				self.loading = Math.max(self.loading - 1, 0);
-				if (results && results.length) {
-					self.addOption(results);
-					self.refreshOptions(self.isFocused && !self.isInputHidden);
-				}
-				if (!self.loading) {
-					$wrapper.removeClass('loading');
-				}
-				self.trigger('load', results);
-			}]);
-		},
-	
-		/**
-		 * Sets the input field of the control to the specified value.
-		 *
-		 * @param {string} value
-		 */
-		setTextboxValue: function(value) {
-			this.$control_input.val(value).triggerHandler('update');
-			this.lastValue = value;
-		},
-	
-		/**
-		 * Returns the value of the control. If multiple items
-		 * can be selected (e.g. <select multiple>), this returns
-		 * an array. If only one item can be selected, this
-		 * returns a string.
-		 *
-		 * @returns {mixed}
-		 */
-		getValue: function() {
-			if (this.tagType === TAG_SELECT && this.$input.attr('multiple')) {
-				return this.items;
-			} else {
-				return this.items.join(this.settings.delimiter);
-			}
-		},
-	
-		/**
-		 * Resets the selected items to the given value.
-		 *
-		 * @param {mixed} value
-		 */
-		setValue: function(value) {
-			debounce_events(this, ['change'], function() {
-				this.clear();
-				var items = $.isArray(value) ? value : [value];
-				for (var i = 0, n = items.length; i < n; i++) {
-					this.addItem(items[i]);
-				}
-			});
-		},
-	
-		/**
-		 * Sets the selected item.
-		 *
-		 * @param {object} $item
-		 * @param {object} e (optional)
-		 */
-		setActiveItem: function($item, e) {
-			var self = this;
-			var eventName;
-			var i, idx, begin, end, item, swap;
-			var $last;
-	
-			if (self.settings.mode === 'single') return;
-			$item = $($item);
-	
-			// clear the active selection
-			if (!$item.length) {
-				$(self.$activeItems).removeClass('active');
-				self.$activeItems = [];
-				if (self.isFocused) {
-					self.showInput();
-				}
-				return;
-			}
-	
-			// modify selection
-			eventName = e && e.type.toLowerCase();
-	
-			if (eventName === 'mousedown' && self.isShiftDown && self.$activeItems.length) {
-				$last = self.$control.children('.active:last');
-				begin = Array.prototype.indexOf.apply(self.$control[0].childNodes, [$last[0]]);
-				end   = Array.prototype.indexOf.apply(self.$control[0].childNodes, [$item[0]]);
-				if (begin > end) {
-					swap  = begin;
-					begin = end;
-					end   = swap;
-				}
-				for (i = begin; i <= end; i++) {
-					item = self.$control[0].childNodes[i];
-					if (self.$activeItems.indexOf(item) === -1) {
-						$(item).addClass('active');
-						self.$activeItems.push(item);
-					}
-				}
-				e.preventDefault();
-			} else if ((eventName === 'mousedown' && self.isCtrlDown) || (eventName === 'keydown' && this.isShiftDown)) {
-				if ($item.hasClass('active')) {
-					idx = self.$activeItems.indexOf($item[0]);
-					self.$activeItems.splice(idx, 1);
-					$item.removeClass('active');
-				} else {
-					self.$activeItems.push($item.addClass('active')[0]);
-				}
-			} else {
-				$(self.$activeItems).removeClass('active');
-				self.$activeItems = [$item.addClass('active')[0]];
-			}
-	
-			// ensure control has focus
-			self.hideInput();
-			if (!this.isFocused) {
-				self.focus();
-			}
-		},
-	
-		/**
-		 * Sets the selected item in the dropdown menu
-		 * of available options.
-		 *
-		 * @param {object} $object
-		 * @param {boolean} scroll
-		 * @param {boolean} animate
-		 */
-		setActiveOption: function($option, scroll, animate) {
-			var height_menu, height_item, y;
-			var scroll_top, scroll_bottom;
-			var self = this;
-	
-			if (self.$activeOption) self.$activeOption.removeClass('active');
-			self.$activeOption = null;
-	
-			$option = $($option);
-			if (!$option.length) return;
-	
-			self.$activeOption = $option.addClass('active');
-	
-			if (scroll || !isset(scroll)) {
-	
-				height_menu   = self.$dropdown_content.height();
-				height_item   = self.$activeOption.outerHeight(true);
-				scroll        = self.$dropdown_content.scrollTop() || 0;
-				y             = self.$activeOption.offset().top - self.$dropdown_content.offset().top + scroll;
-				scroll_top    = y;
-				scroll_bottom = y - height_menu + height_item;
-	
-				if (y + height_item > height_menu + scroll) {
-					self.$dropdown_content.stop().animate({scrollTop: scroll_bottom}, animate ? self.settings.scrollDuration : 0);
-				} else if (y < scroll) {
-					self.$dropdown_content.stop().animate({scrollTop: scroll_top}, animate ? self.settings.scrollDuration : 0);
-				}
-	
-			}
-		},
-	
-		/**
-		 * Selects all items (CTRL + A).
-		 */
-		selectAll: function() {
-			var self = this;
-			if (self.settings.mode === 'single') return;
-	
-			self.$activeItems = Array.prototype.slice.apply(self.$control.children(':not(input)').addClass('active'));
-			if (self.$activeItems.length) {
-				self.hideInput();
-				self.close();
-			}
-			self.focus();
-		},
-	
-		/**
-		 * Hides the input element out of view, while
-		 * retaining its focus.
-		 */
-		hideInput: function() {
-			var self = this;
-	
-			self.setTextboxValue('');
-			self.$control_input.css({opacity: 0, position: 'absolute', left: self.rtl ? 10000 : -10000});
-			self.isInputHidden = true;
-		},
-	
-		/**
-		 * Restores input visibility.
-		 */
-		showInput: function() {
-			this.$control_input.css({opacity: 1, position: 'relative', left: 0});
-			this.isInputHidden = false;
-		},
-	
-		/**
-		 * Gives the control focus. If "trigger" is falsy,
-		 * focus handlers won't be fired--causing the focus
-		 * to happen silently in the background.
-		 *
-		 * @param {boolean} trigger
-		 */
-		focus: function() {
-			var self = this;
-			if (self.isDisabled) return;
-	
-			self.ignoreFocus = true;
-			self.$control_input[0].focus();
-			window.setTimeout(function() {
-				self.ignoreFocus = false;
-				self.onFocus();
-			}, 0);
-		},
-	
-		/**
-		 * Forces the control out of focus.
-		 */
-		blur: function() {
-			this.$control_input.trigger('blur');
-		},
-	
-		/**
-		 * Returns a function that scores an object
-		 * to show how good of a match it is to the
-		 * provided query.
-		 *
-		 * @param {string} query
-		 * @param {object} options
-		 * @return {function}
-		 */
-		getScoreFunction: function(query) {
-			return this.sifter.getScoreFunction(query, this.getSearchOptions());
-		},
-	
-		/**
-		 * Returns search options for sifter (the system
-		 * for scoring and sorting results).
-		 *
-		 * @see https://github.com/brianreavis/sifter.js
-		 * @return {object}
-		 */
-		getSearchOptions: function() {
-			var settings = this.settings;
-			var sort = settings.sortField;
-			if (typeof sort === 'string') {
-				sort = {field: sort};
-			}
-	
-			return {
-				fields      : settings.searchField,
-				conjunction : settings.searchConjunction,
-				sort        : sort
-			};
-		},
-	
-		/**
-		 * Searches through available options and returns
-		 * a sorted array of matches.
-		 *
-		 * Returns an object containing:
-		 *
-		 *   - query {string}
-		 *   - tokens {array}
-		 *   - total {int}
-		 *   - items {array}
-		 *
-		 * @param {string} query
-		 * @returns {object}
-		 */
-		search: function(query) {
-			var i, value, score, result, calculateScore;
-			var self     = this;
-			var settings = self.settings;
-			var options  = this.getSearchOptions();
-	
-			// validate user-provided result scoring function
-			if (settings.score) {
-				calculateScore = self.settings.score.apply(this, [query]);
-				if (typeof calculateScore !== 'function') {
-					throw new Error('Selectize "score" setting must be a function that returns a function');
-				}
-			}
-	
-			// perform search
-			if (query !== self.lastQuery) {
-				self.lastQuery = query;
-				result = self.sifter.search(query, $.extend(options, {score: calculateScore}));
-				self.currentResults = result;
-			} else {
-				result = $.extend(true, {}, self.currentResults);
-			}
-	
-			// filter out selected items
-			if (settings.hideSelected) {
-				for (i = result.items.length - 1; i >= 0; i--) {
-					if (self.items.indexOf(hash_key(result.items[i].id)) !== -1) {
-						result.items.splice(i, 1);
-					}
-				}
-			}
-	
-			return result;
-		},
-	
-		/**
-		 * Refreshes the list of available options shown
-		 * in the autocomplete dropdown menu.
-		 *
-		 * @param {boolean} triggerDropdown
-		 */
-		refreshOptions: function(triggerDropdown) {
-			var i, j, k, n, groups, groups_order, option, option_html, optgroup, optgroups, html, html_children, has_create_option;
-			var $active, $active_before, $create;
-	
-			if (typeof triggerDropdown === 'undefined') {
-				triggerDropdown = true;
-			}
-	
-			var self              = this;
-			var query             = self.$control_input.val();
-			var results           = self.search(query);
-			var $dropdown_content = self.$dropdown_content;
-			var active_before     = self.$activeOption && hash_key(self.$activeOption.attr('data-value'));
-	
-			// build markup
-			n = results.items.length;
-			if (typeof self.settings.maxOptions === 'number') {
-				n = Math.min(n, self.settings.maxOptions);
-			}
-	
-			// render and group available options individually
-			groups = {};
-	
-			if (self.settings.optgroupOrder) {
-				groups_order = self.settings.optgroupOrder;
-				for (i = 0; i < groups_order.length; i++) {
-					groups[groups_order[i]] = [];
-				}
-			} else {
-				groups_order = [];
-			}
-	
-			for (i = 0; i < n; i++) {
-				option      = self.options[results.items[i].id];
-				option_html = self.render('option', option);
-				optgroup    = option[self.settings.optgroupField] || '';
-				optgroups   = $.isArray(optgroup) ? optgroup : [optgroup];
-	
-				for (j = 0, k = optgroups && optgroups.length; j < k; j++) {
-					optgroup = optgroups[j];
-					if (!self.optgroups.hasOwnProperty(optgroup)) {
-						optgroup = '';
-					}
-					if (!groups.hasOwnProperty(optgroup)) {
-						groups[optgroup] = [];
-						groups_order.push(optgroup);
-					}
-					groups[optgroup].push(option_html);
-				}
-			}
-	
-			// render optgroup headers & join groups
-			html = [];
-			for (i = 0, n = groups_order.length; i < n; i++) {
-				optgroup = groups_order[i];
-				if (self.optgroups.hasOwnProperty(optgroup) && groups[optgroup].length) {
-					// render the optgroup header and options within it,
-					// then pass it to the wrapper template
-					html_children = self.render('optgroup_header', self.optgroups[optgroup]) || '';
-					html_children += groups[optgroup].join('');
-					html.push(self.render('optgroup', $.extend({}, self.optgroups[optgroup], {
-						html: html_children
-					})));
-				} else {
-					html.push(groups[optgroup].join(''));
-				}
-			}
-	
-			$dropdown_content.html(html.join(''));
-	
-			// highlight matching terms inline
-			if (self.settings.highlight && results.query.length && results.tokens.length) {
-				for (i = 0, n = results.tokens.length; i < n; i++) {
-					highlight($dropdown_content, results.tokens[i].regex);
-				}
-			}
-	
-			// add "selected" class to selected options
-			if (!self.settings.hideSelected) {
-				for (i = 0, n = self.items.length; i < n; i++) {
-					self.getOption(self.items[i]).addClass('selected');
-				}
-			}
-	
-			// add create option
-			has_create_option = self.settings.create && results.query.length;
-			if (has_create_option) {
-				$dropdown_content.prepend(self.render('option_create', {input: query}));
-				$create = $($dropdown_content[0].childNodes[0]);
-			}
-	
-			// activate
-			self.hasOptions = results.items.length > 0 || has_create_option;
-			if (self.hasOptions) {
-				if (results.items.length > 0) {
-					$active_before = active_before && self.getOption(active_before);
-					if ($active_before && $active_before.length) {
-						$active = $active_before;
-					} else if (self.settings.mode === 'single' && self.items.length) {
-						$active = self.getOption(self.items[0]);
-					}
-					if (!$active || !$active.length) {
-						if ($create && !self.settings.addPrecedence) {
-							$active = self.getAdjacentOption($create, 1);
-						} else {
-							$active = $dropdown_content.find('[data-selectable]:first');
-						}
-					}
-				} else {
-					$active = $create;
-				}
-				self.setActiveOption($active);
-				if (triggerDropdown && !self.isOpen) { self.open(); }
-			} else {
-				self.setActiveOption(null);
-				if (triggerDropdown && self.isOpen) { self.close(); }
-			}
-		},
-	
-		/**
-		 * Adds an available option. If it already exists,
-		 * nothing will happen. Note: this does not refresh
-		 * the options list dropdown (use `refreshOptions`
-		 * for that).
-		 *
-		 * Usage:
-		 *
-		 *   this.addOption(data)
-		 *
-		 * @param {object} data
-		 */
-		addOption: function(data) {
-			var i, n, optgroup, value, self = this;
-	
-			if ($.isArray(data)) {
-				for (i = 0, n = data.length; i < n; i++) {
-					self.addOption(data[i]);
-				}
-				return;
-			}
-	
-			value = hash_key(data[self.settings.valueField]);
-			if (!value || self.options.hasOwnProperty(value)) return;
-	
-			self.userOptions[value] = true;
-			self.options[value] = data;
-			self.lastQuery = null;
-			self.trigger('option_add', value, data);
-		},
-	
-		/**
-		 * Registers a new optgroup for options
-		 * to be bucketed into.
-		 *
-		 * @param {string} id
-		 * @param {object} data
-		 */
-		addOptionGroup: function(id, data) {
-			this.optgroups[id] = data;
-			this.trigger('optgroup_add', id, data);
-		},
-	
-		/**
-		 * Updates an option available for selection. If
-		 * it is visible in the selected items or options
-		 * dropdown, it will be re-rendered automatically.
-		 *
-		 * @param {string} value
-		 * @param {object} data
-		 */
-		updateOption: function(value, data) {
-			var self = this;
-			var $item, $item_new;
-			var value_new, index_item, cache_items, cache_options;
-	
-			value     = hash_key(value);
-			value_new = hash_key(data[self.settings.valueField]);
-	
-			// sanity checks
-			if (!self.options.hasOwnProperty(value)) return;
-			if (!value_new) throw new Error('Value must be set in option data');
-	
-			// update references
-			if (value_new !== value) {
-				delete self.options[value];
-				index_item = self.items.indexOf(value);
-				if (index_item !== -1) {
-					self.items.splice(index_item, 1, value_new);
-				}
-			}
-			self.options[value_new] = data;
-	
-			// invalidate render cache
-			cache_items = self.renderCache['item'];
-			cache_options = self.renderCache['option'];
-	
-			if (isset(cache_items)) {
-				delete cache_items[value];
-				delete cache_items[value_new];
-			}
-			if (isset(cache_options)) {
-				delete cache_options[value];
-				delete cache_options[value_new];
-			}
-	
-			// update the item if it's selected
-			if (self.items.indexOf(value_new) !== -1) {
-				$item = self.getItem(value);
-				$item_new = $(self.render('item', data));
-				if ($item.hasClass('active')) $item_new.addClass('active');
-				$item.replaceWith($item_new);
-			}
-	
-			// update dropdown contents
-			if (self.isOpen) {
-				self.refreshOptions(false);
-			}
-		},
-	
-		/**
-		 * Removes a single option.
-		 *
-		 * @param {string} value
-		 */
-		removeOption: function(value) {
-			var self = this;
-	
-			value = hash_key(value);
-			delete self.userOptions[value];
-			delete self.options[value];
-			self.lastQuery = null;
-			self.trigger('option_remove', value);
-			self.removeItem(value);
-		},
-	
-		/**
-		 * Clears all options.
-		 */
-		clearOptions: function() {
-			var self = this;
-	
-			self.loadedSearches = {};
-			self.userOptions = {};
-			self.options = self.sifter.items = {};
-			self.lastQuery = null;
-			self.trigger('option_clear');
-			self.clear();
-		},
-	
-		/**
-		 * Returns the jQuery element of the option
-		 * matching the given value.
-		 *
-		 * @param {string} value
-		 * @returns {object}
-		 */
-		getOption: function(value) {
-			return this.getElementWithValue(value, this.$dropdown_content.find('[data-selectable]'));
-		},
-	
-		/**
-		 * Returns the jQuery element of the next or
-		 * previous selectable option.
-		 *
-		 * @param {object} $option
-		 * @param {int} direction  can be 1 for next or -1 for previous
-		 * @return {object}
-		 */
-		getAdjacentOption: function($option, direction) {
-			var $options = this.$dropdown.find('[data-selectable]');
-			var index    = $options.index($option) + direction;
-	
-			return index >= 0 && index < $options.length ? $options.eq(index) : $();
-		},
-	
-		/**
-		 * Finds the first element with a "data-value" attribute
-		 * that matches the given value.
-		 *
-		 * @param {mixed} value
-		 * @param {object} $els
-		 * @return {object}
-		 */
-		getElementWithValue: function(value, $els) {
-			value = hash_key(value);
-	
-			if (value) {
-				for (var i = 0, n = $els.length; i < n; i++) {
-					if ($els[i].getAttribute('data-value') === value) {
-						return $($els[i]);
-					}
-				}
-			}
-	
-			return $();
-		},
-	
-		/**
-		 * Returns the jQuery element of the item
-		 * matching the given value.
-		 *
-		 * @param {string} value
-		 * @returns {object}
-		 */
-		getItem: function(value) {
-			return this.getElementWithValue(value, this.$control.children());
-		},
-	
-		/**
-		 * "Selects" an item. Adds it to the list
-		 * at the current caret position.
-		 *
-		 * @param {string} value
-		 */
-		addItem: function(value) {
-			debounce_events(this, ['change'], function() {
-				var $item, $option;
-				var self = this;
-				var inputMode = self.settings.mode;
-				var i, active, options, value_next;
-				value = hash_key(value);
-	
-				if (self.items.indexOf(value) !== -1) {
-					if (inputMode === 'single') self.close();
-					return;
-				}
-	
-				if (!self.options.hasOwnProperty(value)) return;
-				if (inputMode === 'single') self.clear();
-				if (inputMode === 'multi' && self.isFull()) return;
-	
-				$item = $(self.render('item', self.options[value]));
-				self.items.splice(self.caretPos, 0, value);
-				self.insertAtCaret($item);
-				self.refreshState();
-	
-				if (self.isSetup) {
-					options = self.$dropdown_content.find('[data-selectable]');
-	
-					// update menu / remove the option
-					$option = self.getOption(value);
-					value_next = self.getAdjacentOption($option, 1).attr('data-value');
-					self.refreshOptions(self.isFocused && inputMode !== 'single');
-					if (value_next) {
-						self.setActiveOption(self.getOption(value_next));
-					}
-	
-					// hide the menu if the maximum number of items have been selected or no options are left
-					if (!options.length || (self.settings.maxItems !== null && self.items.length >= self.settings.maxItems)) {
-						self.close();
-					} else {
-						self.positionDropdown();
-					}
-	
-					self.updatePlaceholder();
-					self.trigger('item_add', value, $item);
-					self.updateOriginalInput();
-				}
-			});
-		},
-	
-		/**
-		 * Removes the selected item matching
-		 * the provided value.
-		 *
-		 * @param {string} value
-		 */
-		removeItem: function(value) {
-			var self = this;
-			var $item, i, idx;
-	
-			$item = (typeof value === 'object') ? value : self.getItem(value);
-			value = hash_key($item.attr('data-value'));
-			i = self.items.indexOf(value);
-	
-			if (i !== -1) {
-				$item.remove();
-				if ($item.hasClass('active')) {
-					idx = self.$activeItems.indexOf($item[0]);
-					self.$activeItems.splice(idx, 1);
-				}
-	
-				self.items.splice(i, 1);
-				self.lastQuery = null;
-				if (!self.settings.persist && self.userOptions.hasOwnProperty(value)) {
-					self.removeOption(value);
-				}
-	
-				if (i < self.caretPos) {
-					self.setCaret(self.caretPos - 1);
-				}
-	
-				self.refreshState();
-				self.updatePlaceholder();
-				self.updateOriginalInput();
-				self.positionDropdown();
-				self.trigger('item_remove', value);
-			}
-		},
-	
-		/**
-		 * Invokes the `create` method provided in the
-		 * selectize options that should provide the data
-		 * for the new item, given the user input.
-		 *
-		 * Once this completes, it will be added
-		 * to the item list.
-		 *
-		 * @return {boolean}
-		 */
-		createItem: function() {
-			var self  = this;
-			var input = $.trim(self.$control_input.val() || '');
-			var caret = self.caretPos;
-			if (!input.length) return false;
-			self.lock();
-	
-			var setup = (typeof self.settings.create === 'function') ? this.settings.create : function(input) {
-				var data = {};
-				data[self.settings.labelField] = input;
-				data[self.settings.valueField] = input;
-				return data;
-			};
-	
-			var create = once(function(data) {
-				self.unlock();
-	
-				if (!data || typeof data !== 'object') return;
-				var value = hash_key(data[self.settings.valueField]);
-				if (!value) return;
-	
-				self.setTextboxValue('');
-				self.addOption(data);
-				self.setCaret(caret);
-				self.addItem(value);
-				self.refreshOptions(self.settings.mode !== 'single');
-			});
-	
-			var output = setup.apply(this, [input, create]);
-			if (typeof output !== 'undefined') {
-				create(output);
-			}
-	
-			return true;
-		},
-	
-		/**
-		 * Re-renders the selected item lists.
-		 */
-		refreshItems: function() {
-			this.lastQuery = null;
-	
-			if (this.isSetup) {
-				for (var i = 0; i < this.items.length; i++) {
-					this.addItem(this.items);
-				}
-			}
-	
-			this.refreshState();
-			this.updateOriginalInput();
-		},
-	
-		/**
-		 * Updates all state-dependent attributes
-		 * and CSS classes.
-		 */
-		refreshState: function() {
-			var self = this;
-			var invalid = self.isRequired && !self.items.length;
-			if (!invalid) self.isInvalid = false;
-			self.$control_input.prop('required', invalid);
-			self.refreshClasses();
-		},
-	
-		/**
-		 * Updates all state-dependent CSS classes.
-		 */
-		refreshClasses: function() {
-			var self     = this;
-			var isFull   = self.isFull();
-			var isLocked = self.isLocked;
-	
-			self.$wrapper
-				.toggleClass('rtl', self.rtl);
-	
-			self.$control
-				.toggleClass('focus', self.isFocused)
-				.toggleClass('disabled', self.isDisabled)
-				.toggleClass('required', self.isRequired)
-				.toggleClass('invalid', self.isInvalid)
-				.toggleClass('locked', isLocked)
-				.toggleClass('full', isFull).toggleClass('not-full', !isFull)
-				.toggleClass('input-active', self.isFocused && !self.isInputHidden)
-				.toggleClass('dropdown-active', self.isOpen)
-				.toggleClass('has-options', !$.isEmptyObject(self.options))
-				.toggleClass('has-items', self.items.length > 0);
-	
-			self.$control_input.data('grow', !isFull && !isLocked);
-		},
-	
-		/**
-		 * Determines whether or not more items can be added
-		 * to the control without exceeding the user-defined maximum.
-		 *
-		 * @returns {boolean}
-		 */
-		isFull: function() {
-			return this.settings.maxItems !== null && this.items.length >= this.settings.maxItems;
-		},
-	
-		/**
-		 * Refreshes the original <select> or <input>
-		 * element to reflect the current state.
-		 */
-		updateOriginalInput: function() {
-			var i, n, options, self = this;
-	
-			if (self.$input[0].tagName.toLowerCase() === 'select') {
-				options = [];
-				for (i = 0, n = self.items.length; i < n; i++) {
-					options.push('<option value="' + escape_html(self.items[i]) + '" selected="selected"></option>');
-				}
-				if (!options.length && !this.$input.attr('multiple')) {
-					options.push('<option value="" selected="selected"></option>');
-				}
-				self.$input.html(options.join(''));
-			} else {
-				self.$input.val(self.getValue());
-			}
-	
-			if (self.isSetup) {
-				self.trigger('change', self.$input.val());
-			}
-		},
-	
-		/**
-		 * Shows/hide the input placeholder depending
-		 * on if there items in the list already.
-		 */
-		updatePlaceholder: function() {
-			if (!this.settings.placeholder) return;
-			var $input = this.$control_input;
-	
-			if (this.items.length) {
-				$input.removeAttr('placeholder');
-			} else {
-				$input.attr('placeholder', this.settings.placeholder);
-			}
-			$input.triggerHandler('update');
-		},
-	
-		/**
-		 * Shows the autocomplete dropdown containing
-		 * the available options.
-		 */
-		open: function() {
-			var self = this;
-	
-			if (self.isLocked || self.isOpen || (self.settings.mode === 'multi' && self.isFull())) return;
-			self.focus();
-			self.isOpen = true;
-			self.refreshState();
-			self.$dropdown.css({visibility: 'hidden', display: 'block'});
-			self.positionDropdown();
-			self.$dropdown.css({visibility: 'visible'});
-			self.trigger('dropdown_open', self.$dropdown);
-		},
-	
-		/**
-		 * Closes the autocomplete dropdown menu.
-		 */
-		close: function() {
-			var self = this;
-			var trigger = self.isOpen;
-	
-			if (self.settings.mode === 'single' && self.items.length) {
-				self.hideInput();
-			}
-	
-			self.isOpen = false;
-			self.$dropdown.hide();
-			self.setActiveOption(null);
-			self.refreshState();
-	
-			if (trigger) self.trigger('dropdown_close', self.$dropdown);
-		},
-	
-		/**
-		 * Calculates and applies the appropriate
-		 * position of the dropdown.
-		 */
-		positionDropdown: function() {
-			var $control = this.$control;
-			var offset = this.settings.dropdownParent === 'body' ? $control.offset() : $control.position();
-			offset.top += $control.outerHeight(true);
-	
-			this.$dropdown.css({
-				width : $control.outerWidth(),
-				top   : offset.top,
-				left  : offset.left
-			});
-		},
-	
-		/**
-		 * Resets / clears all selected items
-		 * from the control.
-		 */
-		clear: function() {
-			var self = this;
-	
-			if (!self.items.length) return;
-			self.$control.children(':not(input)').remove();
-			self.items = [];
-			self.setCaret(0);
-			self.updatePlaceholder();
-			self.updateOriginalInput();
-			self.refreshState();
-			self.showInput();
-			self.trigger('clear');
-		},
-	
-		/**
-		 * A helper method for inserting an element
-		 * at the current caret position.
-		 *
-		 * @param {object} $el
-		 */
-		insertAtCaret: function($el) {
-			var caret = Math.min(this.caretPos, this.items.length);
-			if (caret === 0) {
-				this.$control.prepend($el);
-			} else {
-				$(this.$control[0].childNodes[caret]).before($el);
-			}
-			this.setCaret(caret + 1);
-		},
-	
-		/**
-		 * Removes the current selected item(s).
-		 *
-		 * @param {object} e (optional)
-		 * @returns {boolean}
-		 */
-		deleteSelection: function(e) {
-			var i, n, direction, selection, values, caret, option_select, $option_select, $tail;
-			var self = this;
-	
-			direction = (e && e.keyCode === KEY_BACKSPACE) ? -1 : 1;
-			selection = getSelection(self.$control_input[0]);
-	
-			if (self.$activeOption && !self.settings.hideSelected) {
-				option_select = self.getAdjacentOption(self.$activeOption, -1).attr('data-value');
-			}
-	
-			// determine items that will be removed
-			values = [];
-	
-			if (self.$activeItems.length) {
-				$tail = self.$control.children('.active:' + (direction > 0 ? 'last' : 'first'));
-				caret = self.$control.children(':not(input)').index($tail);
-				if (direction > 0) { caret++; }
-	
-				for (i = 0, n = self.$activeItems.length; i < n; i++) {
-					values.push($(self.$activeItems[i]).attr('data-value'));
-				}
-				if (e) {
-					e.preventDefault();
-					e.stopPropagation();
-				}
-			} else if ((self.isFocused || self.settings.mode === 'single') && self.items.length) {
-				if (direction < 0 && selection.start === 0 && selection.length === 0) {
-					values.push(self.items[self.caretPos - 1]);
-				} else if (direction > 0 && selection.start === self.$control_input.val().length) {
-					values.push(self.items[self.caretPos]);
-				}
-			}
-	
-			// allow the callback to abort
-			if (!values.length || (typeof self.settings.onDelete === 'function' && self.settings.onDelete.apply(self, [values]) === false)) {
-				return false;
-			}
-	
-			// perform removal
-			if (typeof caret !== 'undefined') {
-				self.setCaret(caret);
-			}
-			while (values.length) {
-				self.removeItem(values.pop());
-			}
-	
-			self.showInput();
-			self.positionDropdown();
-			self.refreshOptions(true);
-	
-			// select previous option
-			if (option_select) {
-				$option_select = self.getOption(option_select);
-				if ($option_select.length) {
-					self.setActiveOption($option_select);
-				}
-			}
-	
-			return true;
-		},
-	
-		/**
-		 * Selects the previous / next item (depending
-		 * on the `direction` argument).
-		 *
-		 * > 0 - right
-		 * < 0 - left
-		 *
-		 * @param {int} direction
-		 * @param {object} e (optional)
-		 */
-		advanceSelection: function(direction, e) {
-			var tail, selection, idx, valueLength, cursorAtEdge, $tail;
-			var self = this;
-	
-			if (direction === 0) return;
-			if (self.rtl) direction *= -1;
-	
-			tail = direction > 0 ? 'last' : 'first';
-			selection = getSelection(self.$control_input[0]);
-	
-			if (self.isFocused && !self.isInputHidden) {
-				valueLength = self.$control_input.val().length;
-				cursorAtEdge = direction < 0
-					? selection.start === 0 && selection.length === 0
-					: selection.start === valueLength;
-	
-				if (cursorAtEdge && !valueLength) {
-					self.advanceCaret(direction, e);
-				}
-			} else {
-				$tail = self.$control.children('.active:' + tail);
-				if ($tail.length) {
-					idx = self.$control.children(':not(input)').index($tail);
-					self.setActiveItem(null);
-					self.setCaret(direction > 0 ? idx + 1 : idx);
-				}
-			}
-		},
-	
-		/**
-		 * Moves the caret left / right.
-		 *
-		 * @param {int} direction
-		 * @param {object} e (optional)
-		 */
-		advanceCaret: function(direction, e) {
-			var self = this, fn, $adj;
-	
-			if (direction === 0) return;
-	
-			fn = direction > 0 ? 'next' : 'prev';
-			if (self.isShiftDown) {
-				$adj = self.$control_input[fn]();
-				if ($adj.length) {
-					self.hideInput();
-					self.setActiveItem($adj);
-					e && e.preventDefault();
-				}
-			} else {
-				self.setCaret(self.caretPos + direction);
-			}
-		},
-	
-		/**
-		 * Moves the caret to the specified index.
-		 *
-		 * @param {int} i
-		 */
-		setCaret: function(i) {
-			var self = this;
-	
-			if (self.settings.mode === 'single') {
-				i = self.items.length;
-			} else {
-				i = Math.max(0, Math.min(self.items.length, i));
-			}
-	
-			// the input must be moved by leaving it in place and moving the
-			// siblings, due to the fact that focus cannot be restored once lost
-			// on mobile webkit devices
-			var j, n, fn, $children, $child;
-			$children = self.$control.children(':not(input)');
-			for (j = 0, n = $children.length; j < n; j++) {
-				$child = $($children[j]).detach();
-				if (j <  i) {
-					self.$control_input.before($child);
-				} else {
-					self.$control.append($child);
-				}
-			}
-	
-			self.caretPos = i;
-		},
-	
-		/**
-		 * Disables user input on the control. Used while
-		 * items are being asynchronously created.
-		 */
-		lock: function() {
-			this.close();
-			this.isLocked = true;
-			this.refreshState();
-		},
-	
-		/**
-		 * Re-enables user input on the control.
-		 */
-		unlock: function() {
-			this.isLocked = false;
-			this.refreshState();
-		},
-	
-		/**
-		 * Disables user input on the control completely.
-		 * While disabled, it cannot receive focus.
-		 */
-		disable: function() {
-			var self = this;
-			self.$input.prop('disabled', true);
-			self.isDisabled = true;
-			self.lock();
-		},
-	
-		/**
-		 * Enables the control so that it can respond
-		 * to focus and user input.
-		 */
-		enable: function() {
-			var self = this;
-			self.$input.prop('disabled', false);
-			self.isDisabled = false;
-			self.unlock();
-		},
-	
-		/**
-		 * Completely destroys the control and
-		 * unbinds all event listeners so that it can
-		 * be garbage collected.
-		 */
-		destroy: function() {
-			var self = this;
-			var eventNS = self.eventNS;
-			var revertSettings = self.revertSettings;
-	
-			self.trigger('destroy');
-			self.off();
-			self.$wrapper.remove();
-			self.$dropdown.remove();
-	
-			self.$input
-				.html('')
-				.append(revertSettings.$children)
-				.removeAttr('tabindex')
-				.attr({tabindex: revertSettings.tabindex})
-				.show();
-	
-			$(window).off(eventNS);
-			$(document).off(eventNS);
-			$(document.body).off(eventNS);
-	
-			delete self.$input[0].selectize;
-		},
-	
-		/**
-		 * A helper method for rendering "item" and
-		 * "option" templates, given the data.
-		 *
-		 * @param {string} templateName
-		 * @param {object} data
-		 * @returns {string}
-		 */
-		render: function(templateName, data) {
-			var value, id, label;
-			var html = '';
-			var cache = false;
-			var self = this;
-			var regex_tag = /^[\t ]*<([a-z][a-z0-9\-_]*(?:\:[a-z][a-z0-9\-_]*)?)/i;
-	
-			if (templateName === 'option' || templateName === 'item') {
-				value = hash_key(data[self.settings.valueField]);
-				cache = !!value;
-			}
-	
-			// pull markup from cache if it exists
-			if (cache) {
-				if (!isset(self.renderCache[templateName])) {
-					self.renderCache[templateName] = {};
-				}
-				if (self.renderCache[templateName].hasOwnProperty(value)) {
-					return self.renderCache[templateName][value];
-				}
-			}
-	
-			// render markup
-			html = self.settings.render[templateName].apply(this, [data, escape_html]);
-	
-			// add mandatory attributes
-			if (templateName === 'option' || templateName === 'option_create') {
-				html = html.replace(regex_tag, '<$1 data-selectable');
-			}
-			if (templateName === 'optgroup') {
-				id = data[self.settings.optgroupValueField] || '';
-				html = html.replace(regex_tag, '<$1 data-group="' + escape_replace(escape_html(id)) + '"');
-			}
-			if (templateName === 'option' || templateName === 'item') {
-				html = html.replace(regex_tag, '<$1 data-value="' + escape_replace(escape_html(value || '')) + '"');
-			}
-	
-			// update cache
-			if (cache) {
-				self.renderCache[templateName][value] = html;
-			}
-	
-			return html;
-		}
-	
-	});
-	
-	
-	Selectize.count = 0;
-	Selectize.defaults = {
-		plugins: [],
-		delimiter: ',',
-		persist: true,
-		diacritics: true,
-		create: false,
-		createOnBlur: false,
-		highlight: true,
-		openOnFocus: true,
-		maxOptions: 1000,
-		maxItems: null,
-		hideSelected: null,
-		addPrecedence: false,
-		preload: false,
-	
-		scrollDuration: 60,
-		loadThrottle: 300,
-	
-		dataAttr: 'data-data',
-		optgroupField: 'optgroup',
-		valueField: 'value',
-		labelField: 'text',
-		optgroupLabelField: 'label',
-		optgroupValueField: 'value',
-		optgroupOrder: null,
-	
-		sortField: '$order',
-		searchField: ['text'],
-		searchConjunction: 'and',
-	
-		mode: null,
-		wrapperClass: 'selectize-control',
-		inputClass: 'selectize-input',
-		dropdownClass: 'selectize-dropdown',
-		dropdownContentClass: 'selectize-dropdown-content',
-	
-		dropdownParent: null,
-	
-		/*
-		load            : null, // function(query, callback) { ... }
-		score           : null, // function(search) { ... }
-		onInitialize    : null, // function() { ... }
-		onChange        : null, // function(value) { ... }
-		onItemAdd       : null, // function(value, $item) { ... }
-		onItemRemove    : null, // function(value) { ... }
-		onClear         : null, // function() { ... }
-		onOptionAdd     : null, // function(value, data) { ... }
-		onOptionRemove  : null, // function(value) { ... }
-		onOptionClear   : null, // function() { ... }
-		onDropdownOpen  : null, // function($dropdown) { ... }
-		onDropdownClose : null, // function($dropdown) { ... }
-		onType          : null, // function(str) { ... }
-		onDelete        : null, // function(values) { ... }
-		*/
-	
-		render: {
-			/*
-			item: null,
-			optgroup: null,
-			optgroup_header: null,
-			option: null,
-			option_create: null
-			*/
-		}
-	};
-	
-	$.fn.selectize = function(settings_user) {
-		var defaults             = $.fn.selectize.defaults;
-		var settings             = $.extend({}, defaults, settings_user);
-		var attr_data            = settings.dataAttr;
-		var field_label          = settings.labelField;
-		var field_value          = settings.valueField;
-		var field_optgroup       = settings.optgroupField;
-		var field_optgroup_label = settings.optgroupLabelField;
-		var field_optgroup_value = settings.optgroupValueField;
-	
-		/**
-		 * Initializes selectize from a <input type="text"> element.
-		 *
-		 * @param {object} $input
-		 * @param {object} settings_element
-		 */
-		var init_textbox = function($input, settings_element) {
-			var i, n, values, option, value = $.trim($input.val() || '');
-			if (!value.length) return;
-	
-			values = value.split(settings.delimiter);
-			for (i = 0, n = values.length; i < n; i++) {
-				option = {};
-				option[field_label] = values[i];
-				option[field_value] = values[i];
-	
-				settings_element.options[values[i]] = option;
-			}
-	
-			settings_element.items = values;
-		};
-	
-		/**
-		 * Initializes selectize from a <select> element.
-		 *
-		 * @param {object} $input
-		 * @param {object} settings_element
-		 */
-		var init_select = function($input, settings_element) {
-			var i, n, tagName, $children, order = 0;
-			var options = settings_element.options;
-	
-			var readData = function($el) {
-				var data = attr_data && $el.attr(attr_data);
-				if (typeof data === 'string' && data.length) {
-					return JSON.parse(data);
-				}
-				return null;
-			};
-	
-			var addOption = function($option, group) {
-				var value, option;
-	
-				$option = $($option);
-	
-				value = $option.attr('value') || '';
-				if (!value.length) return;
-	
-				// if the option already exists, it's probably been
-				// duplicated in another optgroup. in this case, push
-				// the current group to the "optgroup" property on the
-				// existing option so that it's rendered in both places.
-				if (options.hasOwnProperty(value)) {
-					if (group) {
-						if (!options[value].optgroup) {
-							options[value].optgroup = group;
-						} else if (!$.isArray(options[value].optgroup)) {
-							options[value].optgroup = [options[value].optgroup, group];
-						} else {
-							options[value].optgroup.push(group);
-						}
-					}
-					return;
-				}
-	
-				option                 = readData($option) || {};
-				option[field_label]    = option[field_label] || $option.text();
-				option[field_value]    = option[field_value] || value;
-				option[field_optgroup] = option[field_optgroup] || group;
-	
-				option.$order = ++order;
-				options[value] = option;
-	
-				if ($option.is(':selected')) {
-					settings_element.items.push(value);
-				}
-			};
-	
-			var addGroup = function($optgroup) {
-				var i, n, id, optgroup, $options;
-	
-				$optgroup = $($optgroup);
-				id = $optgroup.attr('label');
-	
-				if (id) {
-					optgroup = readData($optgroup) || {};
-					optgroup[field_optgroup_label] = id;
-					optgroup[field_optgroup_value] = id;
-					settings_element.optgroups[id] = optgroup;
-				}
-	
-				$options = $('option', $optgroup);
-				for (i = 0, n = $options.length; i < n; i++) {
-					addOption($options[i], id);
-				}
-			};
-	
-			settings_element.maxItems = $input.attr('multiple') ? null : 1;
-	
-			$children = $input.children();
-			for (i = 0, n = $children.length; i < n; i++) {
-				tagName = $children[i].tagName.toLowerCase();
-				if (tagName === 'optgroup') {
-					addGroup($children[i]);
-				} else if (tagName === 'option') {
-					addOption($children[i]);
-				}
-			}
-		};
-	
-		return this.each(function() {
-			if (this.selectize) return;
-	
-			var instance;
-			var $input = $(this);
-			var tag_name = this.tagName.toLowerCase();
-			var settings_element = {
-				'placeholder' : $input.children('option[value=""]').text() || $input.attr('placeholder'),
-				'options'     : {},
-				'optgroups'   : {},
-				'items'       : []
-			};
-	
-			if (tag_name === 'select') {
-				init_select($input, settings_element);
-			} else {
-				init_textbox($input, settings_element);
-			}
-	
-			instance = new Selectize($input, $.extend(true, {}, defaults, settings_element, settings_user));
-			$input.data('selectize', instance);
-			$input.addClass('selectized');
-		});
-	};
-	
-	$.fn.selectize.defaults = Selectize.defaults;
-	
-	Selectize.define('drag_drop', function(options) {
-		if (!$.fn.sortable) throw new Error('The "drag_drop" plugin requires jQuery UI "sortable".');
-		if (this.settings.mode !== 'multi') return;
-		var self = this;
-	
-		self.lock = (function() {
-			var original = self.lock;
-			return function() {
-				var sortable = self.$control.data('sortable');
-				if (sortable) sortable.disable();
-				return original.apply(self, arguments);
-			};
-		})();
-	
-		self.unlock = (function() {
-			var original = self.unlock;
-			return function() {
-				var sortable = self.$control.data('sortable');
-				if (sortable) sortable.enable();
-				return original.apply(self, arguments);
-			};
-		})();
-	
-		self.setup = (function() {
-			var original = self.setup;
-			return function() {
-				original.apply(this, arguments);
-	
-				var $control = self.$control.sortable({
-					items: '[data-value]',
-					forcePlaceholderSize: true,
-					disabled: self.isLocked,
-					start: function(e, ui) {
-						ui.placeholder.css('width', ui.helper.css('width'));
-						$control.css({overflow: 'visible'});
-					},
-					stop: function() {
-						$control.css({overflow: 'hidden'});
-						var active = self.$activeItems ? self.$activeItems.slice() : null;
-						var values = [];
-						$control.children('[data-value]').each(function() {
-							values.push($(this).attr('data-value'));
-						});
-						self.setValue(values);
-						self.setActiveItem(active);
-					}
-				});
-			};
-		})();
-	
-	});
-	
-	Selectize.define('dropdown_header', function(options) {
-		var self = this;
-	
-		options = $.extend({
-			title         : 'Untitled',
-			headerClass   : 'selectize-dropdown-header',
-			titleRowClass : 'selectize-dropdown-header-title',
-			labelClass    : 'selectize-dropdown-header-label',
-			closeClass    : 'selectize-dropdown-header-close',
-	
-			html: function(data) {
-				return (
-					'<div class="' + data.headerClass + '">' +
-						'<div class="' + data.titleRowClass + '">' +
-							'<span class="' + data.labelClass + '">' + data.title + '</span>' +
-							'<a href="javascript:void(0)" class="' + data.closeClass + '">&times;</a>' +
-						'</div>' +
-					'</div>'
-				);
-			}
-		}, options);
-	
-		self.setup = (function() {
-			var original = self.setup;
-			return function() {
-				original.apply(self, arguments);
-				self.$dropdown_header = $(options.html(options));
-				self.$dropdown.prepend(self.$dropdown_header);
-			};
-		})();
-	
-	});
-	
-	Selectize.define('optgroup_columns', function(options) {
-		var self = this;
-	
-		options = $.extend({
-			equalizeWidth  : true,
-			equalizeHeight : true
-		}, options);
-	
-		this.getAdjacentOption = function($option, direction) {
-			var $options = $option.closest('[data-group]').find('[data-selectable]');
-			var index    = $options.index($option) + direction;
-	
-			return index >= 0 && index < $options.length ? $options.eq(index) : $();
-		};
-	
-		this.onKeyDown = (function() {
-			var original = self.onKeyDown;
-			return function(e) {
-				var index, $option, $options, $optgroup;
-	
-				if (this.isOpen && (e.keyCode === KEY_LEFT || e.keyCode === KEY_RIGHT)) {
-					self.ignoreHover = true;
-					$optgroup = this.$activeOption.closest('[data-group]');
-					index = $optgroup.find('[data-selectable]').index(this.$activeOption);
-	
-					if(e.keyCode === KEY_LEFT) {
-						$optgroup = $optgroup.prev('[data-group]');
-					} else {
-						$optgroup = $optgroup.next('[data-group]');
-					}
-	
-					$options = $optgroup.find('[data-selectable]');
-					$option  = $options.eq(Math.min($options.length - 1, index));
-					if ($option.length) {
-						this.setActiveOption($option);
-					}
-					return;
-				}
-	
-				return original.apply(this, arguments);
-			};
-		})();
-	
-		var equalizeSizes = function() {
-			var i, n, height_max, width, width_last, width_parent, $optgroups;
-	
-			$optgroups = $('[data-group]', self.$dropdown_content);
-			n = $optgroups.length;
-			if (!n || !self.$dropdown_content.width()) return;
-	
-			if (options.equalizeHeight) {
-				height_max = 0;
-				for (i = 0; i < n; i++) {
-					height_max = Math.max(height_max, $optgroups.eq(i).height());
-				}
-				$optgroups.css({height: height_max});
-			}
-	
-			if (options.equalizeWidth) {
-				width_parent = self.$dropdown_content.innerWidth();
-				width = Math.round(width_parent / n);
-				$optgroups.css({width: width});
-				if (n > 1) {
-					width_last = width_parent - width * (n - 1);
-					$optgroups.eq(n - 1).css({width: width_last});
-				}
-			}
-		};
-	
-		if (options.equalizeHeight || options.equalizeWidth) {
-			hook.after(this, 'positionDropdown', equalizeSizes);
-			hook.after(this, 'refreshOptions', equalizeSizes);
-		}
-	
-	
-	});
-	
-	Selectize.define('remove_button', function(options) {
-		if (this.settings.mode === 'single') return;
-	
-		options = $.extend({
-			label     : '&times;',
-			title     : 'Remove',
-			className : 'remove',
-			append    : true
-		}, options);
-	
-		var self = this;
-		var html = '<a href="javascript:void(0)" class="' + options.className + '" tabindex="-1" title="' + escape_html(options.title) + '">' + options.label + '</a>';
-	
-		/**
-		 * Appends an element as a child (with raw HTML).
-		 *
-		 * @param {string} html_container
-		 * @param {string} html_element
-		 * @return {string}
-		 */
-		var append = function(html_container, html_element) {
-			var pos = html_container.search(/(<\/[^>]+>\s*)$/);
-			return html_container.substring(0, pos) + html_element + html_container.substring(pos);
-		};
-	
-		this.setup = (function() {
-			var original = self.setup;
-			return function() {
-				// override the item rendering method to add the button to each
-				if (options.append) {
-					var render_item = self.settings.render.item;
-					self.settings.render.item = function(data) {
-						return append(render_item.apply(this, arguments), html);
-					};
-				}
-	
-				original.apply(this, arguments);
-	
-				// add event listener
-				this.$control.on('click', '.' + options.className, function(e) {
-					e.preventDefault();
-					if (self.isLocked) return;
-	
-					var $item = $(e.target).parent();
-					self.setActiveItem($item);
-					if (self.deleteSelection()) {
-						self.setCaret(self.items.length);
-					}
-				});
-	
-			};
-		})();
-	
-	});
-	
-	Selectize.define('restore_on_backspace', function(options) {
-		var self = this;
-	
-		options.text = options.text || function(option) {
-			return option[this.settings.labelField];
-		};
-	
-		this.onKeyDown = (function(e) {
-			var original = self.onKeyDown;
-			return function(e) {
-				var index, option;
-				if (e.keyCode === KEY_BACKSPACE && this.$control_input.val() === '' && !this.$activeItems.length) {
-					index = this.caretPos - 1;
-					if (index >= 0 && index < this.items.length) {
-						option = this.options[this.items[index]];
-						if (this.deleteSelection(e)) {
-							this.setTextboxValue(options.text.apply(this, [option]));
-							this.refreshOptions(true);
-						}
-						e.preventDefault();
-						return;
-					}
-				}
-				return original.apply(this, arguments);
-			};
-		})();
-	});
-
-	return Selectize;
-}));
-},{}],42:[function(require,module,exports){
-var	$ = require('jquery'),
-	TagProcess = require('./js/tagprocess'),
-	Router = require('./js/router'),
-	Header = require('./js/modules/header'),
-	NavBar = require('./js/modules/navbar'),
-	Footer = require('./js/modules/footer'),
-	header = new Header.View(),
-	navbar = new NavBar.View(),
-	footer = new Footer.View(),
-	deferred = {};
-
-TagProcess.vent.on('domchange:page', function (options) {
-    if (options.title && options.title.trim() !== '') {
-        TagProcess.$doc.attr('title', TagProcess.title + ': ' + options.title);
-    } else {
-        TagProcess.$doc.attr('title', TagProcess.title);
-    }
-});
-
-$('#layout').prepend(navbar.render().$el)
-    .prepend(header.render().$el).parent()
-	.append(footer.render().$el);
-
-var signInAttempt = TagProcess.Auth.rememberMeSignIn();
-if (signInAttempt !== false) {
-	deferred.userRequest = $.Deferred();
-	signInAttempt.always(deferred.userRequest.resolve);
-}
-
-Router.initialize();
-
-},{"./js/modules/footer":21,"./js/modules/header":22,"./js/modules/navbar":28,"./js/router":34,"./js/tagprocess":35,"jquery":13}],43:[function(require,module,exports){
-var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
-  this.compilerInfo = [4,'>= 1.0.0'];
-helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
-  
-
-
-  return "<div id=\"about\" class=\"container-fluid\">\n    <div class=\"row\">\n        <div class=\"col-md-12\">\n            <h2>About us</h2>\n            <h3>We look Forward To The Opportunity To Impress You!</h3>\n            <p>TAG PROCESS  philosophy and the flexibility needed to meet the needs of our clients and partners requires us to continually pursue accuracy, speed, and responsiveness.<br/><br/>\n                Our clients are assured of the integrity of our service. Our managed network of Process Servers is experienced, highly skilled, trained, and licensed, ensuring legally defendable service of process time and again.<br/><br/>\n                We pride ourselves on the highest level of customer service and stride each day to remain one of the best process serving companies in the state of Florida. <br/><br/>\n                We have extensive experience in state-of-the-art networking, technology infrastructure and business growth strategies. We can design a step-by-step, cost-effective plan for you to achieve optimum ongoing productivity for your company.</p>\n        </div>\n    </div>\n</div>\n";
-  });
-},{"handlebars/runtime":10}],44:[function(require,module,exports){
-var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
-  this.compilerInfo = [4,'>= 1.0.0'];
-helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
-  
-
-
-  return "<div id=\"contact\" class=\"container-fluid\">\n    <div class=\"row\">\n        <div class=\"col-md-6\">\n            <h2 style=\"margin-top: 0px;\">Contact Us\n                <small> Send us an e-mail </small>\n            </h2>\n            <form class=\"form-horizontal\" method=\"post\" action=\"contactus.php\" role=\"form\">\n                <div class=\"form-group\">\n                    <label for=\"name\" class=\"col-sm-2 control-label\">Name:</label>\n                    <div class=\"col-sm-10\">\n                        <input class=\"form-control\" name=\"name\" id=\"name\" type=\"text\" placeholder=\"Name\" required/>\n                    </div>\n                </div>\n                <div class=\"form-group\">\n                    <label for=\"phone\" class=\"col-sm-2 control-label\">Phone #:</label>\n                    <div class=\"col-sm-10\">\n                        <input class=\"form-control\" name=\"phone\" id=\"phone\" type=\"tel\" placeholder=\"Eg. (410) 555-5555\" pattern=\"^(?:\\(\\d{3}\\)|\\d{3})[- ]?\\d{3}[- ]?\\d{4}$\"/>\n                    </div>\n                </div>\n                <div class=\"form-group\">\n                    <label for='email' class=\"col-sm-2 control-label\">E-mail:</label>\n                    <div class=\"col-sm-10\">\n                        <input name='email' id='email' type=\"email\" class=\"form-control\" placeholder=\"E-mail\" required/>\n                    </div>\n                </div>\n                <div class=\"form-group\">\n                    <label for='subject' class=\"col-sm-2 control-label\">Subject:</label>\n                    <div class=\"col-sm-10\">\n                        <input name='subject' id='subject' type='text' class=\"form-control\" placeholder=\"Subject\" required/>\n                    </div>\n                </div>\n                <div class=\"form-group\">\n                    <label for='message' class=\"col-sm-2 control-label\">Message:</label>\n                    <div class=\"col-sm-10\">\n                        <textarea name='message' id='message' class=\"form-control\" placeholder=\"Message\" required></textarea>\n                    </div>\n                </div>\n				<div class=\"alert alert-danger hide col-sm-offset-2 col-sm-10\"></div>\n                <div class=\"form-group\">\n                    <div class=\"col-sm-offset-2 col-sm-10\">\n                        <button type=\"submit\" class=\"btn btn-default btn-block\">\n                            Send <span class=\"glyphicon glyphicon-send\"></span>\n                        </button>\n                    </div>\n                </div>\n            </form>\n        </div>\n        <div class=\"col-md-6\">\n            <address>\n                  <strong>TagProcess, LLC.</strong><br>\n                  7128  NW 49TH ST.<br>\n                  LAUDERHILL, FL 33319<br>\n                  <abbr title=\"Phone\">P:</abbr> (561) 899-0777<br>\n                  <abbr title=\"Fax\">F:</abbr> (754) 200-4423\n            </address>\n            <address>\n                  <strong>Gary Tomlinson</strong><br>\n                  <a href=\"mailto:#\">INFO@TAGPROCESSLLC.com</a>\n            </address>\n        </div>\n    </div>\n</div>\n";
-  });
-},{"handlebars/runtime":10}],45:[function(require,module,exports){
-var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
-  this.compilerInfo = [4,'>= 1.0.0'];
-helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
-  
-
-
-  return "<div class=\"container\">\n	<div class=\"text-center\">\n	    Copyright 2012 Tag Process LLC. All rights reserved<br>\n		<address>\n            3500 N State Road 7 Suite 430, Lauderdale Lakes, FL 33319 Call (561)899.0777 Fax (754)200.4423\n        </address>\n	</div>\n</div>\n";
-  });
-},{"handlebars/runtime":10}],46:[function(require,module,exports){
-var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
-  this.compilerInfo = [4,'>= 1.0.0'];
-helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
-  
-
-
-  return "<div class=\"container-fluid\">\n	<div class=\"row\">\n		<div class=\"col-md-2 sidebar\"></div>\n		<div class=\"col-md-10\">\n			<form class=\"form-horizontal\" data-url=\"/tagproc/api/attorney\">\n				<div class=\"form-group\">\n					<label for=\"att_first\" class=\"col-sm-2 control-label\">First Name</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"att_first\" name=\"att_first\" placeholder=\"Attorney's First Name\" required>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"att_last\" class=\"col-sm-2 control-label\">Last Name</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"att_last\" name=\"att_last\" placeholder=\"Attorney's Last Name\" required>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"att_firm\" class=\"col-sm-2 control-label\">Firm</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"att_firm\" name=\"att_firm\" placeholder=\"Firm\">\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"att_bar\" class=\"col-sm-2 control-label\">Bar Number</label>\n					<div class=\"col-sm-10\">\n						<input type=\"tel\" class=\"form-control\" id=\"att_bar\" name=\"att_bar\" placeholder=\"Bar Number\">\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"att_phone\" class=\"col-sm-2 control-label\">Phone Number</label>\n					<div class=\"col-sm-10\">\n						<input type=\"tel\" class=\"form-control\" id=\"att_phone\" name=\"att_phone\" placeholder=\"Phone Number\">\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"att_address\" class=\"col-sm-2 control-label\">Address</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"att_address\" name=\"att_address\" placeholder=\"Attorney's Address\" required>\n					</div>\n				</div>\n				<div class=\"alert alert-danger hide col-sm-offset-2 col-sm-10\"></div>\n				<div class=\"form-group\">\n					<div class=\"col-sm-offset-2 col-sm-10\">\n						<button type=\"submit\" class=\"btn btn-default btn-block\">Submit</button>\n					</div>\n				</div>\n			</form>\n		</div>\n	</div>\n</div>\n";
-  });
-},{"handlebars/runtime":10}],47:[function(require,module,exports){
-var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
-  this.compilerInfo = [4,'>= 1.0.0'];
-helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
-  
-
-
-  return "<div class=\"container-fluid\">\n	<div class=\"row\">\n		<div class=\"col-md-2 sidebar\"></div>\n		<div class=\"col-md-10\">\n			<form class=\"form-horizontal\" data-url=\"/tagproc/api/case\">\n			    <div class=\"form-group\">\n					<label for=\"account\" class=\"col-sm-2 control-label\">Account Responsible</label>\n					<div class=\"col-sm-10\">\n						<select class=\"form-control\" id=\"account\" name=\"account\" data-value=\"accountname\" data-label=\"accountname\" data-search=\"accountname\" data-url=\"/tagproc/api/accounts\" required>\n							<option value=\"\">Please select one...</option>\n						</select>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"server\" class=\"col-sm-2 control-label\">Server Assigned</label>\n					<div class=\"col-sm-10\">\n						<select class=\"form-control\" id=\"server\" name=\"server\" data-value=\"uniqueid\" data-label=\"firstname\" data-search=\"uniqueid,firstname,lastname,county\" data-url=\"/tagproc/api/servers\" required>\n							<option value=\"\">Please select one...</option>\n						</select>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"served_party\" class=\"col-sm-2 control-label\">Party to be served</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"served_party\" name=\"served_party\" placeholder=\"Served party\">\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"served_person\" class=\"col-sm-2 control-label\">Person to be served</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"served_person\" name=\"served_person\" placeholder=\"Served Person\">\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"date_received\" class=\"col-sm-2 control-label\">Received Date</label>\n					<div class=\"col-sm-10\">\n						<input type=\"date\" class=\"form-control\" id=\"date_received\" name=\"date_received\" placeholder=\"Date Received\">\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"time_received\" class=\"col-sm-2 control-label\">Received Time</label>\n					<div class=\"col-sm-10\">\n						<input type=\"time\" class=\"form-control\" id=\"time_received\" name=\"time_received\" placeholder=\"Time Received\">\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"served_documents\" class=\"col-sm-2 control-label\">Documents to be Served</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"served_documents\" name=\"served_documents\" placeholder=\"Served Documents\">\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"date_court\" class=\"col-sm-2 control-label\">Court Date/Time</label>\n					<div class=\"col-sm-10\">\n						<input type=\"datetime-local\" class=\"form-control\" id=\"date_court\" name=\"date_court\" placeholder=\"Court Date and Time\">\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"casenumber\" class=\"col-sm-2 control-label\">Case Number</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"casenumber\" name=\"casenumber\" placeholder=\"Case Number\">\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"judge\" class=\"col-sm-2 control-label\">Judge</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"judge\" name=\"judge\" placeholder=\"Judge\">\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"plaintiff\" class=\"col-sm-2 control-label\">Plaintiff</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"plaintiff\" name=\"plaintiff\" placeholder=\"Plaintiff\">\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"defendant\" class=\"col-sm-2 control-label\">Defendant</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"defendant\" name=\"defendant\" placeholder=\"Defendant\">\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"attorney\" class=\"col-sm-2 control-label\">Attorney</label>\n					<div class=\"col-sm-10\">\n						<select class=\"form-control\" id=\"attorney\" name=\"attorney\" data-value=\"attorney\" data-label=\"attorney\" data-search=\"attorney\" data-url=\"/tagproc/api/attorneys\" required>\n							<option value=\"\">Please select one...</option>\n						</select>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"state\" class=\"col-sm-2 control-label\">State</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"state\" name=\"state\" placeholder=\"State\">\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"county\" class=\"col-sm-2 control-label\">County</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"county\" name=\"county\" placeholder=\"County\">\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"courttype\" class=\"col-sm-2 control-label\">Type of Court</label>\n					<div class=\"col-sm-10\">\n						<select class=\"form-control\" id=\"courttype\" name=\"courttype\" data-value=\"value\" data-search=\"text\" data-label=\"text\" required>\n							<option value=\"\">Please select one...</option>\n							<option value=\"Circuit\">Circuit</option>\n							<option value=\"Family\">Family</option>\n							<option value=\"County\">County</option>\n							<option value=\"District\">District</option>\n						</select>\n					</div>\n				</div>\n				<h3>Invoice Details</h3>\n				<div class=\"form-group\">\n					<label for=\"amount\" class=\"col-sm-2 control-label\">Amount</label>\n					<div class=\"col-sm-10\">\n						<input type=\"number\" class=\"form-control\" id=\"amount\" name=\"amount\" placeholder=\"Amount\">\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"itemname\" class=\"col-sm-2 control-label\">Name</label>\n					<div class=\"col-sm-10\">\n						<select class=\"form-control\" id=\"itemname\" name=\"itemname\">\n                            <option value=\"\">Please select one...</option>\n                            <option>SUMMON</option>\n                            <option>SUBPOENA</option>\n                            <option>MANUAL INVOICE</option>\n                            <option>COURIER</option>\n                            <option>SKIP TRACE</option>\n                            <option>STAKEOUT</option>\n                            <option>DEFAULT</option>\n						</select>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"itemdescription\" class=\"col-sm-2 control-label\">Description</label>\n					<div class=\"col-sm-10\">\n						<textarea class=\"form-control\" id=\"itemdescription\" name=\"itemdescription\" placeholder=\"Description\"></textarea>\n					</div>\n				</div>\n				<div class=\"alert alert-danger hide col-sm-offset-2 col-sm-10\"></div>\n				<div class=\"form-group\">\n					<div class=\"col-sm-offset-2 col-sm-10\">\n						<button type=\"submit\" class=\"btn btn-default btn-block\">Submit</button>\n					</div>\n				</div>\n			</form>\n		</div>\n	</div>\n</div>\n";
-  });
-},{"handlebars/runtime":10}],48:[function(require,module,exports){
-var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
-  this.compilerInfo = [4,'>= 1.0.0'];
-helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
-  
-
-
-  return "<div class=\"container-fluid\">\n	<div class=\"row\">\n		<div class=\"col-md-2 sidebar\"></div>\n		<div class=\"col-md-10\">\n			<form class=\"form-horizontal\" data-url=\"/tagproc/api/client\">\n				<div class=\"form-group\">\n					<label for=\"client_username\" class=\"col-sm-2 control-label\">Username</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"client_username\" name=\"client_username\" placeholder=\"Client Username\" required>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"client_password\" class=\"col-sm-2 control-label\">Password</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"client_password\" name=\"client_password\" placeholder=\"Client Password\" required>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"client_account\" class=\"col-sm-2 control-label\">Account Name</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"client_account\" name=\"client_account\" placeholder=\"Client's Account Name\" required>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"client_phone\" class=\"col-sm-2 control-label\">Phone</label>\n					<div class=\"col-sm-10\">\n						<input type=\"tel\" class=\"form-control\" id=\"client_phone\" name=\"client_phone\" placeholder=\"Client's Phone #\">\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"client_fax\" class=\"col-sm-2 control-label\">Fax</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"client_fax\" name=\"client_fax\" placeholder=\"Client's Fax #\">\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"client_email\" class=\"col-sm-2 control-label\">E-mail</label>\n					<div class=\"col-sm-10\">\n						<input type=\"email\" class=\"form-control\" id=\"client_email\" name=\"client_email\" placeholder=\"E-mail\">\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"client_address\" class=\"col-sm-2 control-label\">Address</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"client_address\" name=\"client_address\" placeholder=\"Client's Address\" required>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"client_city\" class=\"col-sm-2 control-label\">City</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"client_city\" name=\"client_city\" placeholder=\"City\" required>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"client_state\" class=\"col-sm-2 control-label\">State</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"client_state\" name=\"client_state\" placeholder=\"State\" required>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"client_zip\" class=\"col-sm-2 control-label\">Zip</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"client_zip\" name=\"client_zip\" placeholder=\"ZIP Code\" required>\n					</div>\n				</div>\n				<div class=\"alert alert-danger hide col-sm-offset-2 col-sm-10\"></div>\n				<div class=\"form-group\">\n					<div class=\"col-sm-offset-2 col-sm-10\">\n						<button type=\"submit\" class=\"btn btn-default btn-block\">Submit</button>\n					</div>\n				</div>\n			</form>\n		</div>\n	</div>\n</div>\n";
-  });
-},{"handlebars/runtime":10}],49:[function(require,module,exports){
-var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
-  this.compilerInfo = [4,'>= 1.0.0'];
-helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
-  
-
-
-  return "<div class=\"container-fluid\">\n	<div class=\"row\">\n		<div class=\"col-md-2 sidebar\"></div>\n		<div class=\"col-md-10\">\n			<form class=\"form-horizontal\" data-url=\"/tagproc/api/employee\">\n				<div class=\"form-group\">\n					<label for=\"employee_username\" class=\"col-sm-2 control-label\">Username</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"employee_username\" name=\"employee_username\" placeholder=\"Username\" required>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"employee_password\" class=\"col-sm-2 control-label\">Password</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"employee_password\" name=\"employee_password\" placeholder=\"Password\" required>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"employee_name\" class=\"col-sm-2 control-label\">Employee Name</label>\n					<div class=\"col-sm-10\">\n						<input type=\"tel\" class=\"form-control\" id=\"employee_name\" name=\"employee_name\" placeholder=\"Employee's Name\" required>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"employee_phone\" class=\"col-sm-2 control-label\">Phone #</label>\n					<div class=\"col-sm-10\">\n						<input type=\"tel\" class=\"form-control\" id=\"employee_phone\" name=\"employee_phone\" placeholder=\"Phone #\">\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"employee_fax\" class=\"col-sm-2 control-label\">Fax #</label>\n					<div class=\"col-sm-10\">\n						<input type=\"tel\" class=\"form-control\" id=\"employee_fax\" name=\"employee_fax\" placeholder=\"Fax #\">\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"employee_email\" class=\"col-sm-2 control-label\">E-mail</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"employee_email\" name=\"employee_email\" placeholder=\"E-mail\" required>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"employee_address\" class=\"col-sm-2 control-label\">Address</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"employee_address\" name=\"employee_address\" placeholder=\"Employee's Address\" required>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"employee_city\" class=\"col-sm-2 control-label\">City</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"employee_city\" name=\"employee_city\" placeholder=\"City\" required>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"employee_state\" class=\"col-sm-2 control-label\">State</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"employee_state\" name=\"employee_state\" placeholder=\"State\" required>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"employee_zip\" class=\"col-sm-2 control-label\">Zip</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"employee_zip\" name=\"employee_zip\" placeholder=\"Zip\" required>\n					</div>\n				</div>\n				<div class=\"alert alert-danger hide col-sm-offset-2 col-sm-10\"></div>\n				<div class=\"form-group\">\n					<div class=\"col-sm-offset-2 col-sm-10\">\n						<button type=\"submit\" class=\"btn btn-default btn-block\">Submit</button>\n					</div>\n				</div>\n			</form>\n		</div>\n	</div>\n</div>";
-  });
-},{"handlebars/runtime":10}],50:[function(require,module,exports){
-var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
-  this.compilerInfo = [4,'>= 1.0.0'];
-helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
-  
-
-
-  return "<div class=\"container-fluid\">\n	<div class=\"row\">\n		<div class=\"col-md-2 sidebar\"></div>\n		<div class=\"col-md-10\">\n			<form class=\"form-horizontal\" data-url=\"/tagproc/api/server\">\n				<div class=\"form-group\">\n					<label for=\"server_fname\" class=\"col-sm-2 control-label\">First Name</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"server_fname\" name=\"server_fname\" placeholder=\"Server First Name\" required>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"server_lname\" class=\"col-sm-2 control-label\">Last Name</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"server_lname\" name=\"server_lname\" placeholder=\"Server Last Name\" required>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"server_type\" class=\"col-sm-2 control-label\">Server Type</label>\n					<div class=\"col-sm-10\">\n						<select type=\"text\" class=\"form-control\" id=\"server_type\" name=\"server_type\" data-value=\"value\" data-label=\"text\" data-search=\"text\" required>\n							<option value=\"\">Please select one...</option>\n							<option value=\"Certified Process Server\">Certified Process Server</option>\n							<option value=\"Special Process Server\">Special Process Server</option>\n							<option value=\"Court Officer\">Court Officer</option>\n						</select>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"server_id\" class=\"col-sm-2 control-label\">Server ID #</label>\n					<div class=\"col-sm-10\">\n						<input type=\"tel\" class=\"form-control\" id=\"server_id\" name=\"server_id\" placeholder=\"Server's ID #\" required>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"server_county\" class=\"col-sm-2 control-label\">County</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"server_county\" name=\"server_county\" placeholder=\"County\">\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"server_phone\" class=\"col-sm-2 control-label\">Phone #</label>\n					<div class=\"col-sm-10\">\n						<input type=\"tel\" class=\"form-control\" id=\"server_phone\" name=\"server_phone\" placeholder=\"Phone #\">\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"server_address\" class=\"col-sm-2 control-label\">Address</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"server_address\" name=\"server_address\" placeholder=\"Server's Address\" required>\n					</div>\n				</div>\n				<div class=\"alert alert-danger hide col-sm-offset-2 col-sm-10\"></div>\n				<div class=\"form-group\">\n					<div class=\"col-sm-offset-2 col-sm-10\">\n						<button type=\"submit\" class=\"btn btn-default btn-block\">Submit</button>\n					</div>\n				</div>\n			</form>\n		</div>\n	</div>\n</div>\n";
-  });
-},{"handlebars/runtime":10}],51:[function(require,module,exports){
-var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
-  this.compilerInfo = [4,'>= 1.0.0'];
-helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
-  
-
-
-  return "<div class=\"container-fluid\" style=\"position: relative\">\n    <img class=\"img-responsive\"  src=\"app/images/tag_logo.jpg\"/>\n    <p class=\"text-right col-md-8\" style=\"position: absolute; bottom: 0; right: 0; margin-bottom: 0px;\">\n        <small id=\"login-message\">You're currently not logged in.</small>\n    </p>\n</div>\n";
-  });
-},{"handlebars/runtime":10}],52:[function(require,module,exports){
-var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
-  this.compilerInfo = [4,'>= 1.0.0'];
-helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
-  
-
-
-  return "<div class=\"container-fluid\">\n	<div class=\"row\">\n		<div class=\"col-md-6 col-xs-12\">\n			<img class=\"img-rounded img-responsive pull-left col-md-6 col-xs-12\" src=\"app/images/header_img1.jpg\">\n			<h3 style=\"margin-top: 0px;\" class=\"col-md-6 text-left\">We have over 11 years of experience in the process serving.</h3>\n		</div>\n		<div class=\"col-md-6 col-xs-12\">\n			<h3 style=\"margin-top: 0px;\">Changing the way of process serving</h3>                                                                                                                                                                                            \n			<h3>GREAT CUSTOMER SERVICE</h3>                                                                                                                                                                                                         \n			<p class=\"text-info\">With over 11 years of experience, TAG Process Service llc<br>                                                                                                                                                       \n				We specialize in serving all documents. Through our technology <br>\n				Which establish us as the leader in the process industry.</p>                                                                                                                                                                                                                                      \n		</div>\n	</div>\n	<hr>\n	<div class=\"row\">\n		<div class=\"col-md-6 col-xs-12\">\n			<img class=\"img-rounded img-responsive pull-left col-md-6 col-xs-12\" src=\"app/images/technology.png\">\n			<h3 style=\"margin-top: 0px;\" class=\"col-md-6 text-left\">We are the leaders in Technology in the Process Serving Industry.</h3>\n		</div>  \n		<div class=\"col-md-6 col-xs-12\">\n			<img class=\"img-rounded img-response pull-right\" src=\"app/images/ts_logo.jpg\">\n			<h3 style=\"margin-top: 0px;\">We are looking forward to working with you.</h3>\n			<p class=\"text-info\">For more information on our technology click <a href=\"#aboutus\">About Us</a> </p>\n			<p class=\"text-info\">Here is a complete company directory <br>\n				Or contact us via email by completing the <br>\n				<a href=\"#contactus\">contact us</a> form. </p>\n		</div>\n	</div>\n</div>\n";
-  });
-},{"handlebars/runtime":10}],53:[function(require,module,exports){
-var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
-  this.compilerInfo = [4,'>= 1.0.0'];
-helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
-  var buffer = "", stack1, functionType="function", escapeExpression=this.escapeExpression, self=this, helperMissing=helpers.helperMissing;
-
-function program1(depth0,data) {
-  
-  var buffer = "", stack1, helper, options;
-  buffer += "\n						<tr>\n							<th>";
-  stack1 = (helper = helpers.parse || (depth0 && depth0.parse),options={hash:{},inverse:self.noop,fn:self.program(2, program2, data),data:data},helper ? helper.call(depth0, (data == null || data === false ? data : data.key), options) : helperMissing.call(depth0, "parse", (data == null || data === false ? data : data.key), options));
-  if(stack1 || stack1 === 0) { buffer += stack1; }
-  buffer += "</th>\n							<td>\n								<div class=\"col-md-10 col-xs-10 noOverflow\">";
-  stack1 = helpers['if'].call(depth0, (depth0 && depth0.value), {hash:{},inverse:self.program(6, program6, data),fn:self.program(4, program4, data),data:data});
-  if(stack1 || stack1 === 0) { buffer += stack1; }
-  buffer += "</div>\n								<form class=\"form-inline col-md-10 col-xs-10 hide\" role=\"form\">\n									<div class=\"form-group col-md-10 col-xs-10\">\n										<div class=\"input-group col-md-12 col-xs-12\">\n											<label class=\"sr-only\" for=\""
-    + escapeExpression(((stack1 = (data == null || data === false ? data : data.key)),typeof stack1 === functionType ? stack1.apply(depth0) : stack1))
-    + "\">";
-  stack1 = (helper = helpers.parse || (depth0 && depth0.parse),options={hash:{},inverse:self.noop,fn:self.program(2, program2, data),data:data},helper ? helper.call(depth0, (data == null || data === false ? data : data.key), options) : helperMissing.call(depth0, "parse", (data == null || data === false ? data : data.key), options));
-  if(stack1 || stack1 === 0) { buffer += stack1; }
-  buffer += "</label>\n											<input class=\"form-control\" type=\"text\" name=\""
-    + escapeExpression(((stack1 = (data == null || data === false ? data : data.key)),typeof stack1 === functionType ? stack1.apply(depth0) : stack1))
-    + "\" id=\""
-    + escapeExpression(((stack1 = (data == null || data === false ? data : data.key)),typeof stack1 === functionType ? stack1.apply(depth0) : stack1))
-    + "\" value=\""
-    + escapeExpression(((stack1 = (depth0 && depth0.value)),typeof stack1 === functionType ? stack1.apply(depth0) : stack1))
-    + "\">\n										</div>\n									</div>\n									<button type=\"submit\" class=\"btn btn-default\">\n										<span class=\"glyphicon glyphicon-floppy-disk\"></span>\n									</button>\n									<button type=\"button\" class=\"btn btn-default edit\">\n										<span class=\"glyphicon glyphicon-remove\"></span>\n									</button>\n								</form>\n								";
-  stack1 = helpers['if'].call(depth0, (depth0 && depth0.editable), {hash:{},inverse:self.noop,fn:self.program(8, program8, data),data:data});
-  if(stack1 || stack1 === 0) { buffer += stack1; }
-  buffer += "\n							</td>\n						</tr>\n					";
-  return buffer;
-  }
-function program2(depth0,data) {
-  
-  var buffer = "";
-  return buffer;
-  }
-
-function program4(depth0,data) {
-  
-  var buffer = "", stack1;
-  buffer += " "
-    + escapeExpression(((stack1 = (depth0 && depth0.value)),typeof stack1 === functionType ? stack1.apply(depth0) : stack1))
-    + " ";
-  return buffer;
-  }
-
-function program6(depth0,data) {
-  
-  
-  return " N/A ";
-  }
-
-function program8(depth0,data) {
-  
-  
-  return "\n									<a href=\"#\" class=\"edit col-md-2 col-xs-2 text-right\"><span class=\"glyphicon glyphicon-pencil\" style=\"color: goldenrod;\"></span></a>\n								";
-  }
-
-function program10(depth0,data) {
-  
-  var buffer = "", stack1;
-  buffer += "\n					<h3>Attachments</h3>\n					<table class=\"table table-bordered table-condensed table-hover table-striped\">\n						<thead>\n							<tr>\n								<th>Type</th>\n								<th>Name</th>\n							</tr>\n						</thead>\n						<tbody>\n						";
-  stack1 = helpers.each.call(depth0, (depth0 && depth0.attachments), {hash:{},inverse:self.noop,fn:self.program(11, program11, data),data:data});
-  if(stack1 || stack1 === 0) { buffer += stack1; }
-  buffer += "\n						</tbody>\n					</table>\n				";
-  return buffer;
-  }
-function program11(depth0,data) {
-  
-  var buffer = "", stack1, helper, options;
-  buffer += "\n							<tr>\n								<td>";
-  stack1 = (helper = helpers.parseAttachmentType || (depth0 && depth0.parseAttachmentType),options={hash:{},inverse:self.noop,fn:self.program(2, program2, data),data:data},helper ? helper.call(depth0, (depth0 && depth0.type), options) : helperMissing.call(depth0, "parseAttachmentType", (depth0 && depth0.type), options));
-  if(stack1 || stack1 === 0) { buffer += stack1; }
-  buffer += "</td>\n								<td><a href=\"/tagproc/";
-  if (helper = helpers.url) { stack1 = helper.call(depth0, {hash:{},data:data}); }
-  else { helper = (depth0 && depth0.url); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
-  buffer += escapeExpression(stack1)
-    + "\" target=\"_blank\">";
-  if (helper = helpers.name) { stack1 = helper.call(depth0, {hash:{},data:data}); }
-  else { helper = (depth0 && depth0.name); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
-  buffer += escapeExpression(stack1)
-    + "</a></td>\n							</tr>\n						";
-  return buffer;
-  }
-
-  buffer += "<div class=\"container-fluid\">\n    <div class=\"row\">\n		<div id=\"tools\" class=\"col-md-2\">\n			<ul class=\"nav nav-stacked nav-pills\">\n				<li><a href=\"#\" id=\"viewDetails\">Serve Details</a></li>\n			</ul>\n		</div>\n        <div class=\"col-md-10\">\n			<div class=\"row table-responsive\">\n				<table class=\"table table-bordered table-condensed table-hover table-striped\">\n					<tbody>\n					";
-  stack1 = helpers.each.call(depth0, (depth0 && depth0.job), {hash:{},inverse:self.noop,fn:self.program(1, program1, data),data:data});
-  if(stack1 || stack1 === 0) { buffer += stack1; }
-  buffer += "\n					</tbody>\n				</table>\n			</div>\n			<div class=\"row table-responsive\">\n				";
-  stack1 = helpers['if'].call(depth0, (depth0 && depth0.attachments), {hash:{},inverse:self.noop,fn:self.program(10, program10, data),data:data});
-  if(stack1 || stack1 === 0) { buffer += stack1; }
-  buffer += "\n			</div>\n        </div>\n    </div>\n</div>\n\n";
-  return buffer;
-  });
-},{"handlebars/runtime":10}],54:[function(require,module,exports){
-var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
-  this.compilerInfo = [4,'>= 1.0.0'];
-helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
-  var buffer = "", stack1, functionType="function", escapeExpression=this.escapeExpression, self=this;
-
-function program1(depth0,data) {
-  
-  
-  return "\n<div class=\"container-fluid\">\n    <div class=\"row text-center\">\n		<div class=\"well well-lg\">\n			<span class=\"glyphicon glyphicon-ban-circle glyphicon-big-alert\"></span>\n			<p class=\"text-danger\">You do not have the required access right now.</p>\n		</div>\n	</div>\n</div>\n";
-  }
-
-function program3(depth0,data) {
-  
-  var buffer = "", stack1;
-  buffer += "\n<div class=\"container-fluid\">\n	<div class=\"row\">\n		<div class=\"col-md-2 sidebar\"></div>\n		<div class=\"col-md-10\">\n			<div class=\"row\">\n				<form class=\"form-horizontal col-sm-8\" role=\"form\">\n					<div class=\"form-group\">\n						<div class=\"input-group\">\n							<span class=\"input-group-addon\">\n								<i class=\"glyphicon glyphicon-search\"></i>\n							</span>\n							<input id=\"search\" type=\"text\" class=\"form-control\" placeholder=\"Search\" value=\""
-    + escapeExpression(((stack1 = ((stack1 = (depth0 && depth0.form)),stack1 == null || stack1 === false ? stack1 : stack1.q)),typeof stack1 === functionType ? stack1.apply(depth0) : stack1))
-    + "\" AUTOFOCUS>\n							<span class=\"input-group-btn\">\n								<button class=\"btn btn-default dropdown-toggle\" data-toggle=\"dropdown\" type=\"button\">\n									<span id=\"search-by-text\">";
-  stack1 = helpers['if'].call(depth0, ((stack1 = (depth0 && depth0.form)),stack1 == null || stack1 === false ? stack1 : stack1.searchby), {hash:{},inverse:self.program(6, program6, data),fn:self.program(4, program4, data),data:data});
-  if(stack1 || stack1 === 0) { buffer += stack1; }
-  buffer += "</span>\n									<span class=\"caret\"></span>\n								</button>\n								<ul class=\"dropdown-menu pull-right\" id=\"searchby\">\n									<li><a href=\"#\" data-value=\"jobnumber\">Job Number</a></li>\n									<li><a href=\"#\" data-value=\"account\">Client</a></li>\n									<li><a href=\"#\" data-value=\"casenumber\">Case</a></li>\n								</ul>\n							</span>\n						</div>\n					</div>\n				</form>\n				<div class=\"text-right col-sm-4\" style=\"font-size: 24px;\">\n					<a href=\"#\" class=\"switch-page\"  data-offset=\"-10\" title=\"Previous\">\n						<span class=\"glyphicon glyphicon-chevron-left\"></span>\n					</a>\n					<a href=\"#\" class=\"switch-page\" data-offset=\"10\" title=\"Next\">\n						<span class=\"glyphicon glyphicon-chevron-right\"></span>\n					</a>\n				</div>\n				<br>\n			</div>\n			<div class=\"row\">\n				<div class=\"table-responsive\">\n					<table class=\"table table-bordered table-condensed table-hover table-striped\">\n						<thead>\n							<tr>\n								<th>Job #</th>\n								<th>Account</th>\n								<th>Reference</th>\n								<th>To Serve On</th>\n								<th>Court Date</th>\n								<th>Completed</th>\n								<th>Type of Service</th>\n								<th>Date Received</th>\n							</tr>\n						</thead>\n						<tbody>\n						";
-  stack1 = helpers['if'].call(depth0, (depth0 && depth0.items), {hash:{},inverse:self.program(11, program11, data),fn:self.program(8, program8, data),data:data});
-  if(stack1 || stack1 === 0) { buffer += stack1; }
-  buffer += "\n						</tbody>\n					</table>\n				</div>\n			</div>\n		</div>\n	</div>\n</div>\n";
-  return buffer;
-  }
-function program4(depth0,data) {
-  
-  var buffer = "", stack1;
-  buffer += " "
-    + escapeExpression(((stack1 = ((stack1 = (depth0 && depth0.form)),stack1 == null || stack1 === false ? stack1 : stack1.searchby)),typeof stack1 === functionType ? stack1.apply(depth0) : stack1))
-    + "  ";
-  return buffer;
-  }
-
-function program6(depth0,data) {
-  
-  
-  return " Search By ";
-  }
-
-function program8(depth0,data) {
-  
-  var buffer = "", stack1;
-  buffer += "\n							";
-  stack1 = helpers.each.call(depth0, (depth0 && depth0.items), {hash:{},inverse:self.noop,fn:self.program(9, program9, data),data:data});
-  if(stack1 || stack1 === 0) { buffer += stack1; }
-  buffer += "\n						";
-  return buffer;
-  }
-function program9(depth0,data) {
-  
-  var buffer = "", stack1, helper;
-  buffer += "\n								<tr>\n									<td><a href=\"#jobs/";
-  if (helper = helpers.jobnumber) { stack1 = helper.call(depth0, {hash:{},data:data}); }
-  else { helper = (depth0 && depth0.jobnumber); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
-  buffer += escapeExpression(stack1)
-    + "\">";
-  if (helper = helpers.jobnumber) { stack1 = helper.call(depth0, {hash:{},data:data}); }
-  else { helper = (depth0 && depth0.jobnumber); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
-  buffer += escapeExpression(stack1)
-    + "</a></td>\n									<td>";
-  if (helper = helpers.account) { stack1 = helper.call(depth0, {hash:{},data:data}); }
-  else { helper = (depth0 && depth0.account); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
-  buffer += escapeExpression(stack1)
-    + "</td>\n									<td></td>\n									<td>";
-  if (helper = helpers.served_party) { stack1 = helper.call(depth0, {hash:{},data:data}); }
-  else { helper = (depth0 && depth0.served_party); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
-  buffer += escapeExpression(stack1)
-    + "</td>\n									<td>";
-  if (helper = helpers.date_court) { stack1 = helper.call(depth0, {hash:{},data:data}); }
-  else { helper = (depth0 && depth0.date_court); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
-  buffer += escapeExpression(stack1)
-    + "</td>\n									<td>";
-  if (helper = helpers.date_served) { stack1 = helper.call(depth0, {hash:{},data:data}); }
-  else { helper = (depth0 && depth0.date_served); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
-  buffer += escapeExpression(stack1)
-    + "</td>\n									<td>";
-  if (helper = helpers.served_documents) { stack1 = helper.call(depth0, {hash:{},data:data}); }
-  else { helper = (depth0 && depth0.served_documents); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
-  buffer += escapeExpression(stack1)
-    + "</td>\n									<td>";
-  if (helper = helpers.date_received) { stack1 = helper.call(depth0, {hash:{},data:data}); }
-  else { helper = (depth0 && depth0.date_received); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
-  buffer += escapeExpression(stack1)
-    + "</td>\n								</tr>\n							";
-  return buffer;
-  }
-
-function program11(depth0,data) {
-  
-  
-  return "\n							<tr>\n								<td colspan=\"8\"><em>No Jobs found.</em></td>\n							</tr>\n						";
-  }
-
-  stack1 = helpers['if'].call(depth0, (depth0 && depth0.no_access), {hash:{},inverse:self.program(3, program3, data),fn:self.program(1, program1, data),data:data});
-  if(stack1 || stack1 === 0) { buffer += stack1; }
-  buffer += "\n";
-  return buffer;
-  });
-},{"handlebars/runtime":10}],55:[function(require,module,exports){
-var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
-  this.compilerInfo = [4,'>= 1.0.0'];
-helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
-  
-
-
-  return "<div id=\"loginbox\" class=\"col-md-6 col-md-offset-3 col-sm-8 col-sm-offset-2\">\n	<div class=\"panel panel-info\" >\n		<div class=\"panel-heading\">\n			<div class=\"panel-title\">Sign In</div>\n		</div>\n		<div class=\"panel-body\">\n			<div id=\"login-alert\" class=\"alert alert-danger hide col-sm-12\"></div>\n			<form id=\"loginform\" class=\"form-horizontal\" role=\"form\">\n				<div class=\"form-group col-sm-12\">\n					<div class=\"input-group\">\n						<span class=\"input-group-addon\"><i class=\"glyphicon glyphicon-user\"></i></span>\n						<input id=\"username\" type=\"text\" class=\"form-control\" name=\"username\" value=\"\" placeholder=\"username\" required>                                   \n					</div>\n				</div>\n				<div class=\"form-group col-sm-12\">\n					<div class=\"input-group\">\n						<span class=\"input-group-addon\"><i class=\"glyphicon glyphicon-lock\"></i></span>\n						<input id=\"password\" type=\"password\" class=\"form-control\" name=\"password\" placeholder=\"password\" required>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<div class=\"col-sm-12 controls\">\n						<button id=\"btn-login\" class=\"btn btn-default btn-block\" type=\"submit\">Login  </a>\n					</div>\n				</div>\n			</form> \n		</div>                     \n	</div>  \n</div>\n";
-  });
-},{"handlebars/runtime":10}],56:[function(require,module,exports){
-var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
-  this.compilerInfo = [4,'>= 1.0.0'];
-helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
-  var buffer = "", stack1, helper, functionType="function", escapeExpression=this.escapeExpression;
-
-
-  buffer += "<div class=\"modal-dialog modal-lg\">\n	<div class=\"modal-content\">\n		<div class=\"modal-header\">";
-  if (helper = helpers.header) { stack1 = helper.call(depth0, {hash:{},data:data}); }
-  else { helper = (depth0 && depth0.header); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
-  buffer += escapeExpression(stack1)
-    + "</div>\n		<div class=\"modal-body\">";
-  if (helper = helpers.body) { stack1 = helper.call(depth0, {hash:{},data:data}); }
-  else { helper = (depth0 && depth0.body); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
-  buffer += escapeExpression(stack1)
-    + "</div>\n		<div class=\"modal-footer\">";
-  if (helper = helpers.footer) { stack1 = helper.call(depth0, {hash:{},data:data}); }
-  else { helper = (depth0 && depth0.footer); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
-  buffer += escapeExpression(stack1)
-    + "</div>\n	</div>\n</div>\n";
-  return buffer;
-  });
-},{"handlebars/runtime":10}],57:[function(require,module,exports){
-var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
-  this.compilerInfo = [4,'>= 1.0.0'];
-helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
-  var buffer = "", stack1, functionType="function", escapeExpression=this.escapeExpression, self=this;
-
-function program1(depth0,data) {
-  
-  var buffer = "", stack1, helper;
-  buffer += "\n	<div class=\"row\">\n		<div class=\"table-responsive\">\n			<table class=\"table table-bordered table-condensed table-hover table-striped\">\n				<thead>\n					<tr>\n						<th>Date</th>\n						<th>Comment</th>\n						<th>Latitude</th>\n						<th>Longitude</th>\n					</tr>\n				</thead>\n				<tbody>\n					<tr>\n						<td>";
-  if (helper = helpers.date) { stack1 = helper.call(depth0, {hash:{},data:data}); }
-  else { helper = (depth0 && depth0.date); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
-  buffer += escapeExpression(stack1)
-    + "</td>\n						<td>";
-  if (helper = helpers.comment) { stack1 = helper.call(depth0, {hash:{},data:data}); }
-  else { helper = (depth0 && depth0.comment); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
-  buffer += escapeExpression(stack1)
-    + "</td>\n						<td>";
-  if (helper = helpers.latitude) { stack1 = helper.call(depth0, {hash:{},data:data}); }
-  else { helper = (depth0 && depth0.latitude); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
-  buffer += escapeExpression(stack1)
-    + "</td>\n						<td>";
-  if (helper = helpers.longitude) { stack1 = helper.call(depth0, {hash:{},data:data}); }
-  else { helper = (depth0 && depth0.longitude); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
-  buffer += escapeExpression(stack1)
-    + "</td>\n					</tr>\n				</tbody>\n			</table>\n		</div>\n	</div>\n	<div class=\"row\">\n		<img src=\"";
-  if (helper = helpers.street) { stack1 = helper.call(depth0, {hash:{},data:data}); }
-  else { helper = (depth0 && depth0.street); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
-  buffer += escapeExpression(stack1)
-    + "\" class=\"img-responsive col-md-6\">\n		<img src=\"";
-  if (helper = helpers.satellite) { stack1 = helper.call(depth0, {hash:{},data:data}); }
-  else { helper = (depth0 && depth0.satellite); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
-  buffer += escapeExpression(stack1)
-    + "\" class=\"img-responsive col-md-6\">\n	</div>\n	<div class=\"row\">\n		<img src=\"/tagproc/images/";
-  if (helper = helpers.image) { stack1 = helper.call(depth0, {hash:{},data:data}); }
-  else { helper = (depth0 && depth0.image); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
-  buffer += escapeExpression(stack1)
-    + "\" class=\"img-responsive col-md-12\">\n	</div>\n";
-  return buffer;
-  }
-
-function program3(depth0,data) {
-  
-  var buffer = "", stack1, helper;
-  buffer += "\n	<div class=\"row\">\n		<div class=\"col-md-6\">\n			<div class=\"table-responsive\">\n				<table class=\"table table-bordered table-condensed table-hover table-striped\">\n					<tbody>\n						<tr>\n							<th>Date</th>\n							<td>";
-  if (helper = helpers.timestamp) { stack1 = helper.call(depth0, {hash:{},data:data}); }
-  else { helper = (depth0 && depth0.timestamp); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
-  buffer += escapeExpression(stack1)
-    + "</td>\n						</tr>\n						<tr>\n							<th>GPS Location</th>\n							<td>";
-  if (helper = helpers.latitude) { stack1 = helper.call(depth0, {hash:{},data:data}); }
-  else { helper = (depth0 && depth0.latitude); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
-  buffer += escapeExpression(stack1)
-    + ", ";
-  if (helper = helpers.longitude) { stack1 = helper.call(depth0, {hash:{},data:data}); }
-  else { helper = (depth0 && depth0.longitude); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
-  buffer += escapeExpression(stack1)
-    + "</td>\n						</tr>\n						<tr>\n							<th>Served On</th>\n							<td>";
-  if (helper = helpers.served_person) { stack1 = helper.call(depth0, {hash:{},data:data}); }
-  else { helper = (depth0 && depth0.served_person); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
-  buffer += escapeExpression(stack1)
-    + "</td>\n						</tr>\n						<tr>\n							<th>Gender</th>\n							<td>";
-  if (helper = helpers.gender) { stack1 = helper.call(depth0, {hash:{},data:data}); }
-  else { helper = (depth0 && depth0.gender); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
-  buffer += escapeExpression(stack1)
-    + "</td>\n						</tr>	\n						<tr>\n							<th>Age</th>\n							<td>";
-  if (helper = helpers.age) { stack1 = helper.call(depth0, {hash:{},data:data}); }
-  else { helper = (depth0 && depth0.age); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
-  buffer += escapeExpression(stack1)
-    + "</td>\n						</tr>\n						<tr>\n							<th>Race</th>\n							<td>";
-  if (helper = helpers.race) { stack1 = helper.call(depth0, {hash:{},data:data}); }
-  else { helper = (depth0 && depth0.race); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
-  buffer += escapeExpression(stack1)
-    + "</td>\n						</tr>\n						<tr>\n							<th>Height</th>\n							<td>";
-  if (helper = helpers.height) { stack1 = helper.call(depth0, {hash:{},data:data}); }
-  else { helper = (depth0 && depth0.height); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
-  buffer += escapeExpression(stack1)
-    + "</td>\n						</tr>\n						<tr>\n							<th>Weight</th>\n							<td>";
-  if (helper = helpers.weight) { stack1 = helper.call(depth0, {hash:{},data:data}); }
-  else { helper = (depth0 && depth0.weight); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
-  buffer += escapeExpression(stack1)
-    + "</td>\n						</tr>\n						<tr>\n							<th>Hair</th>\n							<td>";
-  if (helper = helpers.hair) { stack1 = helper.call(depth0, {hash:{},data:data}); }
-  else { helper = (depth0 && depth0.hair); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
-  buffer += escapeExpression(stack1)
-    + "</td>\n						</tr>\n						<tr>\n							<th>Glasses</th>\n							<td>";
-  if (helper = helpers.glasses) { stack1 = helper.call(depth0, {hash:{},data:data}); }
-  else { helper = (depth0 && depth0.glasses); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
-  buffer += escapeExpression(stack1)
-    + "</td>\n						</tr>\n					</tbody>\n				</table>\n			</div>\n		</div>	\n		<img src=\"/tagproc/images/";
-  if (helper = helpers.image) { stack1 = helper.call(depth0, {hash:{},data:data}); }
-  else { helper = (depth0 && depth0.image); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
-  buffer += escapeExpression(stack1)
-    + "\" class=\"img-responsive col-md-6\">\n	</div>\n	<div class=\"row\">\n		<img src=\"";
-  if (helper = helpers.street) { stack1 = helper.call(depth0, {hash:{},data:data}); }
-  else { helper = (depth0 && depth0.street); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
-  buffer += escapeExpression(stack1)
-    + "\" class=\"img-responsive col-md-6\">\n		<img src=\"";
-  if (helper = helpers.satellite) { stack1 = helper.call(depth0, {hash:{},data:data}); }
-  else { helper = (depth0 && depth0.satellite); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
-  buffer += escapeExpression(stack1)
-    + "\" class=\"img-responsive col-md-6\">\n	</div>\n";
-  return buffer;
-  }
-
-  buffer += "<div class=\"container-fluid\">\n	<a href=\"#\" class=\"openList\"><span class=\"glyphicon glyphicon-arrow-left\"></span></a>\n";
-  stack1 = helpers['if'].call(depth0, (depth0 && depth0.comment), {hash:{},inverse:self.program(3, program3, data),fn:self.program(1, program1, data),data:data});
-  if(stack1 || stack1 === 0) { buffer += stack1; }
-  buffer += "\n</div>\n\n";
-  return buffer;
-  });
-},{"handlebars/runtime":10}],58:[function(require,module,exports){
-var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
-  this.compilerInfo = [4,'>= 1.0.0'];
-helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
-  var buffer = "", stack1, functionType="function", escapeExpression=this.escapeExpression, self=this;
-
-function program1(depth0,data) {
-  
-  var buffer = "", stack1, helper;
-  buffer += "\n					<tr>\n						<td>";
-  if (helper = helpers.date) { stack1 = helper.call(depth0, {hash:{},data:data}); }
-  else { helper = (depth0 && depth0.date); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
-  buffer += escapeExpression(stack1)
-    + "</td>\n						<td>";
-  if (helper = helpers.image) { stack1 = helper.call(depth0, {hash:{},data:data}); }
-  else { helper = (depth0 && depth0.image); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
-  buffer += escapeExpression(stack1)
-    + "</td>\n						<td>Comment</td>\n						<td class=\"text-right\">\n							<a href=\"#\" class=\"openDetails\" data-type=\"comment\" data-id=\"";
-  if (helper = helpers.id) { stack1 = helper.call(depth0, {hash:{},data:data}); }
-  else { helper = (depth0 && depth0.id); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
-  buffer += escapeExpression(stack1)
-    + "\"><span class=\"glyphicon glyphicon-search\"></span></a>\n						</td>\n					</tr>\n					";
-  return buffer;
-  }
-
-  buffer += "<div class=\"container-fluid\">\n	<div class=\"row\">\n		<div class=\"table-responsive\">\n			<table class=\"table table-bordered table-condensed table-hover table-striped\">\n				<thead>\n					<tr>\n						<th>Date</th>\n						<th>Image Name</th>\n						<th>Type</th>\n						<th>Options</th>\n					</tr>\n				</thead>\n				<tbody>\n					<tr>\n						<td>"
-    + escapeExpression(((stack1 = ((stack1 = (depth0 && depth0.serve)),stack1 == null || stack1 === false ? stack1 : stack1.timestamp)),typeof stack1 === functionType ? stack1.apply(depth0) : stack1))
-    + "</td>\n						<td>"
-    + escapeExpression(((stack1 = ((stack1 = (depth0 && depth0.serve)),stack1 == null || stack1 === false ? stack1 : stack1.image)),typeof stack1 === functionType ? stack1.apply(depth0) : stack1))
-    + "</td>\n						<td>Serve</td>\n						<td class=\"text-right\">\n							<a href=\"#\" class=\"openDetails\" data-type=\"serve\"><span class=\"glyphicon glyphicon-search\"></span></a>\n						</td>\n					</tr>\n					";
-  stack1 = helpers.each.call(depth0, (depth0 && depth0.comments), {hash:{},inverse:self.noop,fn:self.program(1, program1, data),data:data});
-  if(stack1 || stack1 === 0) { buffer += stack1; }
-  buffer += "\n				</tbody>\n			</table>\n		</div>	\n	</div>\n</div>\n";
-  return buffer;
-  });
-},{"handlebars/runtime":10}],59:[function(require,module,exports){
-var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
-  this.compilerInfo = [4,'>= 1.0.0'];
-helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
-  
-
-
-  return "<nav class=\"navbar navbar-default\" role=\"navigation\">\n	<div class=\"container-fluid\">\n		<div class=\"navbar-header\">\n			<button type=\"button\" class=\"navbar-toggle\" data-toggle=\"collapse\" data-target=\"#nav-links\">\n				<span class=\"sr-only\">Toggle Navigation</span>\n				<span class=\"icon-bar\"></span>\n				<span class=\"icon-bar\"></span>\n				<span class=\"icon-bar\"></span>\n			</button>\n			<a class=\"navbar-brand\" href=\"#home\">TagProcess</a>\n		</div>\n		<div class=\"collapse navbar-collapse\" id=\"nav-links\">\n			<ul class=\"nav navbar-nav\" id=\"nav-ul\"></ul>\n			<ul class=\"nav navbar-nav navbar-right\">\n				<button type=\"button\" onclick=\"location.href='#login'\" class=\"btn btn-default navbar-btn\">Sign In</button>\n				<li class=\"dropdown hide\" id=\"user-dropdown\">\n					<a href=\"#\" class=\"dropdown-toggle\" data-toggle=\"dropdown\">\n						<span class=\"glyphicon glyphicon-user\"></span>\n						<span id=\"name-text\"> User</span>\n						<b class=\"caret\"></b>\n					</a>\n					<ul class=\"dropdown-menu\">\n						<li>\n							<a href=\"#\" id=\"logout\"><span class=\"glyphicon glyphicon-log-out\"></span> Log Out...</a>\n						</li>\n					</ul>\n				</li>\n			</ul>\n		</div>\n	</div>\n</nav>\n";
-  });
-},{"handlebars/runtime":10}],60:[function(require,module,exports){
-var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
-  this.compilerInfo = [4,'>= 1.0.0'];
-helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
-  var buffer = "", stack1, helper, functionType="function", escapeExpression=this.escapeExpression;
-
-
-  buffer += "<a href=\"";
-  if (helper = helpers.href) { stack1 = helper.call(depth0, {hash:{},data:data}); }
-  else { helper = (depth0 && depth0.href); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
-  buffer += escapeExpression(stack1)
-    + "\">";
-  if (helper = helpers.name) { stack1 = helper.call(depth0, {hash:{},data:data}); }
-  else { helper = (depth0 && depth0.name); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
-  buffer += escapeExpression(stack1)
-    + "</a>";
-  return buffer;
-  });
-},{"handlebars/runtime":10}],61:[function(require,module,exports){
-var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
-  this.compilerInfo = [4,'>= 1.0.0'];
-helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
-  
-
-
-  return "<div id=\"services\" class=\"container-fluid\">\n        <div class=\"row\">\n            <div class=\"col-md-8\">\n                <h2>TAG PROCESS SERVICES LLC</h2>\n                <p>Our competitors may offer numerous services, both related and unrelated to the service of process, TAG PROCESS flat rate pricing include many of the services you currently pay extra for with other process serving companies.</p>\n                <h2>Our Price Includes:</h2>\n                <ul>\n                    <li>Picking up documents at your office</li>\n                    <li>Issuing documents at respective courts</li>\n                    <li>Effecting service</li>\n                    <li>Skip trace bad addresses*</li>\n                    <li>File return of service with respective court</li>\n                </ul>\n            </div>\n            <div class=\"col-md-4 text-right\">\n                <img class=\"img-rounded img-responsive pull-left col-md-7 col-xs-12\" src=\"app/images/android.jpg\" style=\"height: 160px;\"></img>\n                <p class=\"text-info col-md-5 col-xs-12 text-left\">The technology we have is designed to save our clients time and money. <a href=\"#contactus\">Contact us</a> for more information and your 1st two jobs are FREE.</p>\n            </div>\n        </div>\n        <h2>In Addition, Our Clients Enjoy:</h2>\n        <h3>THE MOST COMPREHENSIVE WEBSITE</h3>\n        <p>Featuring real-time information on every paper</p>\n        <h3>PHOTOGRAPHIC, GPS COORDINATES, DATE AND TIME STAMPED EVIDENCE</h3>\n        <p>Every attempt and serves available for viewing and printing at all times.</p>\n        <h3>UNIFIED CALENDAR</h3>\n        <p>See and print your pretrial/deposition calendar for any range of dates you select or export the entire calendar along with case and court information needed to manage appearances and outside counsel.</p>\n        <h3>SKIP TRACING</h3>\n        <p>By using our exclusive skip trace queue, clients can give feedback on any paper that's in our system requiring a skip trace. Also have full control of number of skips attempts and allowed on address before \"Non- Serving.\"</p>\n        <h3>VIEW AND PRINT AFFIDAVIT OF SERVICE</h3>\n        <p>Copies of affidavits always available for download.</p>\n        <h3>SEARCH AND REPORT</h3>\n        <p>Search and reports feature allows our clients to search our database. Which allows our clients to give feed back on specific report with the requested information in the format you select.</p>\n        <h3>DOWNLOAD CENTER</h3>\n        <p>Our daily reports are delivered in the format needed, which allows our clients to view and manage their files. Which can then be imported into your collection software allowing you to update your files instantly.</p>\n        <h3>INSTANT COMMUNICATION</h3>\n        <p>By Sending an instant message directly to the desktop of your account manager for immediate action.</p>\n        <h3>EASY FILE ACCESS</h3>\n        <p>View cases and court information on current files</p>\n</div>\n";
-  });
-},{"handlebars/runtime":10}],62:[function(require,module,exports){
-var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
-  this.compilerInfo = [4,'>= 1.0.0'];
-helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
-  var buffer = "", stack1, self=this, functionType="function", escapeExpression=this.escapeExpression;
-
-function program1(depth0,data) {
-  
-  var buffer = "", stack1, helper;
-  buffer += "\n		<li ";
-  stack1 = helpers['if'].call(depth0, (depth0 && depth0.active), {hash:{},inverse:self.noop,fn:self.program(2, program2, data),data:data});
-  if(stack1 || stack1 === 0) { buffer += stack1; }
-  buffer += "><a href=\"";
-  if (helper = helpers.href) { stack1 = helper.call(depth0, {hash:{},data:data}); }
-  else { helper = (depth0 && depth0.href); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
-  buffer += escapeExpression(stack1)
-    + "\"> ";
-  if (helper = helpers.name) { stack1 = helper.call(depth0, {hash:{},data:data}); }
-  else { helper = (depth0 && depth0.name); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
-  buffer += escapeExpression(stack1)
-    + " </a></li>\n	";
-  return buffer;
-  }
-function program2(depth0,data) {
-  
-  
-  return " class=\"active\" ";
-  }
-
-  buffer += "<ul class=\"nav nav-pills nav-stacked\">\n	";
-  stack1 = helpers.each.call(depth0, (depth0 && depth0.locations), {hash:{},inverse:self.noop,fn:self.program(1, program1, data),data:data});
-  if(stack1 || stack1 === 0) { buffer += stack1; }
-  buffer += "\n</ul>\n";
-  return buffer;
-  });
-},{"handlebars/runtime":10}],63:[function(require,module,exports){
-var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
-  this.compilerInfo = [4,'>= 1.0.0'];
-helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
-  
-
-
-  return "<div id=\"about\" class=\"container-fluid\">\n    <div class=\"row\">\n        <div class=\"col-md-6\">\n            <h2>Technology</h2>\n            <h3>Now available on Android and iPhone!</h3>\n            <h4>TAG Serve makes Tag Process number 1 in the country</h4>\n            <p>Can your process serving company show you proof of service using a time-stamped picture? Or do you have to call them and wait for them to give you a response on what the status is? With our new software Tag Serve, clients will no longer have to wait on status since it's updated real-time and you have 24 hour access!</p>\n        </div>\n        <div class=\"col-md-6\">\n            <img class=\"img-rounded img-responsive\" src=\"app/images/network.jpg\"></img>\n        </div>\n    </div>\n</div>";
-  });
-},{"handlebars/runtime":10}]},{},[42])
+},{}],64:[function(require,module,exports){
+module.exports=require(52)
+},{}]},{},[28])
