@@ -2,12 +2,14 @@ var _ = require('underscore'),
     $ = jQuery = require('jquery'),
     Backbone = require('backbone'),
     JoBDetailsTemplate = require('../../templates/jobDetails.hbs'),
-    CommentFormTemplate = require('../../templates/forms/comment.hbs');
+    CommentFormTemplate = require('../../templates/forms/comment.hbs'),
+    ServiceFormTemplate = require('../../templates/forms/service.hbs'),
     Handlebars = require('handlebars/runtime').default,
 	Notify = require('../utilities/notify'),
 	Helpers = require('../utilities/helpers'),
 	ServeDetails = require('./modals/serveDetails'),
     Modal = require('./modals/modal');
+require('../../libs/selectize/js/standalone/selectize.js');
 
 module.exports = (function () {
     'use strict';
@@ -84,10 +86,11 @@ module.exports = (function () {
                 this.model.fetch();
             },
             events: {
-                'click .edit': 'toggleEdit',
-                'submit .formEdit': 'submitEdit',
-				'click #viewDetails': 'openDetailsModal',
-                'click #addComment': 'openCommentModal'
+                'click .edit'           :'toggleEdit',
+                'submit .formEdit'      :'submitEdit',
+				'click #viewDetails'    :'openDetailsModal',
+                'click #addComment'     :'openCommentModal',
+                'click #serviceForm'    :'openServiceModal'
             },
             render: function () {
                 var data = this.model.toJSON(),
@@ -102,13 +105,59 @@ module.exports = (function () {
 				event.preventDefault();
 				this.$el.append(this.details.open().$el);
 			},
+            openModalWithTemplate: function (options) {
+                var modal = this.modal;
+                modal.render()
+                    .setHeaderHTML(options.header)
+                    .setContentHTML(options.template)
+                    .addEvent(options.event, options.selector, options.callback)
+                    .open();
+                Helpers.initSelectizeInputs(modal);
+                return this;
+            },
             openCommentModal: function (event) {
                 event.preventDefault();
-                this.modal.render()
-                    .setHeaderHTML('<h4>Add Comments</h4>')
-                    .setContentHTML(CommentFormTemplate())
-                    .addEvent('submit', '#commentForm', this.submitComment)
-                    .open();
+                this.openModalWithTemplate({
+                    header: '<h4>Add Comments</h4>',
+                    template: CommentFormTemplate(),
+                    event: 'submit',
+                    selector: '#commentForm',
+                    callback: this.submitComment
+                });
+                return this;
+            },
+            openServiceModal: function (event) {
+                event.preventDefault();
+                this.openModalWithTemplate({
+                    header: '<h4>Service Information</h4>',
+                    template: ServiceFormTemplate(),
+                    event: 'submit',
+                    selector: '#serviceForm',
+                    callback: this.submitService
+                });
+                return this;
+            },
+            submitService: function (event) {
+                event.preventDefault();
+                var $form = $(event.currentTarget),
+                    modal = this,
+                    that = modal.parentView,
+                    $alert = $form.find('.alert'),
+                    params = Helpers.serializeObject($form.serializeArray());
+                params.jobnumber = that.id;
+                $.ajax({
+                    url: '/tagproc/api/service',
+                    data: params,
+                    type: 'POST',
+                    success: function (response) {
+                        $alert.removeClass('hide alert-danger').addClass('alert-success').html('Service has been added.');
+                        that.model.fetch();
+                        modal.hide();
+                    },
+                    error: function (e) {
+                        $alert.removeClass('hide alert-success').addClass('alert-danger').html(e.statusText);
+                    }
+                });
                 return this;
             },
             submitComment: function (event) {
@@ -116,6 +165,7 @@ module.exports = (function () {
                 var $form = $(event.currentTarget),
                     modal = this,
                     that = modal.parentView,
+                    $alert = $form.find('.alert'),
                     data = {
                         comments: $form.find('textarea').val(),
                         jobnumber : that.id
@@ -125,11 +175,15 @@ module.exports = (function () {
                     data: data,
                     type: 'POST',
                     success: function (response) {
-                        Notify.create({title: 'Added', body: 'Comment has been added.', icon: 'app/images/check.png'});
+                        $alert.removeClass('hide alert-danger').addClass('alert-success').html('Comment has been added.');
                         that.details.model.fetch();
                         modal.hide();
+                    },
+                    error: function (e) {
+                        $alert.removeClass('hide alert-success').addClass('alert-danger').html(e.statusText);
                     }
                 });
+                return this;
             },
             toggleEdit: function (event) {
                 if (_.isFunction(event.preventDefault)) { event.preventDefault(); }
@@ -150,9 +204,12 @@ module.exports = (function () {
 					success: function (response) {
 						var field = response[0].data;
                         $form.siblings('div').html(field[key]);
-                        Notify.create({title: 'Saved', body: 'Field ' + helpers.parseKey(key) + ' has been updated to ' + value, tag: key, icon: 'app/images/save.png'});
                         that.toggleEdit({currentTarget: $form.siblings('a')});
-					}
+                        Notify.create({title: 'Saved', body: 'Field ' + helpers.parseKey(key) + ' has been updated to ' + value, tag: key, icon: 'app/images/save.png'});
+					},
+                    error: function (e) {
+                        Notify.create({title: 'Error', body: e.statusText, icon: ''})
+                    }
 				 });
             }
         })

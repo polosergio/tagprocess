@@ -7,21 +7,7 @@ require('../../libs/selectize/js/standalone/selectize.js');
 
 module.exports = (function (){
     'use strict';
-    var exports = {},
-		helpers = {
-			setFormat: function (item, escape) {
-				return '<div>' + escape(item.firstname + ' ' + item.lastname + ': ' + item.uniqueid + ' - ' + item.county)  + '</div>';
-			}
-		};
-
-	_.extend(helpers, {
-		customOptionRender: {
-			'server': {
-				'option': helpers.setFormat,
-				'item': helpers.setFormat
-			}
-		}
-	});
+    var exports = {};
 
     _.extend(exports, {
         View: Backbone.View.extend({
@@ -46,40 +32,9 @@ module.exports = (function (){
 			render: function () {
 				this.$el.empty().append(this.template());
 				this.$('.sidebar').html(this.sidebar.render().$el);
-                this.initInputs();
+                Helpers.initSelectizeInputs(this);
 				return this;
 			},
-            initInputs: function () {
-				var $select = this.$('select');
-				$select.each(function () {
-					var options = $(this).data() || {},
-						that = this;
-					$(this).selectize({
-						valueField: options.value || 'value',
-						labelField: options.label || 'text',
-						searchField: options.search ? options.search.split(',') : 'text',
-						preload: true,
-						create: false,
-						load: function (query, callback) {
-							if (options.url) {
-								$.ajax({
-									url: options.url,
-									type: 'GET',
-									success: function (response) {
-										callback(response);
-									},
-									error: function (e) {
-										console.log('error', e);
-									}
-								});
-							} else {
-								callback();
-							}
-						},
-						render: helpers.customOptionRender[that.name]
-					});
-				});
-            },
 			submit: function (event) {
 				event.preventDefault();
 				var $form = $(event.currentTarget),
