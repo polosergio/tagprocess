@@ -4,6 +4,7 @@ var _ = require('underscore'),
     JoBDetailsTemplate = require('../../templates/jobDetails.hbs'),
     CommentFormTemplate = require('../../templates/forms/comment.hbs'),
     ServiceFormTemplate = require('../../templates/forms/service.hbs'),
+	UploaderFormTemplate = require('../../templates/forms/uploader.hbs'),
     Handlebars = require('handlebars/runtime').default,
 	Notify = require('../utilities/notify'),
 	Helpers = require('../utilities/helpers'),
@@ -90,7 +91,8 @@ module.exports = (function () {
                 'submit .formEdit'      :'submitEdit',
 				'click #viewDetails'    :'openDetailsModal',
                 'click #addComment'     :'openCommentModal',
-                'click #serviceForm'    :'openServiceModal'
+                'click #serviceForm'    :'openServiceModal',
+				'click #uploaderForm'	:'openUploaderModal'
             },
             render: function () {
                 var data = this.model.toJSON(),
@@ -137,6 +139,47 @@ module.exports = (function () {
                 });
                 return this;
             },
+			openUploaderModal: function (event) {
+				event.preventDefault();
+				this.openModalWithTemplate({
+					header: '<h4>Upload Documents</h4',
+					template: UploaderFormTemplate(),
+					event: 'submit',
+					selector: '#uploaderForm',
+					callback: this.submitUpload
+				});
+				return this;
+			},
+			submitUpload: function (event) {
+				event.preventDefault();
+				var $form = $(event.currentTarget),
+					modal = this,
+					that = modal.parentView,
+					$alert = $form.find('.alert'),
+					data = new FormData();
+				data.append('file', $form.find('#file')[0].files[0]);
+				data.append('jobnumber', that.id);
+				data.append('type', $form.find('#type').val());
+				$alert.removeClass('hide alert-danger alert-success').addClass('alert-info').html('Loading...');
+				$.ajax({
+					url: '/tagproc/api/uploader',
+					data: data,
+					type: 'POST',
+					cache: false,
+					contentType: false,
+					processData: false,
+					success: function (response) {
+						$alert.removeClass('hide alert-danger alert-info').addClass('alert-success').html('File uploaded.');
+                        that.model.fetch();
+                        modal.hide();
+					},
+					error: function (e) {
+						var message = JSON.parse(e.responseText);
+                        $alert.removeClass('hide alert-success alert-info').addClass('alert-danger').html(message.message || e.statusText);
+                    }
+				});
+			   return this;
+			},
             submitService: function (event) {
                 event.preventDefault();
                 var $form = $(event.currentTarget),
