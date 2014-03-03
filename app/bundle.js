@@ -425,7 +425,7 @@ module.exports = (function () {
                 this.template = JoBDetailsTemplate;
 				this.details = new ServeDetails({id: this.id});
                 this.model = new exports.Model({jobnumber: this.id});
-                this.modal = new Modal({size: 'modal-sm', parentView: this});
+                this.modal = new Modal({size: '', parentView: this});
                 this.listenTo(this.model, 'sync', this.render);
                 this.model.fetch();
             },
@@ -517,7 +517,7 @@ module.exports = {
 			this.template = LoginTemplate();
 			setTimeout(function () {
 				if (TagProcess.Auth.signedIn) {
-					TagProcess.Auth.updateSignInMessage(TagProcess.Auth.signInMessage);
+					TagProcess.Auth.updateSignInMessage('You\'re already logged in.');
 					Backbone.history.navigate('client', {trigger: true});
 				}
 			}, 0);
@@ -621,7 +621,7 @@ module.exports = (function () {
 			'hidden.bs.modal': 'close'
 		},
 		render: function () {
-			this.$el.empty().append(this.template({className: this.size}));
+			this.$el.empty().append(this.template({size: this.size}));
 			this.setFooterHTML(this.footerHTML);
 			return this;
 		},
@@ -6847,7 +6847,7 @@ function program11(depth0,data) {
   return buffer;
   }
 
-  buffer += "<div class=\"container-fluid\">\n    <div class=\"row\">\n		<div id=\"tools\" class=\"col-md-2\">\n			<ul class=\"nav nav-stacked nav-pills\">\n				<li><a href=\"#\" id=\"viewDetails\">Serve Details</a></li>\n				<li><a href=\"#\" id=\"addComment\">Add a Comment</a></li>\n			</ul>\n		</div>\n        <div class=\"col-md-10\">\n			<div class=\"row table-responsive\">\n				<table class=\"table table-bordered table-condensed table-hover table-striped\">\n					<tbody>\n					";
+  buffer += "<div class=\"container-fluid\">\n    <div class=\"row\">\n		<div id=\"tools\" class=\"col-md-2\">\n			<ul class=\"nav nav-stacked nav-pills\">\n				<li><a href=\"#\" id=\"viewDetails\">Serve Details</a></li>\n				<li><a href=\"#\" id=\"addComment\">Add Comment</a></li>\n			</ul>\n		</div>\n        <div class=\"col-md-10\">\n			<div class=\"row table-responsive\">\n				<table class=\"table table-bordered table-condensed table-hover table-striped\">\n					<tbody>\n					";
   stack1 = helpers.each.call(depth0, (depth0 && depth0.job), {hash:{},inverse:self.noop,fn:self.program(1, program1, data),data:data});
   if(stack1 || stack1 === 0) { buffer += stack1; }
   buffer += "\n					</tbody>\n				</table>\n			</div>\n			<div class=\"row table-responsive\">\n				";

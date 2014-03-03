@@ -79,7 +79,7 @@ module.exports = (function () {
                 this.template = JoBDetailsTemplate;
 				this.details = new ServeDetails({id: this.id});
                 this.model = new exports.Model({jobnumber: this.id});
-                this.modal = new Modal({size: 'modal-sm', parentView: this});
+                this.modal = new Modal({size: '', parentView: this});
                 this.listenTo(this.model, 'sync', this.render);
                 this.model.fetch();
             },

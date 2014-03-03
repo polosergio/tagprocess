@@ -31,7 +31,7 @@ module.exports = (function () {
 			'hidden.bs.modal': 'close'
 		},
 		render: function () {
-			this.$el.empty().append(this.template({className: this.size}));
+			this.$el.empty().append(this.template({size: this.size}));
 			this.setFooterHTML(this.footerHTML);
 			return this;
 		},

@@ -8,7 +8,7 @@ module.exports = {
 			this.template = LoginTemplate();
 			setTimeout(function () {
 				if (TagProcess.Auth.signedIn) {
-					TagProcess.Auth.updateSignInMessage(TagProcess.Auth.signInMessage);
+					TagProcess.Auth.updateSignInMessage('You\'re already logged in.');
 					Backbone.history.navigate('client', {trigger: true});
 				}
 			}, 0);
