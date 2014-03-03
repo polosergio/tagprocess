@@ -1,0 +1,32 @@
+<form class="form-horizontal" id="emailForm">
+    <div class="form-group">
+        <label for="emailname" class="col-md-2 control-label">Name</label>
+        <div class="col-md-10">
+            <input type="text" value="{{ emailname }}" id="emailname" name="emailname" class="form-control" required>
+        </div>
+    </div>
+    <div class="form-group">
+        <label for="clientemail" class="col-md-2 control-label">Client's e-mail</label>
+        <div class="col-md-10">
+            <input type="email" value="{{ clientemail }}" id="clientemail" name="clientemail" class="form-control" required>
+        </div>
+    </div>
+    <div class="form-group">
+        <label for="emailsubject" class="col-md-2 control-label">Subject</label>
+        <div class="col-md-10">
+            <input type="text" value="{{ emailsubject }}" id="emailsubject" name="emailsubject" class="form-control" required>
+        </div>
+    </div>
+    <div class="form-group">
+        <label for="emailmessage" class="col-md-2 control-label">Subject</label>
+        <div class="col-md-10">
+            <textarea id="emailmessage" name="emailmessage" class="form-control" required>{{ emailmessage }}</textarea>
+        </div>
+    </div>
+	<div class="alert alert-danger hide col-sm-offset-2 col-sm-10"></div>
+    <div class="form-group">
+        <div class="col-sm-offset-2 col-sm-10">
+            <button type="submit" class="btn btn-primary">Submit</button>
+        </div>
+    </div>
+</form>

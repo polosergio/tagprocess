@@ -5,6 +5,7 @@ var _ = require('underscore'),
     CommentFormTemplate = require('../../templates/forms/comment.hbs'),
     ServiceFormTemplate = require('../../templates/forms/service.hbs'),
 	UploaderFormTemplate = require('../../templates/forms/uploader.hbs'),
+	EmailFormTemplate = require('../../templates/forms/email.hbs'),
     Handlebars = require('handlebars/runtime').default,
 	Notify = require('../utilities/notify'),
 	Helpers = require('../utilities/helpers'),
@@ -71,6 +72,14 @@ module.exports = (function () {
 				'courtreceipt': 'Court Receipt'
 			};
 			return validTypes[type];
+		},
+		getEmailParams: function (jobnumber) {
+			return {
+				emailname: 'TagProcess LLC',
+				clientemail: '',
+				emailsubject: 'Job ' + jobnumber + ' Completed',
+				emailmessage: ''
+			};
 		}
     });
 	Handlebars.registerHelper('parse', helpers.parseKey);
@@ -92,7 +101,8 @@ module.exports = (function () {
 				'click #viewDetails'    :'openDetailsModal',
                 'click #addComment'     :'openCommentModal',
                 'click #serviceForm'    :'openServiceModal',
-				'click #uploaderForm'	:'openUploaderModal'
+				'click #uploaderForm'	:'openUploaderModal',
+				'click #emailForm'		:'openEmailModal',
             },
             render: function () {
                 var data = this.model.toJSON(),
@@ -148,6 +158,28 @@ module.exports = (function () {
 					selector: '#uploaderForm',
 					callback: this.submitUpload
 				});
+				return this;
+			},
+			openEmailModal: function (event) {
+				event.preventDefault();
+				this.openModalWithTemplate({
+					header: '<h4>Send e-mail to Client</h4>',
+					template: EmailFormTemplate(helpers.getEmailParams(this.id)),
+					event: 'submit',
+					selector: '#emailForm',
+					callback: this.submitEmail
+				});
+				return this;
+			},
+			submitEmail: function (event) {
+				event.preventDefault();
+				var $form = $(event.currentTarget),
+					modal = this,
+					that = modal.parentView,
+					$alert = $form.find('.alert'),
+					params = Helpers.serializeObject($form.serializeArray());
+				console.log(params);
+				console.log(event);
 				return this;
 			},
 			submitUpload: function (event) {
