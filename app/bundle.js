@@ -28108,13 +28108,16 @@ module.exports = (function () {
 			};
 			return validTypes[type];
 		},
-		getEmailParams: function (jobnumber) {
-			return {
-				emailname: 'TagProcess LLC',
-				clientemail: '',
-				emailsubject: 'Job ' + jobnumber + ' Completed',
-				emailmessage: ''
+		getEmailParams: function (jobnumber, clientEmail) {
+			var params = {
+				emailname: 'TagProcess LLC'
 			};
+			_.extend(params, {
+				clientemail: clientEmail || '',
+				emailsubject: 'Job ' + jobnumber + ' Completed',
+				emailmessage: 'Dear Client,\n\nJob number 2014114 has been completed.\n\nSincerely,\n\n' + params.emailname
+			});
+			return params;
 		}
     });
 	Handlebars.registerHelper('parse', helpers.parseKey);
@@ -34569,7 +34572,7 @@ helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
   if (helper = helpers.emailsubject) { stack1 = helper.call(depth0, {hash:{},data:data}); }
   else { helper = (depth0 && depth0.emailsubject); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
   buffer += escapeExpression(stack1)
-    + "\" id=\"emailsubject\" name=\"emailsubject\" class=\"form-control\" required>\n        </div>\n    </div>\n    <div class=\"form-group\">\n        <label for=\"emailmessage\" class=\"col-md-2 control-label\">Subject</label>\n        <div class=\"col-md-10\">\n            <textarea id=\"emailmessage\" name=\"emailmessage\" class=\"form-control\" required>";
+    + "\" id=\"emailsubject\" name=\"emailsubject\" class=\"form-control\" required>\n        </div>\n    </div>\n    <div class=\"form-group\">\n        <label for=\"emailmessage\" class=\"col-md-2 control-label\">Subject</label>\n        <div class=\"col-md-10\">\n            <textarea id=\"emailmessage\" name=\"emailmessage\" class=\"form-control\" rows=\"10\" required>";
   if (helper = helpers.emailmessage) { stack1 = helper.call(depth0, {hash:{},data:data}); }
   else { helper = (depth0 && depth0.emailmessage); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
   buffer += escapeExpression(stack1)

@@ -73,13 +73,16 @@ module.exports = (function () {
 			};
 			return validTypes[type];
 		},
-		getEmailParams: function (jobnumber) {
-			return {
-				emailname: 'TagProcess LLC',
-				clientemail: '',
-				emailsubject: 'Job ' + jobnumber + ' Completed',
-				emailmessage: ''
+		getEmailParams: function (jobnumber, clientEmail) {
+			var params = {
+				emailname: 'TagProcess LLC'
 			};
+			_.extend(params, {
+				clientemail: clientEmail || '',
+				emailsubject: 'Job ' + jobnumber + ' Completed',
+				emailmessage: 'Dear Client,\n\nJob number 2014114 has been completed.\n\nSincerely,\n\n' + params.emailname
+			});
+			return params;
 		}
     });
 	Handlebars.registerHelper('parse', helpers.parseKey);
