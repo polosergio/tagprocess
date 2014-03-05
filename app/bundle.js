@@ -28115,7 +28115,7 @@ module.exports = (function () {
 			_.extend(params, {
 				clientemail: clientEmail || '',
 				emailsubject: 'Job ' + jobnumber + ' Completed',
-				emailmessage: 'Dear Client,\n\nJob number 2014114 has been completed.\n\nSincerely,\n\n' + params.emailname
+				emailmessage: 'Dear Client,\n\nJob number ' + jobnumber + ' has been completed.\n\nSincerely,\n\n' + params.emailname
 			});
 			return params;
 		}
@@ -28200,12 +28200,25 @@ module.exports = (function () {
 			},
 			openEmailModal: function (event) {
 				event.preventDefault();
-				this.openModalWithTemplate({
-					header: '<h4>Send e-mail to Client</h4>',
-					template: EmailFormTemplate(helpers.getEmailParams(this.id)),
-					event: 'submit',
-					selector: '#emailForm',
-					callback: this.submitEmail
+				var that = this,
+					client = new (Backbone.Model.extend({
+					baseUrl: '/tagproc/api/email',
+					url: function () {
+						return this.baseUrl + '?' + $.param(this.toJSON());
+					}
+				}))({
+					client: that.model.get('account')
+				});
+				client.fetch({
+					success: function (model, response) {
+						that.openModalWithTemplate({
+							header: '<h4>Send e-mail to Client</h4>',
+							template: EmailFormTemplate(helpers.getEmailParams(that.id, response.email)),
+							event: 'submit',
+							selector: '#emailForm',
+							callback: that.submitEmail
+						});
+					}
 				});
 				return this;
 			},
@@ -28217,7 +28230,20 @@ module.exports = (function () {
 					$alert = $form.find('.alert'),
 					params = Helpers.serializeObject($form.serializeArray());
 				console.log(params);
-				console.log(event);
+				$alert.removeClass('hide alert-danger alert-success').addClass('alert-info').html('Loading...');
+				$.ajax({
+					url: '/tagproc/api/email',
+					data: params,
+					type: 'POST',
+					success: function (response) {
+						$alert.removeClass('hide alert-danger alert-info').addClass('alert-success').html('E-mail sent.');
+						modal.hide();
+					},
+					error: function (e) {
+						var message = JSON.parse(e.responseText);
+						$alert.removeClass('hide alert-success alert-info').addClass('alert-danger').html(message.message || e.statusTExt);
+					}
+				});
 				return this;
 			},
 			submitUpload: function (event) {
