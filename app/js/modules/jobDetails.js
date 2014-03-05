@@ -2,15 +2,14 @@ var _ = require('underscore'),
     $ = jQuery = require('jquery'),
     Backbone = require('backbone'),
     JoBDetailsTemplate = require('../../templates/jobDetails.hbs'),
-    CommentFormTemplate = require('../../templates/forms/comment.hbs'),
-    ServiceFormTemplate = require('../../templates/forms/service.hbs'),
-	UploaderFormTemplate = require('../../templates/forms/uploader.hbs'),
-	EmailFormTemplate = require('../../templates/forms/email.hbs'),
     Handlebars = require('handlebars/runtime').default,
 	Notify = require('../utilities/notify'),
 	Helpers = require('../utilities/helpers'),
-	ServeDetails = require('./modals/serveDetails'),
-    Modal = require('./modals/modal');
+	ServeDetailsModal = require('./modals/serveDetails'),
+	CommentModal = require('./modals/comment'),
+	ServiceModal = require('./modals/service'),
+	UploaderModal = require('./modals/uploader'),
+	EmailModal = require('./modals/email');
 require('../../libs/selectize/js/standalone/selectize.js');
 
 module.exports = (function () {
@@ -91,21 +90,24 @@ module.exports = (function () {
         View: Backbone.View.extend({
             initialize: function (options) {
                 this.id = options.id;
+				this.modal = {
+					details: new ServeDetailsModal({id: this.id}),
+					comment: new CommentModal({id: this.id}),
+					service: new ServiceModal(),
+					uploader: new UploaderModal(),
+					email: new EmailModal()
+				};
                 this.template = JoBDetailsTemplate;
-				this.details = new ServeDetails({id: this.id});
                 this.model = new exports.Model({jobnumber: this.id});
-                this.modal = new Modal({size: '', parentView: this});
+                //this.modal = new Modal({size: '', parentView: this});
+				this.listenTo(this.modal.comment, 'submit', this.submitComment);
                 this.listenTo(this.model, 'sync', this.render);
                 this.model.fetch();
             },
             events: {
                 'click .edit'           :'toggleEdit',
                 'submit .formEdit'      :'submitEdit',
-				'click #viewDetails'    :'openDetailsModal',
-                'click #addComment'     :'openCommentModal',
-                'click #serviceForm'    :'openServiceModal',
-				'click #uploaderForm'	:'openUploaderModal',
-				'click #emailForm'		:'openEmailModal',
+				'click .openModal'	    :'openModal'
             },
             render: function () {
                 var data = this.model.toJSON(),
@@ -116,9 +118,10 @@ module.exports = (function () {
                 this.$el.empty().append(this.template(payload));
                 return this;
             },
-			openDetailsModal: function (event) {
+			openModal: function (event) {
 				event.preventDefault();
-				this.$el.append(this.details.open().$el);
+				var modal = $(event.currentTarget).data('modal');
+				this.$('#modalWrapper').append(this.modal[modal].open().$el);
 			},
             openModalWithTemplate: function (options) {
                 var modal = this.modal;
@@ -132,13 +135,14 @@ module.exports = (function () {
             },
             openCommentModal: function (event) {
                 event.preventDefault();
-                this.openModalWithTemplate({
+                /*this.openModalWithTemplate({
                     header: '<h4>Add Comments</h4>',
                     template: CommentFormTemplate(),
                     event: 'submit',
                     selector: '#commentForm',
                     callback: this.submitComment
                 });
+				*/
                 return this;
             },
             openServiceModal: function (event) {
@@ -264,30 +268,9 @@ module.exports = (function () {
                 });
                 return this;
             },
-            submitComment: function (event) {
-                event.preventDefault();
-                var $form = $(event.currentTarget),
-                    modal = this,
-                    that = modal.parentView,
-                    $alert = $form.find('.alert'),
-                    data = {
-                        comments: $form.find('textarea').val(),
-                        jobnumber : that.id
-                    };
-                $.ajax({
-                    url: '/tagproc/api/comments',
-                    data: data,
-                    type: 'POST',
-                    success: function (response) {
-                        $alert.removeClass('hide alert-danger').addClass('alert-success').html('Comment has been added.');
-                        that.details.model.fetch();
-                        modal.hide();
-                    },
-                    error: function (e) {
-                        $alert.removeClass('hide alert-success').addClass('alert-danger').html(e.statusText);
-                    }
-                });
-                return this;
+            refreshServeDetailsModal: function () {
+                this.modal.details.model.fetch();
+				return this;
             },
             toggleEdit: function (event) {
                 if (_.isFunction(event.preventDefault)) { event.preventDefault(); }
