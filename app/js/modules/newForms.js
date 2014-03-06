@@ -41,23 +41,20 @@ module.exports = (function (){
                     url = $form.data('url'),
 					data = Helpers.serializeObject($form.serializeArray()),
 					$alert = $form.find('.alert');
-				//PENDING CREATE NEW CLIENT API
-				/*
+				$alert.removeClass('hide alert-danger alert-success').addClass('alert-info').html('Submitting...');
 				$.ajax({
 					url: url,
 					type: 'POST',
 					data: data,
 					success: function (response) {
-						console.log(response);
-						$alert.removeClass('hide alert-danger').addClass('alert-success').html('Client Created');
+						$alert.removeClass('hide alert-danger alert-info').addClass('alert-success').html(response.message);
 						$form[0].reset();
 					},
 					error: function (e) {
-						$alert.removeClass('hide alert-success').addClass('alert-danger').html(e.statusText);
+						var message = JSON.parse(e.responseText);
+						$alert.removeClass('hide alert-success alert-info').addClass('alert-danger').html(message.message || e.statusText);
 					}
 				});
-				*/
-			   $alert.removeClass('hide').html('Pending create new ' + this.form + ' api');
 			}
         })
     });

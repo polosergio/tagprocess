@@ -2,7 +2,7 @@
 	<div class="row">
 		<div class="col-md-2 sidebar"></div>
 		<div class="col-md-10">
-			<form class="form-horizontal" data-url="/tagproc/api/case">
+			<form class="form-horizontal" data-url="/tagproc/api/case" style="padding-bottom: 50px;">
 			    <div class="form-group">
 					<label for="account" class="col-sm-2 control-label">Account Responsible</label>
 					<div class="col-sm-10">
@@ -121,15 +121,15 @@
 				<div class="form-group">
 					<label for="itemname" class="col-sm-2 control-label">Name</label>
 					<div class="col-sm-10">
-						<select class="form-control" id="itemname" name="itemname">
+						<select class="form-control" id="itemname" name="itemname" data-value="value" data-search="text" data-label="text">
                             <option value="">Please select one...</option>
-                            <option>SUMMON</option>
-                            <option>SUBPOENA</option>
-                            <option>MANUAL INVOICE</option>
-                            <option>COURIER</option>
-                            <option>SKIP TRACE</option>
-                            <option>STAKEOUT</option>
-                            <option>DEFAULT</option>
+                            <option value="SUMMON">SUMMON</option>
+                            <option value="SUBPOENA">SUBPOENA</option>
+                            <option value="MANUAL INVOICE">MANUAL INVOICE</option>
+                            <option value="COURIER">COURIER</option>
+                            <option value="SKIP TRACE">SKIP TRACE</option>
+                            <option value="STAKEOUT">STAKEOUT</option>
+                            <option value="DEFAULT">DEFAULT</option>
 						</select>
 					</div>
 				</div>
