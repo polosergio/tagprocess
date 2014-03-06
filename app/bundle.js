@@ -29121,9 +29121,12 @@ module.exports = {
 			'name': 'Server Report'
 		},
 		{
-			'href': '#',
+			'href': '/tagproc/receivablesreport.php',
 			'active': false,
-			'name': 'Client Receivables Report'
+			'name': 'Client Receivables Report',
+			'attributes': {
+				'target': '_blank'
+			}
 		}
 	])
 };
@@ -35256,7 +35259,7 @@ helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
 var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
   this.compilerInfo = [4,'>= 1.0.0'];
 helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
-  var buffer = "", stack1, self=this, functionType="function", escapeExpression=this.escapeExpression;
+  var buffer = "", stack1, functionType="function", escapeExpression=this.escapeExpression, self=this;
 
 function program1(depth0,data) {
   
@@ -35264,7 +35267,10 @@ function program1(depth0,data) {
   buffer += "\n		<li ";
   stack1 = helpers['if'].call(depth0, (depth0 && depth0.active), {hash:{},inverse:self.noop,fn:self.program(2, program2, data),data:data});
   if(stack1 || stack1 === 0) { buffer += stack1; }
-  buffer += "><a href=\"";
+  buffer += ">\n			<a \n			";
+  stack1 = helpers['if'].call(depth0, (depth0 && depth0.attributes), {hash:{},inverse:self.noop,fn:self.program(4, program4, data),data:data});
+  if(stack1 || stack1 === 0) { buffer += stack1; }
+  buffer += "\n			href=\"";
   if (helper = helpers.href) { stack1 = helper.call(depth0, {hash:{},data:data}); }
   else { helper = (depth0 && depth0.href); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
   buffer += escapeExpression(stack1)
@@ -35272,13 +35278,33 @@ function program1(depth0,data) {
   if (helper = helpers.name) { stack1 = helper.call(depth0, {hash:{},data:data}); }
   else { helper = (depth0 && depth0.name); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
   buffer += escapeExpression(stack1)
-    + " </a></li>\n	";
+    + " </a>\n		</li>\n	";
   return buffer;
   }
 function program2(depth0,data) {
   
   
   return " class=\"active\" ";
+  }
+
+function program4(depth0,data) {
+  
+  var buffer = "", stack1;
+  buffer += "\n				";
+  stack1 = helpers.each.call(depth0, (depth0 && depth0.attributes), {hash:{},inverse:self.noop,fn:self.program(5, program5, data),data:data});
+  if(stack1 || stack1 === 0) { buffer += stack1; }
+  buffer += "\n			";
+  return buffer;
+  }
+function program5(depth0,data) {
+  
+  var buffer = "", stack1;
+  buffer += "\n					"
+    + escapeExpression(((stack1 = (data == null || data === false ? data : data.key)),typeof stack1 === functionType ? stack1.apply(depth0) : stack1))
+    + "=\""
+    + escapeExpression((typeof depth0 === functionType ? depth0.apply(depth0) : depth0))
+    + "\"\n				";
+  return buffer;
   }
 
   buffer += "<ul class=\"nav nav-pills nav-stacked\">\n	";

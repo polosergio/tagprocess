@@ -74,9 +74,12 @@ module.exports = {
 			'name': 'Server Report'
 		},
 		{
-			'href': '#',
+			'href': '/tagproc/receivablesreport.php',
 			'active': false,
-			'name': 'Client Receivables Report'
+			'name': 'Client Receivables Report',
+			'attributes': {
+				'target': '_blank'
+			}
 		}
 	])
 };

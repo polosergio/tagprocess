@@ -1,5 +1,13 @@
 <ul class="nav nav-pills nav-stacked">
 	{{#each locations}}
-		<li {{#if active }} class="active" {{/if}}><a href="{{href}}"> {{name}} </a></li>
+		<li {{#if active }} class="active" {{/if}}>
+			<a 
+			{{#if attributes}}
+				{{#each attributes}}
+					{{@key}}="{{this}}"
+				{{/each}}
+			{{/if}}
+			href="{{href}}"> {{name}} </a>
+		</li>
 	{{/each}}
 </ul>
