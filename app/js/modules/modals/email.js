@@ -65,8 +65,8 @@ module.exports = (function () {
 						that.modal.hide();
 					},
 					error: function (e) {
-						var message = JSON.parse(e.responseText);
-						$alert.removeClass('hide alert-success alert-info').addClass('alert-danger').html(message.message || e.statusTExt);
+						var message = Helpers.jsonParser(e.responseText);
+						$alert.removeClass('hide alert-success alert-info').addClass('alert-danger').html(message.message || e.statusText);
 					}
 				});
 				return this;

@@ -51,7 +51,7 @@ module.exports = (function (){
 						$form[0].reset();
 					},
 					error: function (e) {
-						var message = JSON.parse(e.responseText);
+						var message = Helpers.jsonParser(e.responseText);
 						$alert.removeClass('hide alert-success alert-info').addClass('alert-danger').html(message.message || e.statusText);
 					}
 				});

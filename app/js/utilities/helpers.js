@@ -30,6 +30,14 @@ module.exports = (function () {
 				'item': exports.setFormat
 			}
 		},
+		jsonParser: function (string) {
+			try {
+				string = JSON.parse(string);
+			} catch (e) {
+				string = {};
+			}
+			return string;
+		},
         initSelectizeInputs: function (view) {
             var $select = view.$('select');
             $select.each(function () {
