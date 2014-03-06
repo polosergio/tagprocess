@@ -1,4 +1,5 @@
 var _ = require('underscore');
+require('../../libs/selectize/js/standalone/selectize.js');
 
 module.exports = (function () {
     'use strict';

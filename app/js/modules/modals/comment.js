@@ -42,7 +42,7 @@ module.exports = (function () {
                     success: function (response) {
                         $alert.removeClass('hide alert-danger').addClass('alert-success').html('Comment has been added.');
                         that.trigger('submit');
-						that.hide();
+						that.modal.hide();
                     },
                     error: function (e) {
                         $alert.removeClass('hide alert-success').addClass('alert-danger').html(e.statusText);

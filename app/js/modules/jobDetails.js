@@ -1,7 +1,7 @@
 var _ = require('underscore'),
     $ = jQuery = require('jquery'),
     Backbone = require('backbone'),
-    JoBDetailsTemplate = require('../../templates/jobDetails.hbs'),
+    JobDetailsTemplate = require('../../templates/jobDetails.hbs'),
     Handlebars = require('handlebars/runtime').default,
 	Notify = require('../utilities/notify'),
 	Helpers = require('../utilities/helpers'),
@@ -10,7 +10,6 @@ var _ = require('underscore'),
 	ServiceModal = require('./modals/service'),
 	UploaderModal = require('./modals/uploader'),
 	EmailModal = require('./modals/email');
-require('../../libs/selectize/js/standalone/selectize.js');
 
 module.exports = (function () {
     'use strict';
@@ -71,36 +70,16 @@ module.exports = (function () {
 				'courtreceipt': 'Court Receipt'
 			};
 			return validTypes[type];
-		},
-		getEmailParams: function (jobnumber, clientEmail) {
-			var params = {
-				emailname: 'TagProcess LLC'
-			};
-			_.extend(params, {
-				clientemail: clientEmail || '',
-				emailsubject: 'Job ' + jobnumber + ' Completed',
-				emailmessage: 'Dear Client,\n\nJob number ' + jobnumber + ' has been completed.\n\nSincerely,\n\n' + params.emailname
-			});
-			return params;
 		}
     });
 	Handlebars.registerHelper('parse', helpers.parseKey);
 	Handlebars.registerHelper('parseAttachmentType', helpers.parseAttachmentType);
 	_.extend(exports, {
         View: Backbone.View.extend({
+			template: JobDetailsTemplate,
             initialize: function (options) {
                 this.id = options.id;
-				this.modal = {
-					details: new ServeDetailsModal({id: this.id}),
-					comment: new CommentModal({id: this.id}),
-					service: new ServiceModal(),
-					uploader: new UploaderModal(),
-					email: new EmailModal()
-				};
-                this.template = JoBDetailsTemplate;
                 this.model = new exports.Model({jobnumber: this.id});
-                //this.modal = new Modal({size: '', parentView: this});
-				this.listenTo(this.modal.comment, 'submit', this.submitComment);
                 this.listenTo(this.model, 'sync', this.render);
                 this.model.fetch();
             },
@@ -116,158 +95,30 @@ module.exports = (function () {
 						attachments: data.attachments || []
                     };
                 this.$el.empty().append(this.template(payload));
-                return this;
+				return this.initializeModals();
             },
+			initializeModals: function () {
+				this.modal = {
+					details: new ServeDetailsModal({id: this.id}),
+					comment: new CommentModal({id: this.id}),
+					service: new ServiceModal({id: this.id}),
+					uploader: new UploaderModal({id: this.id}),
+					email: new EmailModal({client: this.model.get('account'), jobnumber: this.id})
+				};
+				this.listenTo(this.modal.comment, 'submit', this.refreshServeDetailsModal);
+				this.listenTo(this.modal.service, 'submit', this.refreshModel);
+				this.listenTo(this.modal.uploader, 'submit', this.refreshModel);
+				return this;
+			},
 			openModal: function (event) {
 				event.preventDefault();
 				var modal = $(event.currentTarget).data('modal');
 				this.$('#modalWrapper').append(this.modal[modal].open().$el);
 			},
-            openModalWithTemplate: function (options) {
-                var modal = this.modal;
-                modal.render()
-                    .setHeaderHTML(options.header)
-                    .setContentHTML(options.template)
-                    .addEvent(options.event, options.selector, options.callback)
-                    .open();
-                Helpers.initSelectizeInputs(modal);
-                return this;
-            },
-            openCommentModal: function (event) {
-                event.preventDefault();
-                /*this.openModalWithTemplate({
-                    header: '<h4>Add Comments</h4>',
-                    template: CommentFormTemplate(),
-                    event: 'submit',
-                    selector: '#commentForm',
-                    callback: this.submitComment
-                });
-				*/
-                return this;
-            },
-            openServiceModal: function (event) {
-                event.preventDefault();
-                this.openModalWithTemplate({
-                    header: '<h4>Service Information</h4>',
-                    template: ServiceFormTemplate(),
-                    event: 'submit',
-                    selector: '#serviceForm',
-                    callback: this.submitService
-                });
-                return this;
-            },
-			openUploaderModal: function (event) {
-				event.preventDefault();
-				this.openModalWithTemplate({
-					header: '<h4>Upload Documents</h4',
-					template: UploaderFormTemplate(),
-					event: 'submit',
-					selector: '#uploaderForm',
-					callback: this.submitUpload
-				});
+            refreshModel: function () {
+				this.model.fetch();
 				return this;
 			},
-			openEmailModal: function (event) {
-				event.preventDefault();
-				var that = this,
-					client = new (Backbone.Model.extend({
-					baseUrl: '/tagproc/api/email',
-					url: function () {
-						return this.baseUrl + '?' + $.param(this.toJSON());
-					}
-				}))({
-					client: that.model.get('account')
-				});
-				client.fetch({
-					success: function (model, response) {
-						that.openModalWithTemplate({
-							header: '<h4>Send e-mail to Client</h4>',
-							template: EmailFormTemplate(helpers.getEmailParams(that.id, response.email)),
-							event: 'submit',
-							selector: '#emailForm',
-							callback: that.submitEmail
-						});
-					}
-				});
-				return this;
-			},
-			submitEmail: function (event) {
-				event.preventDefault();
-				var $form = $(event.currentTarget),
-					modal = this,
-					that = modal.parentView,
-					$alert = $form.find('.alert'),
-					params = Helpers.serializeObject($form.serializeArray());
-				console.log(params);
-				$alert.removeClass('hide alert-danger alert-success').addClass('alert-info').html('Loading...');
-				$.ajax({
-					url: '/tagproc/api/email',
-					data: params,
-					type: 'POST',
-					success: function (response) {
-						$alert.removeClass('hide alert-danger alert-info').addClass('alert-success').html('E-mail sent.');
-						modal.hide();
-					},
-					error: function (e) {
-						var message = JSON.parse(e.responseText);
-						$alert.removeClass('hide alert-success alert-info').addClass('alert-danger').html(message.message || e.statusTExt);
-					}
-				});
-				return this;
-			},
-			submitUpload: function (event) {
-				event.preventDefault();
-				var $form = $(event.currentTarget),
-					modal = this,
-					that = modal.parentView,
-					$alert = $form.find('.alert'),
-					data = new FormData();
-				data.append('file', $form.find('#file')[0].files[0]);
-				data.append('jobnumber', that.id);
-				data.append('type', $form.find('#type').val());
-				$alert.removeClass('hide alert-danger alert-success').addClass('alert-info').html('Loading...');
-				$.ajax({
-					url: '/tagproc/api/uploader',
-					data: data,
-					type: 'POST',
-					cache: false,
-					contentType: false,
-					processData: false,
-					success: function (response) {
-						$alert.removeClass('hide alert-danger alert-info').addClass('alert-success').html('File uploaded.');
-                        that.model.fetch();
-                        modal.hide();
-					},
-					error: function (e) {
-						var message = JSON.parse(e.responseText);
-                        $alert.removeClass('hide alert-success alert-info').addClass('alert-danger').html(message.message || e.statusText);
-                    }
-				});
-			   return this;
-			},
-            submitService: function (event) {
-                event.preventDefault();
-                var $form = $(event.currentTarget),
-                    modal = this,
-                    that = modal.parentView,
-                    $alert = $form.find('.alert'),
-                    params = Helpers.serializeObject($form.serializeArray());
-                params.jobnumber = that.id;
-                $.ajax({
-                    url: '/tagproc/api/service',
-                    data: params,
-                    type: 'POST',
-                    success: function (response) {
-                        $alert.removeClass('hide alert-danger').addClass('alert-success').html('Service has been added.');
-                        that.model.fetch();
-                        modal.hide();
-                    },
-                    error: function (e) {
-                        $alert.removeClass('hide alert-success').addClass('alert-danger').html(e.statusText);
-                    }
-                });
-                return this;
-            },
             refreshServeDetailsModal: function () {
                 this.modal.details.model.fetch();
 				return this;
