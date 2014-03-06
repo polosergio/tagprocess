@@ -9,7 +9,8 @@ var _ = require('underscore'),
 	CommentModal = require('./modals/comment'),
 	ServiceModal = require('./modals/service'),
 	UploaderModal = require('./modals/uploader'),
-	EmailModal = require('./modals/email');
+	EmailModal = require('./modals/email'),
+	RosModal = require('./modals/returnOfService');
 
 module.exports = (function () {
     'use strict';
@@ -103,7 +104,8 @@ module.exports = (function () {
 					comment: new CommentModal({id: this.id}),
 					service: new ServiceModal({id: this.id}),
 					uploader: new UploaderModal({id: this.id}),
-					email: new EmailModal({client: this.model.get('account'), jobnumber: this.id})
+					email: new EmailModal({client: this.model.get('account'), jobnumber: this.id}),
+					returnOfService: new RosModal({id: this.id})
 				};
 				this.listenTo(this.modal.comment, 'submit', this.refreshServeDetailsModal);
 				this.listenTo(this.modal.service, 'submit', this.refreshModel);

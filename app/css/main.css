@@ -24,4 +24,7 @@ span.glyphicon-big-alert {
 	position: fixed;
 	top: 20px;
 }
+.alignLeft {
+	text-align: left !important;
+}
 
