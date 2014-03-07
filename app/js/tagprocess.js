@@ -71,7 +71,10 @@ module.exports = {
 		{
 			'href': '#',
 			'active': false,
-			'name': 'Server Report'
+			'name': 'Server Report',
+			'attributes': {
+				'id': 'serverReport'
+			}
 		},
 		{
 			'href': '/tagproc/receivablesreport.php',

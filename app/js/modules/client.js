@@ -47,7 +47,7 @@ module.exports = (function () {
 			events: {
 				'click #searchby a'				: 'setSearchBy',
 				'keyup #search'					: 'debouncedSearch',
-                'submit form'					: 'search',
+                'submit #searchForm'			: 'search',
 				'click .switch-page'			: 'switchPage'
 			},
 			render: function () {

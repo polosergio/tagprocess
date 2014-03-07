@@ -26,8 +26,12 @@ module.exports = (function (){
                 this.template = this.forms[options.form];
                 this.sidebar = new Sidebar.View({active: '#forms/' + this.form});
             },
-			events: {
-				'submit form': 'submit'
+			events: function () {
+				var events = {};
+				_.each(this.forms, function (value, form) {
+					events['submit #'+ form + 'Form'] = 'submit';
+				});
+				return events;
 			},
 			render: function () {
 				this.$el.empty().append(this.template());

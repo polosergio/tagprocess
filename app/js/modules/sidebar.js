@@ -1,7 +1,8 @@
 var _ = require('underscore'),
 	Backbone = require('backbone'),
 	TagProcess = require('../tagprocess'),
-	SidebarTemplate = require('../../templates/sidebar.hbs');
+	SidebarTemplate = require('../../templates/sidebar.hbs'),
+	ServerReportModal = require('./modals/serverReport');
 
 module.exports = (function () {
 	'use strict';
@@ -12,9 +13,13 @@ module.exports = (function () {
 			template: SidebarTemplate,
 			initialize: function (options) {
 				this.collection = TagProcess.sidebar;
+				this.modal = new ServerReportModal();
 				if (options.active) {
 					this.setActive(options.active);
 				}
+			},
+			events: {
+				'click #serverReport': 'openServerReportModal'
 			},
 			render: function () {
 				var payload = {
@@ -28,7 +33,11 @@ module.exports = (function () {
 					model.set('active', model.get('href') === href);
 				});
 				return this;
-			}
+			},
+			openServerReportModal: function (event) {
+				event.preventDefault();
+				this.$('#sidebarWrapper').append(this.modal.open().$el);
+			},
 		})
 	});
 	return exports;

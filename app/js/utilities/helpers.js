@@ -28,6 +28,10 @@ module.exports = (function () {
 			'server': {
 				'option': exports.setFormat,
 				'item': exports.setFormat
+			},
+			'serverid': {
+				'option': exports.setFormat,
+				'item': exports.setFormat
 			}
 		},
 		jsonParser: function (string) {
