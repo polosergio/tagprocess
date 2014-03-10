@@ -28415,6 +28415,7 @@ var Modal = require('./modal'),
 	_ = require('underscore'),
 	Template = require('../../../templates/forms/invoices.hbs'),
 	Backbone = require('backbone'),
+	TagProcess = require('../../tagprocess'),
 	Helpers = require('../../utilities/helpers');
 
 module.exports = (function () {
@@ -28445,7 +28446,11 @@ module.exports = (function () {
 			},
 			render: function () {
 				var data = this.invoices.toJSON(),
-					payload = {invoices: data, jobnumber: this.id};
+					payload = {
+						invoices: data,
+						jobnumber: this.id,
+						admin: TagProcess.Auth.user.hasPermission('admin')
+					};
 				this.modal.render()
 					.setHeaderHTML('<h4>Invoices</h4>')
 					.setContentHTML(this.template(payload));
@@ -28504,7 +28509,7 @@ module.exports = (function () {
 	return exports;
 }());
 
-},{"../../../templates/forms/invoices.hbs":60,"../../utilities/helpers":44,"./modal":29,"backbone":1,"underscore":14}],29:[function(require,module,exports){
+},{"../../../templates/forms/invoices.hbs":60,"../../tagprocess":43,"../../utilities/helpers":44,"./modal":29,"backbone":1,"underscore":14}],29:[function(require,module,exports){
 var _ = require('underscore'),
 	Backbone = require('backbone'),
 	Notify = require('../../utilities/notify'),
@@ -34992,12 +34997,12 @@ function program1(depth0,data) {
   
   var buffer = "", stack1;
   buffer += "\n							";
-  stack1 = helpers.each.call(depth0, (depth0 && depth0.invoices), {hash:{},inverse:self.noop,fn:self.program(2, program2, data),data:data});
+  stack1 = helpers.each.call(depth0, (depth0 && depth0.invoices), {hash:{},inverse:self.noop,fn:self.programWithDepth(2, program2, data, depth0),data:data});
   if(stack1 || stack1 === 0) { buffer += stack1; }
   buffer += "\n						";
   return buffer;
   }
-function program2(depth0,data) {
+function program2(depth0,data,depth1) {
   
   var buffer = "", stack1, helper;
   buffer += "\n								<tr>\n									<td>";
@@ -35012,22 +35017,31 @@ function program2(depth0,data) {
   if (helper = helpers.jobnumber) { stack1 = helper.call(depth0, {hash:{},data:data}); }
   else { helper = (depth0 && depth0.jobnumber); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
   buffer += escapeExpression(stack1)
-    + "\" target=\"_blank\">\n											<span title=\"View Invoice\" class=\"glyphicon glyphicon-search\"></span>\n										</a>\n										<a href=\"/tagproc/invoice.php?submit=Edit&id=";
+    + "\" target=\"_blank\">\n											<span title=\"View Invoice\" class=\"glyphicon glyphicon-search\"></span>\n										</a>\n										";
+  stack1 = helpers['if'].call(depth0, (depth1 && depth1.admin), {hash:{},inverse:self.noop,fn:self.program(3, program3, data),data:data});
+  if(stack1 || stack1 === 0) { buffer += stack1; }
+  buffer += "\n									</td>\n								</tr>\n							";
+  return buffer;
+  }
+function program3(depth0,data) {
+  
+  var buffer = "", stack1, helper;
+  buffer += "\n										<a href=\"/tagproc/invoice.php?submit=Edit&id=";
   if (helper = helpers.jobnumber) { stack1 = helper.call(depth0, {hash:{},data:data}); }
   else { helper = (depth0 && depth0.jobnumber); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
   buffer += escapeExpression(stack1)
-    + "\" target=\"_blank\">\n											<span title=\"Edit Invoice\" class=\"glyphicon glyphicon-pencil\" style=\"color: goldenrod;\"></span>\n										</a>\n									</td>\n								</tr>\n							";
+    + "\" target=\"_blank\">\n											<span title=\"Edit Invoice\" class=\"glyphicon glyphicon-pencil\" style=\"color: goldenrod;\"></span>\n										</a>\n										";
   return buffer;
   }
 
-function program4(depth0,data) {
+function program5(depth0,data) {
   
   
   return "\n						<tr>\n							<td colspan=\"3\">No invoices available</td>\n						</tr>\n						";
   }
 
   buffer += "<div class=\"container-fluid\">\n	<div class=\"row\">\n		<div id=\"invoiceList\">\n			<div class=\"text-right\">\n				<button class=\"btn btn-default toggleForm\">\n					<span class=\"glyphicon glyphicon-plus-sign\" style=\"color: green;\"></span> Create Invoice\n				</button>\n			</div><br>\n			<div class=\"table-responsive\">\n				<table class=\"table table-bordered table-condensed table-hover table-striped\">\n					<thead>\n						<tr>\n							<th>Charges</th>\n							<th>Date</th>\n							<th>Options</th>\n						</tr>\n					</thead>\n					<tbody>\n						";
-  stack1 = helpers['if'].call(depth0, ((stack1 = (depth0 && depth0.invoices)),stack1 == null || stack1 === false ? stack1 : stack1.length), {hash:{},inverse:self.program(4, program4, data),fn:self.program(1, program1, data),data:data});
+  stack1 = helpers['if'].call(depth0, ((stack1 = (depth0 && depth0.invoices)),stack1 == null || stack1 === false ? stack1 : stack1.length), {hash:{},inverse:self.program(5, program5, data),fn:self.program(1, program1, data),data:data});
   if(stack1 || stack1 === 0) { buffer += stack1; }
   buffer += "\n					</tbody>\n				</table>\n			</div>\n		</div>\n		<form class=\"form-horizontal hide\" id=\"invoiceForm\">\n			<a href=\"#\" class=\"toggleForm\">\n				<span class=\"glyphicon glyphicon-arrow-left\"></span>\n			</a>\n			<div class=\"form-group\">\n				<label for=\"amount\" class=\"col-md-2 control-label\">Amount</label>\n				<div class=\"col-md-10\">\n					<input type=\"number\" id=\"amount\" name=\"amount\" class=\"form-control\" required>\n				</div>\n			</div>\n			<div class=\"form-group\">\n				<label for=\"method\" class=\"col-md-2 control-label\">Payment Method</label>\n				<div class=\"col-md-10\">\n					<select id=\"method\" name=\"method\" class=\"form-control\" required>\n						<option value=\"\">Please select one...</option>\n						<option value=\"check\">Check</option>\n						<option value=\"credit\">Credit card</option>\n						<option value=\"cash\">Cash</option>\n					</select>\n				</div>	\n			</div>\n			<div class=\"form-group hide\">\n				<label for=\"check\" class=\"col-md-2 control-label\">Check Number</label>\n				<div class=\"col-md-10\">\n					<input type=\"number\" id=\"check\" name=\"check\" class=\"form-control\">\n				</div>\n			</div>\n			<div class=\"form-group\">\n				<label for=\"name\" class=\"col-md-2 control-label\">Name</label>\n				<div class=\"col-md-10\">\n					<select id=\"name\" name=\"name\" class=\"form-control\" required>\n						<option value=\"\">Please select one...</option>\n						<option value=\"SUMMON\">SUMMON</option>\n						<option value=\"SUBPOENA\">SUBPOENA</option>\n						<option value=\"MANUAL INVOICE\">MANUAL INVOICE</option>\n						<option value=\"COURIER\">COURIER</option>\n						<option value=\"SKIP TRACE\">SKIP TRACE</option>\n						<option value=\"STAKEOUT\">STAKEOUT</option>\n						<option value=\"DEFAULT\">DEFAULT</option>\n					</select>\n				</div>	\n			</div>\n			<div class=\"form-group\">\n				<label for=\"description\" class=\"col-md-2 control-label\">Description</label>\n				<div class=\"col-md-10\">\n					<textarea id=\"description\" name=\"description\" class=\"form-control\" required></textarea>\n				</div>\n			</div>\n			<input type=\"hidden\" name=\"invoicejob\" value=\"";
   if (helper = helpers.jobnumber) { stack1 = helper.call(depth0, {hash:{},data:data}); }

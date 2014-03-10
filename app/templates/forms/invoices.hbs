@@ -25,9 +25,11 @@
 										<a href="/tagproc/invoice.php?submit=View&id={{ jobnumber }}" target="_blank">
 											<span title="View Invoice" class="glyphicon glyphicon-search"></span>
 										</a>
+										{{#if ../admin }}
 										<a href="/tagproc/invoice.php?submit=Edit&id={{ jobnumber }}" target="_blank">
 											<span title="Edit Invoice" class="glyphicon glyphicon-pencil" style="color: goldenrod;"></span>
 										</a>
+										{{/if}}
 									</td>
 								</tr>
 							{{/each}}

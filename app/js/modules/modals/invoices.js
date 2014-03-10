@@ -2,6 +2,7 @@ var Modal = require('./modal'),
 	_ = require('underscore'),
 	Template = require('../../../templates/forms/invoices.hbs'),
 	Backbone = require('backbone'),
+	TagProcess = require('../../tagprocess'),
 	Helpers = require('../../utilities/helpers');
 
 module.exports = (function () {
@@ -32,7 +33,11 @@ module.exports = (function () {
 			},
 			render: function () {
 				var data = this.invoices.toJSON(),
-					payload = {invoices: data, jobnumber: this.id};
+					payload = {
+						invoices: data,
+						jobnumber: this.id,
+						admin: TagProcess.Auth.user.hasPermission('admin')
+					};
 				this.modal.render()
 					.setHeaderHTML('<h4>Invoices</h4>')
 					.setContentHTML(this.template(payload));
