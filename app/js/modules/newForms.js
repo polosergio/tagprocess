@@ -3,7 +3,6 @@ var _ = require('underscore'),
     Backbone = require('backbone'),
     Sidebar = require('./sidebar'),
     Helpers = require('../utilities/helpers');
-require('../../libs/selectize/js/standalone/selectize.js');
 
 module.exports = (function (){
     'use strict';

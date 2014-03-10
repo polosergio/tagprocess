@@ -8,6 +8,14 @@
 				<li><a href="#" id="uploaderForm"		class="openModal" data-modal="uploader">Upload Document</a></li>
 				<li><a href="#" id="emailForm"			class="openModal" data-modal="email">E-mail Client</a></li>
 				<li><a href="#" id="returnOfService"	class="openModal" data-modal="returnOfService">Return Of Service</a></li>
+				<li class="dropdown">
+					<a class="dropdown-toggle" data-toggle="dropdown" href="#">Fieldsheet <span class="caret"></span></a>
+					<ul class="dropdown-menu">
+						<li><a href="/tagproc/fieldsheet.php?jobnumber={{ job.jobnumber.value }}&fieldsheet=STANDARD" target="_blank">Standard</a></li>
+						<li><a href="/tagproc/fieldsheet.php?jobnumber={{ job.jobnumber.value }}&fieldsheet=RUSH" target="_blank">Rush</a></li>
+						<li><a href="/tagproc/fieldsheet.php?jobnumber={{ job.jobnumber.value }}&fieldsheet=PRIORITY" target="_blank">Priority</a></li>
+					</ul>
+				</li>
 			</ul>
 		</div>
         <div class="col-md-10">

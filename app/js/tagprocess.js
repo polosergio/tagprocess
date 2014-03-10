@@ -64,7 +64,7 @@ module.exports = {
             'name': 'New Attorney'
         },
 		{
-			'href': '#',
+			'href': '#statements',
 			'active': false,
 			'name': 'Client Statement'
 		},
