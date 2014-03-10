@@ -11,6 +11,8 @@ module.exports = (function () {
 	return {
 		signedIn: false,
 
+		user: new User(),
+
 		signInMessage: 'You\'re currently not logged in.',
 
 		updateSignInMessage: function (message) {

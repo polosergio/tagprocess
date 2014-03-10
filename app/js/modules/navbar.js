@@ -3,9 +3,12 @@ var $ = jQuery = require('jquery'),
 	Backbone = require('backbone'),
 	TagProcess = require('../tagprocess'),
 	NavBarTemplate = require('../../templates/navbar.hbs'),
+	UserDropdown = require('../../templates/userDropdown.hbs'),
+    Handlebars = require('handlebars/runtime').default,
     NavButton = require('./navbutton');
 
 require('../../libs/bootstrap/bootstrap.js');
+Handlebars.registerPartial('userDropdown', UserDropdown);
 module.exports = {
     Collection: Backbone.Collection.extend({
         model: NavButton.Model
@@ -25,8 +28,11 @@ module.exports = {
 			'click #logout': 'logout'
 		},
 		render: function () {
-            var that = this;
-			this.$el.empty().append(this.template());
+            var that = this,
+				payload = {
+					admin: TagProcess.Auth.user.hasPermission('admin')
+				};
+			this.$el.empty().append(this.template(payload));
             _.each(this.collection.models, function (item) {
                 that.renderButton(item);
             }, this);
@@ -40,7 +46,6 @@ module.exports = {
             this.$('#nav-ul').append(buttonView.render().el);
         },
         setActive: function (options) {
-            // Optimization needed. See tabNavigation.js
             _.each(this.collection.models, function (model) {
                 model.set('active', model.get('href') === options.hash);
             });
@@ -49,6 +54,15 @@ module.exports = {
 			var text = _.isEmpty(data) || _.isUndefined(data) ? '' : data.data.name;
 			this.$('#name-text').html(text);
 			this.$('#user-dropdown').toggleClass('hide').siblings().toggleClass('hide');
+			this.refreshUserDropdown();
+			return this;
+		},
+		refreshUserDropdown: function () {
+			var payload = {
+				admin: TagProcess.Auth.user.hasPermission('admin')
+			};
+			this.$('#user-dropdown ul').empty().append(UserDropdown(payload));
+			return this;
 		},
 		logout: function () {
 			TagProcess.Auth.signOut();

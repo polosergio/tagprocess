@@ -27737,6 +27737,8 @@ module.exports = (function () {
 	return {
 		signedIn: false,
 
+		user: new User(),
+
 		signInMessage: 'You\'re currently not logged in.',
 
 		updateSignInMessage: function (message) {
@@ -28871,9 +28873,12 @@ var $ = jQuery = require('jquery'),
 	Backbone = require('backbone'),
 	TagProcess = require('../tagprocess'),
 	NavBarTemplate = require('../../templates/navbar.hbs'),
+	UserDropdown = require('../../templates/userDropdown.hbs'),
+    Handlebars = require('handlebars/runtime').default,
     NavButton = require('./navbutton');
 
 require('../../libs/bootstrap/bootstrap.js');
+Handlebars.registerPartial('userDropdown', UserDropdown);
 module.exports = {
     Collection: Backbone.Collection.extend({
         model: NavButton.Model
@@ -28893,8 +28898,11 @@ module.exports = {
 			'click #logout': 'logout'
 		},
 		render: function () {
-            var that = this;
-			this.$el.empty().append(this.template());
+            var that = this,
+				payload = {
+					admin: TagProcess.Auth.user.hasPermission('admin')
+				};
+			this.$el.empty().append(this.template(payload));
             _.each(this.collection.models, function (item) {
                 that.renderButton(item);
             }, this);
@@ -28908,7 +28916,6 @@ module.exports = {
             this.$('#nav-ul').append(buttonView.render().el);
         },
         setActive: function (options) {
-            // Optimization needed. See tabNavigation.js
             _.each(this.collection.models, function (model) {
                 model.set('active', model.get('href') === options.hash);
             });
@@ -28917,6 +28924,15 @@ module.exports = {
 			var text = _.isEmpty(data) || _.isUndefined(data) ? '' : data.data.name;
 			this.$('#name-text').html(text);
 			this.$('#user-dropdown').toggleClass('hide').siblings().toggleClass('hide');
+			this.refreshUserDropdown();
+			return this;
+		},
+		refreshUserDropdown: function () {
+			var payload = {
+				admin: TagProcess.Auth.user.hasPermission('admin')
+			};
+			this.$('#user-dropdown ul').empty().append(UserDropdown(payload));
+			return this;
 		},
 		logout: function () {
 			TagProcess.Auth.signOut();
@@ -28925,7 +28941,7 @@ module.exports = {
 	})
 };
 
-},{"../../libs/bootstrap/bootstrap.js":48,"../../templates/navbar.hbs":74,"../tagprocess":43,"./navbutton":36,"backbone":1,"jquery":13,"underscore":14}],36:[function(require,module,exports){
+},{"../../libs/bootstrap/bootstrap.js":48,"../../templates/navbar.hbs":74,"../../templates/userDropdown.hbs":80,"../tagprocess":43,"./navbutton":36,"backbone":1,"handlebars/runtime":10,"jquery":13,"underscore":14}],36:[function(require,module,exports){
 var $ = require('jquery'),
     Backbone = require('backbone'),
     ButtonTemplate = require('../../templates/navbutton.hbs');
@@ -35530,11 +35546,15 @@ function program1(depth0,data) {
 },{"handlebars/runtime":10}],74:[function(require,module,exports){
 var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
   this.compilerInfo = [4,'>= 1.0.0'];
-helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
-  
+helpers = this.merge(helpers, Handlebars.helpers); partials = this.merge(partials, Handlebars.partials); data = data || {};
+  var buffer = "", stack1, self=this;
 
 
-  return "<nav class=\"navbar navbar-default\" role=\"navigation\">\n	<div class=\"container-fluid\">\n		<div class=\"navbar-header\">\n			<button type=\"button\" class=\"navbar-toggle\" data-toggle=\"collapse\" data-target=\"#nav-links\">\n				<span class=\"sr-only\">Toggle Navigation</span>\n				<span class=\"icon-bar\"></span>\n				<span class=\"icon-bar\"></span>\n				<span class=\"icon-bar\"></span>\n			</button>\n			<a class=\"navbar-brand\" href=\"#home\">TagProcess</a>\n		</div>\n		<div class=\"collapse navbar-collapse\" id=\"nav-links\">\n			<ul class=\"nav navbar-nav\" id=\"nav-ul\"></ul>\n			<ul class=\"nav navbar-nav navbar-right\">\n				<button type=\"button\" onclick=\"location.href='#login'\" class=\"btn btn-default navbar-btn\">Sign In</button>\n				<li class=\"dropdown hide\" id=\"user-dropdown\">\n					<a href=\"#\" class=\"dropdown-toggle\" data-toggle=\"dropdown\">\n						<span class=\"glyphicon glyphicon-user\"></span>\n						<span id=\"name-text\"> User</span>\n						<b class=\"caret\"></b>\n					</a>\n					<ul class=\"dropdown-menu\">\n						<li>\n							<a href=\"#\" id=\"logout\"><span class=\"glyphicon glyphicon-log-out\"></span> Log Out...</a>\n						</li>\n					</ul>\n				</li>\n			</ul>\n		</div>\n	</div>\n</nav>\n";
+  buffer += "<nav class=\"navbar navbar-default\" role=\"navigation\">\n	<div class=\"container-fluid\">\n		<div class=\"navbar-header\">\n			<button type=\"button\" class=\"navbar-toggle\" data-toggle=\"collapse\" data-target=\"#nav-links\">\n				<span class=\"sr-only\">Toggle Navigation</span>\n				<span class=\"icon-bar\"></span>\n				<span class=\"icon-bar\"></span>\n				<span class=\"icon-bar\"></span>\n			</button>\n			<a class=\"navbar-brand\" href=\"#home\">TagProcess</a>\n		</div>\n		<div class=\"collapse navbar-collapse\" id=\"nav-links\">\n			<ul class=\"nav navbar-nav\" id=\"nav-ul\"></ul>\n			<ul class=\"nav navbar-nav navbar-right\">\n				<button type=\"button\" onclick=\"location.href='#login'\" class=\"btn btn-default navbar-btn\">Sign In</button>\n				<li class=\"dropdown hide\" id=\"user-dropdown\">\n					<a href=\"#\" class=\"dropdown-toggle\" data-toggle=\"dropdown\">\n						<span class=\"glyphicon glyphicon-user\"></span>\n						<span id=\"name-text\"> User</span>\n						<b class=\"caret\"></b>\n					</a>\n					<ul class=\"dropdown-menu\">\n					";
+  stack1 = self.invokePartial(partials.userDropdown, 'userDropdown', depth0, helpers, partials, data);
+  if(stack1 || stack1 === 0) { buffer += stack1; }
+  buffer += "\n					</ul>\n				</li>\n			</ul>\n		</div>\n	</div>\n</nav>\n";
+  return buffer;
   });
 },{"handlebars/runtime":10}],75:[function(require,module,exports){
 var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
@@ -35671,5 +35691,22 @@ helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
 
 
   return "<div id=\"about\" class=\"container-fluid\">\n    <div class=\"row\">\n        <div class=\"col-md-6\">\n            <h2>Technology</h2>\n            <h3>Now available on Android and iPhone!</h3>\n            <h4>TAG Serve makes Tag Process number 1 in the country</h4>\n            <p>Can your process serving company show you proof of service using a time-stamped picture? Or do you have to call them and wait for them to give you a response on what the status is? With our new software Tag Serve, clients will no longer have to wait on status since it's updated real-time and you have 24 hour access!</p>\n        </div>\n        <div class=\"col-md-6\">\n            <img class=\"img-rounded img-responsive\" src=\"app/images/network.jpg\"></img>\n        </div>\n    </div>\n</div>";
+  });
+},{"handlebars/runtime":10}],80:[function(require,module,exports){
+var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
+  this.compilerInfo = [4,'>= 1.0.0'];
+helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
+  var buffer = "", stack1, self=this;
+
+function program1(depth0,data) {
+  
+  
+  return "\n<li>\n	<a href=\"#settings\"><span class=\"glyphicon glyphicon-cog\"></span> Settings...</a>\n</li>\n";
+  }
+
+  stack1 = helpers['if'].call(depth0, (depth0 && depth0.admin), {hash:{},inverse:self.noop,fn:self.program(1, program1, data),data:data});
+  if(stack1 || stack1 === 0) { buffer += stack1; }
+  buffer += "\n<li>\n	<a href=\"#\" id=\"logout\"><span class=\"glyphicon glyphicon-log-out\"></span> Log Out...</a>\n</li>\n\n";
+  return buffer;
   });
 },{"handlebars/runtime":10}]},{},[50])
