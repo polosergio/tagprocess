@@ -16,7 +16,8 @@ module.exports = (function () {
 			'client'		: 'showClient',
             'jobs/:id'      : 'showClientID',
             'forms/:form'   : 'showForm',
-			'statements'	: 'showStatements'
+			'statements'	: 'showStatements',
+			'settings'		: 'showSettings'
 		},
 		initialize: function () {
 			this.viewTarget = '#content';
@@ -61,6 +62,10 @@ module.exports = (function () {
 		showStatements: function () {
 			var view = require('./modules/statements');
 			this.show({hash: '#statements', title: 'Client Statements', view: new view.View(), viewOptions: {needsPermission: true}});
+		},
+		showSettings: function () {
+			var view = require('./modules/settings');
+			this.show({hash: '#settings', title: 'User Settings', view: new view.View(), viewOptions: {needsPermission: true}});
 		},
 		show: function (options) {
 			var that = this,

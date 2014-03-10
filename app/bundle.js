@@ -27723,7 +27723,7 @@ module.exports = {
 	})
 };
 
-},{"../../templates/aboutus.hbs":51,"backbone":1}],17:[function(require,module,exports){
+},{"../../templates/aboutus.hbs":52,"backbone":1}],17:[function(require,module,exports){
 var _ = require('underscore'),
 	Backbone = require('backbone'),
 	$ = jQuery = require('jquery'),
@@ -27830,7 +27830,7 @@ module.exports = (function () {
 	};
 }());
 
-},{"../models/user":15,"../tagprocess":43,"./constants.js":19,"backbone":1,"cookie-cutter":3,"jquery":13,"jquery-ui-browserify":12,"underscore":14}],18:[function(require,module,exports){
+},{"../models/user":15,"../tagprocess":44,"./constants.js":19,"backbone":1,"cookie-cutter":3,"jquery":13,"jquery-ui-browserify":12,"underscore":14}],18:[function(require,module,exports){
 var _ = require('underscore'),
 	$ = require('jquery'),
 	Backbone = require('backbone'),
@@ -27923,7 +27923,7 @@ module.exports = (function () {
 	return exports;
 }());
 
-},{"../../templates/jobs.hbs":69,"./sidebar":39,"backbone":1,"jquery":13,"underscore":14}],19:[function(require,module,exports){
+},{"../../templates/jobs.hbs":70,"./sidebar":40,"backbone":1,"jquery":13,"underscore":14}],19:[function(require,module,exports){
 module.exports = {
 	COOKIE: {
 		AUTH: 'user'
@@ -27973,7 +27973,7 @@ module.exports = {
 	})
 };
 
-},{"../../templates/contactus.hbs":52,"../utilities/helpers":44,"backbone":1}],21:[function(require,module,exports){
+},{"../../templates/contactus.hbs":53,"../utilities/helpers":45,"backbone":1}],21:[function(require,module,exports){
 var $ = require('jquery'),
 	Backbone = require('backbone'),
 	FooterTemplate = require('../../templates/footer.hbs');
@@ -27994,7 +27994,7 @@ module.exports = {
 	})
 };
 
-},{"../../templates/footer.hbs":53,"backbone":1,"jquery":13}],22:[function(require,module,exports){
+},{"../../templates/footer.hbs":54,"backbone":1,"jquery":13}],22:[function(require,module,exports){
 var $ = require('jquery'),
 	Backbone = require('backbone'),
 	HeaderTemplate = require('../../templates/header.hbs');
@@ -28016,7 +28016,7 @@ module.exports = {
 	})
 };
 
-},{"../../templates/header.hbs":66,"backbone":1,"jquery":13}],23:[function(require,module,exports){
+},{"../../templates/header.hbs":67,"backbone":1,"jquery":13}],23:[function(require,module,exports){
 var Backbone = require('backbone'),
 	HomeTemplate = require('../../templates/home.hbs');
 
@@ -28034,7 +28034,7 @@ module.exports = {
     })
 };
 
-},{"../../templates/home.hbs":67,"backbone":1}],24:[function(require,module,exports){
+},{"../../templates/home.hbs":68,"backbone":1}],24:[function(require,module,exports){
 var _ = require('underscore'),
     $ = jQuery = require('jquery'),
     Backbone = require('backbone'),
@@ -28196,7 +28196,7 @@ module.exports = (function () {
     return exports;
 }());
 
-},{"../../templates/jobDetails.hbs":68,"../utilities/helpers":44,"../utilities/notify":45,"./modals/comment":26,"./modals/email":27,"./modals/invoices":28,"./modals/returnOfService":30,"./modals/serveDetails":31,"./modals/service":33,"./modals/uploader":34,"backbone":1,"handlebars/runtime":10,"jquery":13,"underscore":14}],25:[function(require,module,exports){
+},{"../../templates/jobDetails.hbs":69,"../utilities/helpers":45,"../utilities/notify":46,"./modals/comment":26,"./modals/email":27,"./modals/invoices":28,"./modals/returnOfService":30,"./modals/serveDetails":31,"./modals/service":33,"./modals/uploader":34,"backbone":1,"handlebars/runtime":10,"jquery":13,"underscore":14}],25:[function(require,module,exports){
 var Backbone = require('backbone'),
 	TagProcess = require('../tagprocess'),
 	LoginTemplate = require('../../templates/login.hbs');
@@ -28277,7 +28277,7 @@ module.exports = {
 	})
 };
 
-},{"../../templates/login.hbs":70,"../tagprocess":43,"backbone":1}],26:[function(require,module,exports){
+},{"../../templates/login.hbs":71,"../tagprocess":44,"backbone":1}],26:[function(require,module,exports){
 var Modal = require('./modal'),
 	_ = require('underscore'),
 	Template = require('../../../templates/forms/comment.hbs'),
@@ -28334,7 +28334,7 @@ module.exports = (function () {
 	return exports;
 }());
 
-},{"../../../templates/forms/comment.hbs":57,"./modal":29,"backbone":1,"underscore":14}],27:[function(require,module,exports){
+},{"../../../templates/forms/comment.hbs":58,"./modal":29,"backbone":1,"underscore":14}],27:[function(require,module,exports){
 var Modal = require('./modal'),
 	_ = require('underscore'),
 	Template = require('../../../templates/forms/email.hbs'),
@@ -28412,7 +28412,7 @@ module.exports = (function () {
 	return exports;
 }());
 
-},{"../../../templates/forms/email.hbs":58,"../../utilities/helpers":44,"./modal":29,"backbone":1,"underscore":14}],28:[function(require,module,exports){
+},{"../../../templates/forms/email.hbs":59,"../../utilities/helpers":45,"./modal":29,"backbone":1,"underscore":14}],28:[function(require,module,exports){
 var Modal = require('./modal'),
 	_ = require('underscore'),
 	Template = require('../../../templates/forms/invoices.hbs'),
@@ -28511,7 +28511,7 @@ module.exports = (function () {
 	return exports;
 }());
 
-},{"../../../templates/forms/invoices.hbs":60,"../../tagprocess":43,"../../utilities/helpers":44,"./modal":29,"backbone":1,"underscore":14}],29:[function(require,module,exports){
+},{"../../../templates/forms/invoices.hbs":61,"../../tagprocess":44,"../../utilities/helpers":45,"./modal":29,"backbone":1,"underscore":14}],29:[function(require,module,exports){
 var _ = require('underscore'),
 	Backbone = require('backbone'),
 	Notify = require('../../utilities/notify'),
@@ -28597,7 +28597,7 @@ module.exports = (function () {
 	return exports;
 }());
 
-},{"../../../templates/modals/modal.hbs":71,"../../utilities/notify":45,"backbone":1,"underscore":14}],30:[function(require,module,exports){
+},{"../../../templates/modals/modal.hbs":72,"../../utilities/notify":46,"backbone":1,"underscore":14}],30:[function(require,module,exports){
 var Modal = require('./modal'),
 	_ = require('underscore'),
 	Template = require('../../../templates/forms/returnOfService.hbs'),
@@ -28639,7 +28639,7 @@ module.exports = (function () {
 	return exports;
 }());
 
-},{"../../../templates/forms/returnOfService.hbs":61,"../../utilities/helpers":44,"./modal":29,"backbone":1,"underscore":14}],31:[function(require,module,exports){
+},{"../../../templates/forms/returnOfService.hbs":62,"../../utilities/helpers":45,"./modal":29,"backbone":1,"underscore":14}],31:[function(require,module,exports){
 var Modal = require('./modal'),
 	ListTemplate = require('../../../templates/modals/serveList.hbs'),
 	DetailsTemplate = require('../../../templates/modals/serveDetails.hbs'),
@@ -28715,7 +28715,7 @@ module.exports = (function () {
 	return exports;
 }());
 
-},{"../../../templates/modals/serveDetails.hbs":72,"../../../templates/modals/serveList.hbs":73,"./modal":29,"backbone":1,"handlebars/runtime":10,"underscore":14}],32:[function(require,module,exports){
+},{"../../../templates/modals/serveDetails.hbs":73,"../../../templates/modals/serveList.hbs":74,"./modal":29,"backbone":1,"handlebars/runtime":10,"underscore":14}],32:[function(require,module,exports){
 var Modal = require('./modal'),
 	_ = require('underscore'),
 	Template = require('../../../templates/forms/serverReport.hbs'),
@@ -28746,7 +28746,7 @@ module.exports = (function () {
 	return exports;
 }());
 
-},{"../../../templates/forms/serverReport.hbs":63,"../../utilities/helpers":44,"./modal":29,"backbone":1,"underscore":14}],33:[function(require,module,exports){
+},{"../../../templates/forms/serverReport.hbs":64,"../../utilities/helpers":45,"./modal":29,"backbone":1,"underscore":14}],33:[function(require,module,exports){
 var Modal = require('./modal'),
 	_ = require('underscore'),
 	Template = require('../../../templates/forms/service.hbs'),
@@ -28803,7 +28803,7 @@ module.exports = (function () {
 	return exports;
 }());
 
-},{"../../../templates/forms/service.hbs":64,"../../utilities/helpers":44,"./modal":29,"backbone":1,"underscore":14}],34:[function(require,module,exports){
+},{"../../../templates/forms/service.hbs":65,"../../utilities/helpers":45,"./modal":29,"backbone":1,"underscore":14}],34:[function(require,module,exports){
 var Modal = require('./modal'),
 	_ = require('underscore'),
 	Template = require('../../../templates/forms/uploader.hbs'),
@@ -28867,7 +28867,7 @@ module.exports = (function () {
 	return exports;
 }());
 
-},{"../../../templates/forms/uploader.hbs":65,"../../utilities/helpers":44,"./modal":29,"backbone":1,"underscore":14}],35:[function(require,module,exports){
+},{"../../../templates/forms/uploader.hbs":66,"../../utilities/helpers":45,"./modal":29,"backbone":1,"underscore":14}],35:[function(require,module,exports){
 var $ = jQuery = require('jquery'),
 	_ = require('underscore'),
 	Backbone = require('backbone'),
@@ -28941,7 +28941,7 @@ module.exports = {
 	})
 };
 
-},{"../../libs/bootstrap/bootstrap.js":48,"../../templates/navbar.hbs":74,"../../templates/userDropdown.hbs":80,"../tagprocess":43,"./navbutton":36,"backbone":1,"handlebars/runtime":10,"jquery":13,"underscore":14}],36:[function(require,module,exports){
+},{"../../libs/bootstrap/bootstrap.js":49,"../../templates/navbar.hbs":75,"../../templates/userDropdown.hbs":82,"../tagprocess":44,"./navbutton":36,"backbone":1,"handlebars/runtime":10,"jquery":13,"underscore":14}],36:[function(require,module,exports){
 var $ = require('jquery'),
     Backbone = require('backbone'),
     ButtonTemplate = require('../../templates/navbutton.hbs');
@@ -28972,7 +28972,7 @@ module.exports = (function () {
     }
 }());
 
-},{"../../templates/navbutton.hbs":75,"backbone":1,"jquery":13}],37:[function(require,module,exports){
+},{"../../templates/navbutton.hbs":76,"backbone":1,"jquery":13}],37:[function(require,module,exports){
 var _ = require('underscore'),
     $ = jQuery = require('jquery'),
     Backbone = require('backbone'),
@@ -29039,7 +29039,7 @@ module.exports = (function (){
     return exports;
 }());
 
-},{"../../templates/forms/attorney.hbs":54,"../../templates/forms/case.hbs":55,"../../templates/forms/client.hbs":56,"../../templates/forms/employee.hbs":59,"../../templates/forms/server.hbs":62,"../utilities/helpers":44,"./sidebar":39,"backbone":1,"jquery":13,"underscore":14}],38:[function(require,module,exports){
+},{"../../templates/forms/attorney.hbs":55,"../../templates/forms/case.hbs":56,"../../templates/forms/client.hbs":57,"../../templates/forms/employee.hbs":60,"../../templates/forms/server.hbs":63,"../utilities/helpers":45,"./sidebar":40,"backbone":1,"jquery":13,"underscore":14}],38:[function(require,module,exports){
 var Backbone = require('backbone'),
     ServicesTemplate = require('../../templates/services.hbs');
 
@@ -29055,7 +29055,27 @@ module.exports = {
         }
     })
 };
-},{"../../templates/services.hbs":76,"backbone":1}],39:[function(require,module,exports){
+},{"../../templates/services.hbs":77,"backbone":1}],39:[function(require,module,exports){
+var Backbone = require('backbone'),
+	TagProcess = require('../tagprocess'),
+    SettingsTemplate = require('../../templates/settings.hbs');
+
+module.exports = {
+	View: Backbone.View.extend({
+		initialize: function () {
+			this.template = SettingsTemplate;
+		},
+		render: function () {
+			var payload = {
+				admin: TagProcess.Auth.user.hasPermission('admin')
+			};
+			this.$el.empty().append(this.template(payload));
+			return this;
+		}
+	})
+};
+
+},{"../../templates/settings.hbs":78,"../tagprocess":44,"backbone":1}],40:[function(require,module,exports){
 var _ = require('underscore'),
 	Backbone = require('backbone'),
 	TagProcess = require('../tagprocess'),
@@ -29101,7 +29121,7 @@ module.exports = (function () {
 	return exports;
 }());
 
-},{"../../templates/sidebar.hbs":77,"../tagprocess":43,"./modals/serverReport":32,"backbone":1,"underscore":14}],40:[function(require,module,exports){
+},{"../../templates/sidebar.hbs":79,"../tagprocess":44,"./modals/serverReport":32,"backbone":1,"underscore":14}],41:[function(require,module,exports){
 var _ = require('underscore'),
 	$ = require('jquery'),
 	Backbone = require('backbone'),
@@ -29175,7 +29195,7 @@ module.exports = (function () {
 	return exports;
 }());
 
-},{"../../templates/statements.hbs":78,"../utilities/helpers":44,"./sidebar":39,"backbone":1,"jquery":13,"underscore":14}],41:[function(require,module,exports){
+},{"../../templates/statements.hbs":80,"../utilities/helpers":45,"./sidebar":40,"backbone":1,"jquery":13,"underscore":14}],42:[function(require,module,exports){
 var Backbone = require('backbone'),
     TechnologyTemplate = require('../../templates/technology.hbs');
 
@@ -29191,7 +29211,7 @@ module.exports = {
 	})
 };
 
-},{"../../templates/technology.hbs":79,"backbone":1}],42:[function(require,module,exports){
+},{"../../templates/technology.hbs":81,"backbone":1}],43:[function(require,module,exports){
 var Backbone = require('backbone'),
 	TagProcess = require('./tagprocess'),
     _ = require('underscore');
@@ -29210,7 +29230,8 @@ module.exports = (function () {
 			'client'		: 'showClient',
             'jobs/:id'      : 'showClientID',
             'forms/:form'   : 'showForm',
-			'statements'	: 'showStatements'
+			'statements'	: 'showStatements',
+			'settings'		: 'showSettings'
 		},
 		initialize: function () {
 			this.viewTarget = '#content';
@@ -29256,6 +29277,10 @@ module.exports = (function () {
 			var view = require('./modules/statements');
 			this.show({hash: '#statements', title: 'Client Statements', view: new view.View(), viewOptions: {needsPermission: true}});
 		},
+		showSettings: function () {
+			var view = require('./modules/settings');
+			this.show({hash: '#settings', title: 'User Settings', view: new view.View(), viewOptions: {needsPermission: true}});
+		},
 		show: function (options) {
 			var that = this,
                 settings = _.extend({
@@ -29283,7 +29308,7 @@ module.exports = (function () {
 	};
 }());
 
-},{"./modules/aboutus":16,"./modules/client":18,"./modules/contactus":20,"./modules/home":23,"./modules/jobDetails":24,"./modules/login":25,"./modules/newForms":37,"./modules/services":38,"./modules/statements":40,"./modules/technology":41,"./tagprocess":43,"backbone":1,"underscore":14}],43:[function(require,module,exports){
+},{"./modules/aboutus":16,"./modules/client":18,"./modules/contactus":20,"./modules/home":23,"./modules/jobDetails":24,"./modules/login":25,"./modules/newForms":37,"./modules/services":38,"./modules/settings":39,"./modules/statements":41,"./modules/technology":42,"./tagprocess":44,"backbone":1,"underscore":14}],44:[function(require,module,exports){
 var $ = require('jquery'),
 	Backbone = require('backbone')
     ViewManager = require('./utilities/viewmanager'),
@@ -29373,7 +29398,7 @@ module.exports = {
 	])
 };
 
-},{"./modules/authenticate":17,"./utilities/vent":46,"./utilities/viewmanager":47,"backbone":1,"jquery":13}],44:[function(require,module,exports){
+},{"./modules/authenticate":17,"./utilities/vent":47,"./utilities/viewmanager":48,"backbone":1,"jquery":13}],45:[function(require,module,exports){
 var _ = require('underscore');
 require('../../libs/selectize/js/standalone/selectize.js');
 
@@ -29455,7 +29480,7 @@ module.exports = (function () {
     return exports;
 }());
 
-},{"../../libs/selectize/js/standalone/selectize.js":49,"underscore":14}],45:[function(require,module,exports){
+},{"../../libs/selectize/js/standalone/selectize.js":50,"underscore":14}],46:[function(require,module,exports){
 var _ = require('underscore');
 
 module.exports = (function () {
@@ -29498,7 +29523,7 @@ module.exports = (function () {
 	return exports;
 }());
 
-},{"underscore":14}],46:[function(require,module,exports){
+},{"underscore":14}],47:[function(require,module,exports){
 var _ = require('underscore'),
     Backbone = require('backbone');
 
@@ -29507,7 +29532,7 @@ module.exports = (function () {
     return _.extend({}, Backbone.Events);
 }());
 
-},{"backbone":1,"underscore":14}],47:[function(require,module,exports){
+},{"backbone":1,"underscore":14}],48:[function(require,module,exports){
 var _ = require('underscore'),
     $ = require('jquery'),
 	Backbone = require('backbone');
@@ -29585,7 +29610,7 @@ module.exports = (function () {
     };
 }());
 
-},{"backbone":1,"jquery":13,"underscore":14}],48:[function(require,module,exports){
+},{"backbone":1,"jquery":13,"underscore":14}],49:[function(require,module,exports){
 /*!
  * Bootstrap v3.1.1 (http://getbootstrap.com)
  * Copyright 2011-2014 Twitter, Inc.
@@ -31538,7 +31563,7 @@ if (typeof jQuery === 'undefined') { throw new Error('Bootstrap\'s JavaScript re
 
 }(jQuery);
 
-},{}],49:[function(require,module,exports){
+},{}],50:[function(require,module,exports){
 /**
  * sifter.js
  * Copyright (c) 2013 Brian Reavis & contributors
@@ -34873,7 +34898,7 @@ if (typeof jQuery === 'undefined') { throw new Error('Bootstrap\'s JavaScript re
 
 	return Selectize;
 }));
-},{}],50:[function(require,module,exports){
+},{}],51:[function(require,module,exports){
 var	$ = require('jquery'),
 	TagProcess = require('./js/tagprocess'),
 	Router = require('./js/router'),
@@ -34905,7 +34930,7 @@ if (signInAttempt !== false) {
 
 Router.initialize();
 
-},{"./js/modules/footer":21,"./js/modules/header":22,"./js/modules/navbar":35,"./js/router":42,"./js/tagprocess":43,"jquery":13}],51:[function(require,module,exports){
+},{"./js/modules/footer":21,"./js/modules/header":22,"./js/modules/navbar":35,"./js/router":43,"./js/tagprocess":44,"jquery":13}],52:[function(require,module,exports){
 var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
   this.compilerInfo = [4,'>= 1.0.0'];
 helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
@@ -34914,7 +34939,7 @@ helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
 
   return "<div id=\"about\" class=\"container-fluid\">\n    <div class=\"row\">\n        <div class=\"col-md-12\">\n            <h2>About us</h2>\n            <h3>We look Forward To The Opportunity To Impress You!</h3>\n            <p>TAG PROCESS  philosophy and the flexibility needed to meet the needs of our clients and partners requires us to continually pursue accuracy, speed, and responsiveness.<br/><br/>\n                Our clients are assured of the integrity of our service. Our managed network of Process Servers is experienced, highly skilled, trained, and licensed, ensuring legally defendable service of process time and again.<br/><br/>\n                We pride ourselves on the highest level of customer service and stride each day to remain one of the best process serving companies in the state of Florida. <br/><br/>\n                We have extensive experience in state-of-the-art networking, technology infrastructure and business growth strategies. We can design a step-by-step, cost-effective plan for you to achieve optimum ongoing productivity for your company.</p>\n        </div>\n    </div>\n</div>\n";
   });
-},{"handlebars/runtime":10}],52:[function(require,module,exports){
+},{"handlebars/runtime":10}],53:[function(require,module,exports){
 var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
   this.compilerInfo = [4,'>= 1.0.0'];
 helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
@@ -34923,7 +34948,7 @@ helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
 
   return "<div id=\"contact\" class=\"container-fluid\">\n    <div class=\"row\">\n        <div class=\"col-md-6\">\n            <h2 style=\"margin-top: 0px;\">Contact Us\n                <small> Send us an e-mail </small>\n            </h2>\n            <form class=\"form-horizontal\" method=\"post\" action=\"contactus.php\" role=\"form\">\n                <div class=\"form-group\">\n                    <label for=\"name\" class=\"col-sm-2 control-label\">Name:</label>\n                    <div class=\"col-sm-10\">\n                        <input class=\"form-control\" name=\"name\" id=\"name\" type=\"text\" placeholder=\"Name\" required/>\n                    </div>\n                </div>\n                <div class=\"form-group\">\n                    <label for=\"phone\" class=\"col-sm-2 control-label\">Phone #:</label>\n                    <div class=\"col-sm-10\">\n                        <input class=\"form-control\" name=\"phone\" id=\"phone\" type=\"tel\" placeholder=\"Eg. (410) 555-5555\" pattern=\"^(?:\\(\\d{3}\\)|\\d{3})[- ]?\\d{3}[- ]?\\d{4}$\"/>\n                    </div>\n                </div>\n                <div class=\"form-group\">\n                    <label for='email' class=\"col-sm-2 control-label\">E-mail:</label>\n                    <div class=\"col-sm-10\">\n                        <input name='email' id='email' type=\"email\" class=\"form-control\" placeholder=\"E-mail\" required/>\n                    </div>\n                </div>\n                <div class=\"form-group\">\n                    <label for='subject' class=\"col-sm-2 control-label\">Subject:</label>\n                    <div class=\"col-sm-10\">\n                        <input name='subject' id='subject' type='text' class=\"form-control\" placeholder=\"Subject\" required/>\n                    </div>\n                </div>\n                <div class=\"form-group\">\n                    <label for='message' class=\"col-sm-2 control-label\">Message:</label>\n                    <div class=\"col-sm-10\">\n                        <textarea name='message' id='message' class=\"form-control\" placeholder=\"Message\" required></textarea>\n                    </div>\n                </div>\n				<div class=\"alert alert-danger hide col-sm-offset-2 col-sm-10\"></div>\n                <div class=\"form-group\">\n                    <div class=\"col-sm-offset-2 col-sm-10\">\n                        <button type=\"submit\" class=\"btn btn-default btn-block\">\n                            Send <span class=\"glyphicon glyphicon-send\"></span>\n                        </button>\n                    </div>\n                </div>\n            </form>\n        </div>\n        <div class=\"col-md-6\">\n            <address>\n                  <strong>TagProcess, LLC.</strong><br>\n                  7128  NW 49TH ST.<br>\n                  LAUDERHILL, FL 33319<br>\n                  <abbr title=\"Phone\">P:</abbr> (561) 899-0777<br>\n                  <abbr title=\"Fax\">F:</abbr> (754) 200-4423\n            </address>\n            <address>\n                  <strong>Gary Tomlinson</strong><br>\n                  <a href=\"mailto:#\">INFO@TAGPROCESSLLC.com</a>\n            </address>\n        </div>\n    </div>\n</div>\n";
   });
-},{"handlebars/runtime":10}],53:[function(require,module,exports){
+},{"handlebars/runtime":10}],54:[function(require,module,exports){
 var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
   this.compilerInfo = [4,'>= 1.0.0'];
 helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
@@ -34932,7 +34957,7 @@ helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
 
   return "<div class=\"container\">\n	<div class=\"text-center\">\n	    Copyright 2012 Tag Process LLC. All rights reserved<br>\n		<address>\n            3500 N State Road 7 Suite 430, Lauderdale Lakes, FL 33319 Call (561)899.0777 Fax (754)200.4423\n        </address>\n	</div>\n</div>\n";
   });
-},{"handlebars/runtime":10}],54:[function(require,module,exports){
+},{"handlebars/runtime":10}],55:[function(require,module,exports){
 var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
   this.compilerInfo = [4,'>= 1.0.0'];
 helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
@@ -34941,7 +34966,7 @@ helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
 
   return "<div class=\"container-fluid\">\n	<div class=\"row\">\n		<div class=\"col-md-2 sidebar\"></div>\n		<div class=\"col-md-10\">\n			<form class=\"form-horizontal\" data-url=\"/tagproc/api/attorney\" id=\"attorneyForm\">\n				<div class=\"form-group\">\n					<label for=\"att_first\" class=\"col-sm-2 control-label\">First Name</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"att_first\" name=\"att_first\" placeholder=\"Attorney's First Name\" required>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"att_last\" class=\"col-sm-2 control-label\">Last Name</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"att_last\" name=\"att_last\" placeholder=\"Attorney's Last Name\" required>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"att_firm\" class=\"col-sm-2 control-label\">Firm</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"att_firm\" name=\"att_firm\" placeholder=\"Firm\">\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"att_bar\" class=\"col-sm-2 control-label\">Bar Number</label>\n					<div class=\"col-sm-10\">\n						<input type=\"tel\" class=\"form-control\" id=\"att_bar\" name=\"att_bar\" placeholder=\"Bar Number\">\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"att_phone\" class=\"col-sm-2 control-label\">Phone Number</label>\n					<div class=\"col-sm-10\">\n						<input type=\"tel\" class=\"form-control\" id=\"att_phone\" name=\"att_phone\" placeholder=\"Phone Number\">\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"att_address\" class=\"col-sm-2 control-label\">Address</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"att_address\" name=\"att_address\" placeholder=\"Attorney's Address\" required>\n					</div>\n				</div>\n				<div class=\"alert alert-danger hide col-sm-offset-2 col-sm-10\"></div>\n				<div class=\"form-group\">\n					<div class=\"col-sm-offset-2 col-sm-10\">\n						<button type=\"submit\" class=\"btn btn-default btn-block\">Submit</button>\n					</div>\n				</div>\n			</form>\n		</div>\n	</div>\n</div>\n";
   });
-},{"handlebars/runtime":10}],55:[function(require,module,exports){
+},{"handlebars/runtime":10}],56:[function(require,module,exports){
 var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
   this.compilerInfo = [4,'>= 1.0.0'];
 helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
@@ -34950,7 +34975,7 @@ helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
 
   return "<div class=\"container-fluid\">\n	<div class=\"row\">\n		<div class=\"col-md-2 sidebar\"></div>\n		<div class=\"col-md-10\">\n			<form class=\"form-horizontal\" data-url=\"/tagproc/api/case\" id=\"caseForm\" style=\"padding-bottom: 50px;\">\n			    <div class=\"form-group\">\n					<label for=\"account\" class=\"col-sm-2 control-label\">Account Responsible</label>\n					<div class=\"col-sm-10\">\n						<select class=\"form-control\" id=\"account\" name=\"account\" data-value=\"accountname\" data-label=\"accountname\" data-search=\"accountname\" data-url=\"/tagproc/api/accounts\" required>\n							<option value=\"\">Please select one...</option>\n						</select>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"server\" class=\"col-sm-2 control-label\">Server Assigned</label>\n					<div class=\"col-sm-10\">\n						<select class=\"form-control\" id=\"server\" name=\"server\" data-value=\"uniqueid\" data-label=\"firstname\" data-search=\"uniqueid,firstname,lastname,county\" data-url=\"/tagproc/api/servers\" required>\n							<option value=\"\">Please select one...</option>\n						</select>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"served_party\" class=\"col-sm-2 control-label\">Party to be served</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"served_party\" name=\"served_party\" placeholder=\"Served party\">\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"served_person\" class=\"col-sm-2 control-label\">Person to be served</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"served_person\" name=\"served_person\" placeholder=\"Served Person\">\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"date_received\" class=\"col-sm-2 control-label\">Received Date</label>\n					<div class=\"col-sm-10\">\n						<input type=\"date\" class=\"form-control\" id=\"date_received\" name=\"date_received\" placeholder=\"Date Received\">\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"time_received\" class=\"col-sm-2 control-label\">Received Time</label>\n					<div class=\"col-sm-10\">\n						<input type=\"time\" class=\"form-control\" id=\"time_received\" name=\"time_received\" placeholder=\"Time Received\">\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"served_documents\" class=\"col-sm-2 control-label\">Documents to be Served</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"served_documents\" name=\"served_documents\" placeholder=\"Served Documents\">\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"date_court\" class=\"col-sm-2 control-label\">Court Date/Time</label>\n					<div class=\"col-sm-10\">\n						<input type=\"datetime-local\" class=\"form-control\" id=\"date_court\" name=\"date_court\" placeholder=\"Court Date and Time\">\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"casenumber\" class=\"col-sm-2 control-label\">Case Number</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"casenumber\" name=\"casenumber\" placeholder=\"Case Number\">\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"judge\" class=\"col-sm-2 control-label\">Judge</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"judge\" name=\"judge\" placeholder=\"Judge\">\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"plaintiff\" class=\"col-sm-2 control-label\">Plaintiff</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"plaintiff\" name=\"plaintiff\" placeholder=\"Plaintiff\">\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"defendant\" class=\"col-sm-2 control-label\">Defendant</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"defendant\" name=\"defendant\" placeholder=\"Defendant\">\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"attorney\" class=\"col-sm-2 control-label\">Attorney</label>\n					<div class=\"col-sm-10\">\n						<select class=\"form-control\" id=\"attorney\" name=\"attorney\" data-value=\"attorney\" data-label=\"attorney\" data-search=\"attorney\" data-url=\"/tagproc/api/attorneys\" required>\n							<option value=\"\">Please select one...</option>\n						</select>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"state\" class=\"col-sm-2 control-label\">State</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"state\" name=\"state\" placeholder=\"State\">\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"county\" class=\"col-sm-2 control-label\">County</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"county\" name=\"county\" placeholder=\"County\">\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"courttype\" class=\"col-sm-2 control-label\">Type of Court</label>\n					<div class=\"col-sm-10\">\n						<select class=\"form-control\" id=\"courttype\" name=\"courttype\" data-value=\"value\" data-search=\"text\" data-label=\"text\" required>\n							<option value=\"\">Please select one...</option>\n							<option value=\"Circuit\">Circuit</option>\n							<option value=\"Family\">Family</option>\n							<option value=\"County\">County</option>\n							<option value=\"District\">District</option>\n						</select>\n					</div>\n				</div>\n				<h3>Invoice Details</h3>\n				<div class=\"form-group\">\n					<label for=\"amount\" class=\"col-sm-2 control-label\">Amount</label>\n					<div class=\"col-sm-10\">\n						<input type=\"number\" class=\"form-control\" id=\"amount\" name=\"amount\" placeholder=\"Amount\">\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"itemname\" class=\"col-sm-2 control-label\">Name</label>\n					<div class=\"col-sm-10\">\n						<select class=\"form-control\" id=\"itemname\" name=\"itemname\" data-value=\"value\" data-search=\"text\" data-label=\"text\">\n                            <option value=\"\">Please select one...</option>\n                            <option value=\"SUMMON\">SUMMON</option>\n                            <option value=\"SUBPOENA\">SUBPOENA</option>\n                            <option value=\"MANUAL INVOICE\">MANUAL INVOICE</option>\n                            <option value=\"COURIER\">COURIER</option>\n                            <option value=\"SKIP TRACE\">SKIP TRACE</option>\n                            <option value=\"STAKEOUT\">STAKEOUT</option>\n                            <option value=\"DEFAULT\">DEFAULT</option>\n						</select>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"itemdescription\" class=\"col-sm-2 control-label\">Description</label>\n					<div class=\"col-sm-10\">\n						<textarea class=\"form-control\" id=\"itemdescription\" name=\"itemdescription\" placeholder=\"Description\"></textarea>\n					</div>\n				</div>\n				<div class=\"alert alert-danger hide col-sm-offset-2 col-sm-10\"></div>\n				<div class=\"form-group\">\n					<div class=\"col-sm-offset-2 col-sm-10\">\n						<button type=\"submit\" class=\"btn btn-default btn-block\">Submit</button>\n					</div>\n				</div>\n			</form>\n		</div>\n	</div>\n</div>\n";
   });
-},{"handlebars/runtime":10}],56:[function(require,module,exports){
+},{"handlebars/runtime":10}],57:[function(require,module,exports){
 var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
   this.compilerInfo = [4,'>= 1.0.0'];
 helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
@@ -34959,7 +34984,7 @@ helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
 
   return "<div class=\"container-fluid\">\n	<div class=\"row\">\n		<div class=\"col-md-2 sidebar\"></div>\n		<div class=\"col-md-10\">\n			<form class=\"form-horizontal\" data-url=\"/tagproc/api/client\" id=\"clientForm\">\n				<div class=\"form-group\">\n					<label for=\"username\" class=\"col-sm-2 control-label\">Username</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"username\" name=\"username\" placeholder=\"Client Username\" required>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"password\" class=\"col-sm-2 control-label\">Password</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"password\" name=\"password\" placeholder=\"Client Password\" required>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"account\" class=\"col-sm-2 control-label\">Account Name</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"account\" name=\"account\" placeholder=\"Client's Account Name\" required>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"phone\" class=\"col-sm-2 control-label\">Phone</label>\n					<div class=\"col-sm-10\">\n						<input type=\"tel\" class=\"form-control\" id=\"phone\" name=\"phone\" placeholder=\"Client's Phone #\">\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"fax\" class=\"col-sm-2 control-label\">Fax</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"fax\" name=\"fax\" placeholder=\"Client's Fax #\">\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"email\" class=\"col-sm-2 control-label\">E-mail</label>\n					<div class=\"col-sm-10\">\n						<input type=\"email\" class=\"form-control\" id=\"email\" name=\"email\" placeholder=\"E-mail\">\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"address\" class=\"col-sm-2 control-label\">Address</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"address\" name=\"address\" placeholder=\"Client's Address\" required>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"city\" class=\"col-sm-2 control-label\">City</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"city\" name=\"city\" placeholder=\"City\" required>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"state\" class=\"col-sm-2 control-label\">State</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"state\" name=\"state\" placeholder=\"State\" required>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"zip\" class=\"col-sm-2 control-label\">Zip</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"zip\" name=\"zip\" placeholder=\"ZIP Code\" required>\n					</div>\n				</div>\n				<div class=\"alert alert-danger hide col-sm-offset-2 col-sm-10\"></div>\n				<div class=\"form-group\">\n					<div class=\"col-sm-offset-2 col-sm-10\">\n						<button type=\"submit\" class=\"btn btn-default btn-block\">Submit</button>\n					</div>\n				</div>\n			</form>\n		</div>\n	</div>\n</div>\n";
   });
-},{"handlebars/runtime":10}],57:[function(require,module,exports){
+},{"handlebars/runtime":10}],58:[function(require,module,exports){
 var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
   this.compilerInfo = [4,'>= 1.0.0'];
 helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
@@ -34968,7 +34993,7 @@ helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
 
   return "<form class=\"form-horizontal\" id=\"commentForm\">\n    <div class=\"form-group\">\n        <label for=\"comment\" class=\"col-md-2 control-label\">Comment</label>\n        <div class=\"col-md-10\">\n            <textarea id=\"comment\" name=\"comment\" class=\"form-control\" required></textarea>\n        </div>\n    </div>\n    <div class=\"alert alert-danger hide col-sm-offset-2 col-sm-10\"></div>\n    <div class=\"form-group\">\n        <div class=\"col-sm-offset-2 col-sm-10\">\n            <button type=\"submit\" class=\"btn btn-primary\">Submit</button>\n        </div>\n    </div>\n</form>\n";
   });
-},{"handlebars/runtime":10}],58:[function(require,module,exports){
+},{"handlebars/runtime":10}],59:[function(require,module,exports){
 var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
   this.compilerInfo = [4,'>= 1.0.0'];
 helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
@@ -34994,7 +35019,7 @@ helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
     + "</textarea>\n        </div>\n    </div>\n	<div class=\"alert alert-danger hide col-sm-offset-2 col-sm-10\"></div>\n    <div class=\"form-group\">\n        <div class=\"col-sm-offset-2 col-sm-10\">\n            <button type=\"submit\" class=\"btn btn-primary\">Submit</button>\n        </div>\n    </div>\n</form>\n";
   return buffer;
   });
-},{"handlebars/runtime":10}],59:[function(require,module,exports){
+},{"handlebars/runtime":10}],60:[function(require,module,exports){
 var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
   this.compilerInfo = [4,'>= 1.0.0'];
 helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
@@ -35003,7 +35028,7 @@ helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
 
   return "<div class=\"container-fluid\">\n	<div class=\"row\">\n		<div class=\"col-md-2 sidebar\"></div>\n		<div class=\"col-md-10\">\n			<form class=\"form-horizontal\" data-url=\"/tagproc/api/employee\" id=\"employeeForm\">\n				<div class=\"form-group\">\n					<label for=\"username\" class=\"col-sm-2 control-label\">Username</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"username\" name=\"username\" placeholder=\"Username\" required>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"password\" class=\"col-sm-2 control-label\">Password</label>\n					<div class=\"col-sm-10\">\n						<input type=\"password\" class=\"form-control\" id=\"password\" name=\"password\" placeholder=\"Password\" required>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"account\" class=\"col-sm-2 control-label\">Employee Name</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"account\" name=\"account\" placeholder=\"Employee's Name\" required>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"phone\" class=\"col-sm-2 control-label\">Phone #</label>\n					<div class=\"col-sm-10\">\n						<input type=\"tel\" class=\"form-control\" id=\"phone\" name=\"phone\" placeholder=\"Phone #\">\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"fax\" class=\"col-sm-2 control-label\">Fax #</label>\n					<div class=\"col-sm-10\">\n						<input type=\"tel\" class=\"form-control\" id=\"fax\" name=\"fax\" placeholder=\"Fax #\">\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"email\" class=\"col-sm-2 control-label\">E-mail</label>\n					<div class=\"col-sm-10\">\n						<input type=\"email\" class=\"form-control\" id=\"email\" name=\"email\" placeholder=\"E-mail\" required>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"address\" class=\"col-sm-2 control-label\">Address</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"address\" name=\"address\" placeholder=\"Employee's Address\" required>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"city\" class=\"col-sm-2 control-label\">City</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"city\" name=\"city\" placeholder=\"City\" required>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"state\" class=\"col-sm-2 control-label\">State</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"state\" name=\"state\" placeholder=\"State\" required>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"zip\" class=\"col-sm-2 control-label\">Zip</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"zip\" name=\"zip\" placeholder=\"Zip\" required>\n					</div>\n				</div>\n				<div class=\"alert alert-danger hide col-sm-offset-2 col-sm-10\"></div>\n				<div class=\"form-group\">\n					<div class=\"col-sm-offset-2 col-sm-10\">\n						<button type=\"submit\" class=\"btn btn-default btn-block\">Submit</button>\n					</div>\n				</div>\n			</form>\n		</div>\n	</div>\n</div>\n";
   });
-},{"handlebars/runtime":10}],60:[function(require,module,exports){
+},{"handlebars/runtime":10}],61:[function(require,module,exports){
 var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
   this.compilerInfo = [4,'>= 1.0.0'];
 helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
@@ -35066,7 +35091,7 @@ function program5(depth0,data) {
     + "\">\n			<div class=\"alert alert-danger hide col-sm-offset-2 col-sm-10\"></div>\n			<div class=\"form-group\">\n				<div class=\"col-sm-offset-2 col-sm-10\">\n					<button type=\"submit\" class=\"btn btn-primary\">Generate</button>\n				</div>\n			</div>\n		</form>\n	</div>\n</div>\n";
   return buffer;
   });
-},{"handlebars/runtime":10}],61:[function(require,module,exports){
+},{"handlebars/runtime":10}],62:[function(require,module,exports){
 var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
   this.compilerInfo = [4,'>= 1.0.0'];
 helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
@@ -35105,7 +35130,7 @@ function program1(depth0,data) {
     + "\">\n            <button type=\"submit\" class=\"btn btn-primary\">Generate</button>\n        </div>\n    </div>\n</form>\n";
   return buffer;
   });
-},{"handlebars/runtime":10}],62:[function(require,module,exports){
+},{"handlebars/runtime":10}],63:[function(require,module,exports){
 var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
   this.compilerInfo = [4,'>= 1.0.0'];
 helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
@@ -35114,7 +35139,7 @@ helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
 
   return "<div class=\"container-fluid\">\n	<div class=\"row\">\n		<div class=\"col-md-2 sidebar\"></div>\n		<div class=\"col-md-10\">\n			<form class=\"form-horizontal\" data-url=\"/tagproc/api/server\" id=\"serverForm\">\n				<div class=\"form-group\">\n					<label for=\"firstname\" class=\"col-sm-2 control-label\">First Name</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"firstname\" name=\"firstname\" placeholder=\"Server First Name\" required>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"lastname\" class=\"col-sm-2 control-label\">Last Name</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"lastname\" name=\"lastname\" placeholder=\"Server Last Name\" required>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"type\" class=\"col-sm-2 control-label\">Server Type</label>\n					<div class=\"col-sm-10\">\n						<select type=\"text\" class=\"form-control\" id=\"type\" name=\"type\" data-value=\"value\" data-label=\"text\" data-search=\"text\" required>\n							<option value=\"\">Please select one...</option>\n							<option value=\"Certified Process Server\">Certified Process Server</option>\n							<option value=\"Special Process Server\">Special Process Server</option>\n							<option value=\"Court Officer\">Court Officer</option>\n						</select>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"uniqueid\" class=\"col-sm-2 control-label\">Server ID #</label>\n					<div class=\"col-sm-10\">\n						<input type=\"tel\" class=\"form-control\" id=\"uniqueid\" name=\"uniqueid\" placeholder=\"Server's ID #\" required>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"county\" class=\"col-sm-2 control-label\">County</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"county\" name=\"county\" placeholder=\"County\">\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"phone\" class=\"col-sm-2 control-label\">Phone #</label>\n					<div class=\"col-sm-10\">\n						<input type=\"tel\" class=\"form-control\" id=\"phone\" name=\"phone\" placeholder=\"Phone #\">\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<label for=\"address\" class=\"col-sm-2 control-label\">Address</label>\n					<div class=\"col-sm-10\">\n						<input type=\"text\" class=\"form-control\" id=\"address\" name=\"address\" placeholder=\"Server's Address\" required>\n					</div>\n				</div>\n				<div class=\"alert alert-danger hide col-sm-offset-2 col-sm-10\"></div>\n				<div class=\"form-group\">\n					<div class=\"col-sm-offset-2 col-sm-10\">\n						<button type=\"submit\" class=\"btn btn-default btn-block\">Submit</button>\n					</div>\n				</div>\n			</form>\n		</div>\n	</div>\n</div>\n";
   });
-},{"handlebars/runtime":10}],63:[function(require,module,exports){
+},{"handlebars/runtime":10}],64:[function(require,module,exports){
 var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
   this.compilerInfo = [4,'>= 1.0.0'];
 helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
@@ -35123,7 +35148,7 @@ helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
 
   return "<form class=\"form-horizontal\" method=\"POST\"  action=\"/tagproc/serverreport.php\" target=\"_blank\" id=\"serverReportForm\">\n    <div class=\"form-group\">\n        <label for=\"serverid\" class=\"col-md-2 control-label\">Server</label>\n        <div class=\"col-md-10\">\n            <select id=\"serverid\" name=\"serverid\" class=\"form-control\" data-value=\"uniqueid\" data-label=\"firstname\" data-search=\"uniqueid,firstname,lastname,county\" data-url=\"/tagproc/api/servers\" required>\n				<option value=\"\">Please select one...</option>\n			</select>\n        </div>\n    </div>\n    <div class=\"form-group\">\n        <label for=\"time\" class=\"col-md-2 control-label\">Server</label>\n        <div class=\"col-md-10\">\n            <select id=\"time\" name=\"time\" class=\"form-control\" data-value=\"value\" data-search=\"text\" data-label=\"text\" required>\n				<option value=\"\">Please select one...</option>\n				<option value=\"current\">Current</option>\n				<option value=\"past_thirty\">Past 30</option>\n				<option value=\"past_sixty\">Past 60</option>\n				<option value=\"custom\">Custom</option>\n			</select>\n        </div>\n    </div>\n    <div class=\"form-group\">\n        <div class=\"col-sm-offset-2 col-sm-10\">\n            <button type=\"submit\" class=\"btn btn-primary\">Generate</button>\n        </div>\n    </div>\n</form>\n";
   });
-},{"handlebars/runtime":10}],64:[function(require,module,exports){
+},{"handlebars/runtime":10}],65:[function(require,module,exports){
 var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
   this.compilerInfo = [4,'>= 1.0.0'];
 helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
@@ -35132,7 +35157,7 @@ helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
 
   return "<form class=\"form-horizontal\" id=\"serviceForm\">\n    <div class=\"form-group\">\n        <label for=\"comment\" class=\"col-md-2 control-label\">Date & Time</label>\n        <div class=\"col-md-10\">\n            <input type=\"datetime-local\" id=\"servicedate\" name=\"servicedate\" class=\"form-control\" required>\n        </div>\n    </div>\n    <div class=\"form-group\">\n        <label for=\"comment\" class=\"col-md-2 control-label\">Type of Service</label>\n        <div class=\"col-md-10\">\n            <select id=\"method\" name=\"method\" class=\"form-control\" required>\n                <option value=\"Corporate\">Corporate</option>\n				<option value=\"Corp-registered agent\">Corp-registered agent</option>\n				<option value=\"Individual/Personal\">Individual/Personal</option>\n				<option value=\"Non-serve comments\">Non-serve comments</option>\n				<option value=\"Non-serve unknown\">Non-serve unknown</option>\n				<option value=\"Non-serve diligent\">Non-serve diligent</option>\n				<option value=\"Posted commercial 2 attempts\">Posted commercial 2 attempts</option>\n				<option value=\"Posted residential 2 attemps\">Posted residential 2 attemps</option>\n				<option value=\"Secretary of state\">Secretary of state</option>\n				<option value=\"Substitute residential\">Substitute residential</option>\n				<option value=\"Substitute spouse\">Substitute spouse</option>\n				<option value=\"(Substitute)\">(Substitute)</option>\n				<option value=\"Authorized\">Authorized</option>\n            </select>\n        </div>\n    </div>\n    <div class=\"form-group\">\n        <label for=\"comment\" class=\"col-md-2 control-label\">Detailed Service Info</label>\n        <div class=\"col-md-10\">\n            <textarea id=\"detailedinfo\" name=\"detailedinfo\" class=\"form-control\" required></textarea>\n        </div>\n    </div>\n    <div class=\"form-group\">\n        <label for=\"comment\" class=\"col-md-2 control-label\">Service Address</label>\n        <div class=\"col-md-10\">\n            <input type=\"text\" id=\"serviceaddress\" name=\"serviceaddress\" class=\"form-control\" required>\n        </div>\n    </div>\n    <div class=\"alert alert-danger hide col-sm-offset-2 col-sm-10\"></div>\n    <div class=\"form-group\">\n        <div class=\"col-sm-offset-2 col-sm-10\">\n            <button type=\"submit\" class=\"btn btn-primary\">Submit</button>\n        </div>\n    </div>\n</form>";
   });
-},{"handlebars/runtime":10}],65:[function(require,module,exports){
+},{"handlebars/runtime":10}],66:[function(require,module,exports){
 var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
   this.compilerInfo = [4,'>= 1.0.0'];
 helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
@@ -35141,7 +35166,7 @@ helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
 
   return "<form enctype=\"multipart/form-data\" class=\"form-horizontal\" id=\"uploaderForm\">\n    <div class=\"form-group\">\n        <label for=\"file\" class=\"col-md-2 control-label\">Choose file</label>\n        <div class=\"col-md-10\">\n            <input type=\"file\" id=\"file\" name=\"file\" class=\"form-control\" required>\n        </div>\n    </div>\n	<div class=\"form-group\">\n		<label for=\"type\" class=\"col-md-2 control-label\">Document Type</label>\n		<div class=\"col-md-10\">\n			<select name=\"type\" id=\"type\" class=\"form-control\" required>\n				<option value=\"\">Select one...</option>\n				<option value=\"doc\">Documents</option>\n				<option value=\"ros\">Return of Service</option>\n				<option value=\"completejob\">Complete Job</option>\n				<option value=\"courtreceipt\">Court Receipts</option>\n			</select>\n		</div>\n	</div>\n    <div class=\"alert alert-danger hide col-sm-offset-2 col-sm-10\"></div>\n    <div class=\"form-group\">\n        <div class=\"col-sm-offset-2 col-sm-10\">\n            <button type=\"submit\" class=\"btn btn-primary\">Submit</button>\n        </div>\n    </div>\n</form>\n";
   });
-},{"handlebars/runtime":10}],66:[function(require,module,exports){
+},{"handlebars/runtime":10}],67:[function(require,module,exports){
 var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
   this.compilerInfo = [4,'>= 1.0.0'];
 helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
@@ -35150,7 +35175,7 @@ helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
 
   return "<div class=\"container-fluid\" style=\"position: relative\">\n    <img class=\"img-responsive\"  src=\"app/images/tag_logo.jpg\"/>\n    <p class=\"text-right col-md-8\" style=\"position: absolute; bottom: 0; right: 0; margin-bottom: 0px;\">\n        <small id=\"login-message\">You're currently not logged in.</small>\n    </p>\n</div>\n";
   });
-},{"handlebars/runtime":10}],67:[function(require,module,exports){
+},{"handlebars/runtime":10}],68:[function(require,module,exports){
 var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
   this.compilerInfo = [4,'>= 1.0.0'];
 helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
@@ -35159,7 +35184,7 @@ helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
 
   return "<div class=\"container-fluid\">\n	<div class=\"row\">\n		<div class=\"col-md-6 col-xs-12\">\n			<img class=\"img-rounded img-responsive pull-left col-md-6 col-xs-12\" src=\"app/images/header_img1.jpg\">\n			<h3 style=\"margin-top: 0px;\" class=\"col-md-6 text-left\">We have over 11 years of experience in the process serving.</h3>\n		</div>\n		<div class=\"col-md-6 col-xs-12\">\n			<h3 style=\"margin-top: 0px;\">Changing the way of process serving</h3>                                                                                                                                                                                            \n			<h3>GREAT CUSTOMER SERVICE</h3>                                                                                                                                                                                                         \n			<p class=\"text-info\">With over 11 years of experience, TAG Process Service llc<br>                                                                                                                                                       \n				We specialize in serving all documents. Through our technology <br>\n				Which establish us as the leader in the process industry.</p>                                                                                                                                                                                                                                      \n		</div>\n	</div>\n	<hr>\n	<div class=\"row\">\n		<div class=\"col-md-6 col-xs-12\">\n			<img class=\"img-rounded img-responsive pull-left col-md-6 col-xs-12\" src=\"app/images/technology.png\">\n			<h3 style=\"margin-top: 0px;\" class=\"col-md-6 text-left\">We are the leaders in Technology in the Process Serving Industry.</h3>\n		</div>  \n		<div class=\"col-md-6 col-xs-12\">\n			<img class=\"img-rounded img-response pull-right\" src=\"app/images/ts_logo.jpg\">\n			<h3 style=\"margin-top: 0px;\">We are looking forward to working with you.</h3>\n			<p class=\"text-info\">For more information on our technology click <a href=\"#aboutus\">About Us</a> </p>\n			<p class=\"text-info\">Here is a complete company directory <br>\n				Or contact us via email by completing the <br>\n				<a href=\"#contactus\">contact us</a> form. </p>\n		</div>\n	</div>\n</div>\n";
   });
-},{"handlebars/runtime":10}],68:[function(require,module,exports){
+},{"handlebars/runtime":10}],69:[function(require,module,exports){
 var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
   this.compilerInfo = [4,'>= 1.0.0'];
 helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
@@ -35260,7 +35285,7 @@ function program11(depth0,data) {
   buffer += "\n			</div>\n        </div>\n    </div>\n</div>\n<div id=\"modalWrapper\"></div>\n";
   return buffer;
   });
-},{"handlebars/runtime":10}],69:[function(require,module,exports){
+},{"handlebars/runtime":10}],70:[function(require,module,exports){
 var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
   this.compilerInfo = [4,'>= 1.0.0'];
 helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
@@ -35360,7 +35385,7 @@ function program11(depth0,data) {
   buffer += "\n";
   return buffer;
   });
-},{"handlebars/runtime":10}],70:[function(require,module,exports){
+},{"handlebars/runtime":10}],71:[function(require,module,exports){
 var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
   this.compilerInfo = [4,'>= 1.0.0'];
 helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
@@ -35369,7 +35394,7 @@ helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
 
   return "<div id=\"loginbox\" class=\"col-md-6 col-md-offset-3 col-sm-8 col-sm-offset-2\">\n	<div class=\"panel panel-info\" >\n		<div class=\"panel-heading\">\n			<div class=\"panel-title\">Sign In</div>\n		</div>\n		<div class=\"panel-body\">\n			<div id=\"login-alert\" class=\"alert alert-danger hide col-sm-12\"></div>\n			<form id=\"loginform\" class=\"form-horizontal\" role=\"form\">\n				<div class=\"form-group\">\n					<div class=\"col-md-12\">\n						<div class=\"input-group\">\n							<span class=\"input-group-addon\"><i class=\"glyphicon glyphicon-user\"></i></span>\n							<input id=\"username\" type=\"text\" class=\"form-control\" name=\"username\" value=\"\" placeholder=\"username\" required>                                   \n						</div>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<div class=\"col-md-12\">\n						<div class=\"input-group\">\n							<span class=\"input-group-addon\"><i class=\"glyphicon glyphicon-lock\"></i></span>\n							<input id=\"password\" type=\"password\" class=\"form-control\" name=\"password\" placeholder=\"password\" required>\n						</div>\n					</div>\n				</div>\n				<div class=\"form-group\">\n					<div class=\"col-sm-12 controls\">\n						<button id=\"btn-login\" class=\"btn btn-default btn-block\" type=\"submit\">Login  </a>\n					</div>\n				</div>\n			</form> \n		</div>                     \n	</div>  \n</div>\n";
   });
-},{"handlebars/runtime":10}],71:[function(require,module,exports){
+},{"handlebars/runtime":10}],72:[function(require,module,exports){
 var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
   this.compilerInfo = [4,'>= 1.0.0'];
 helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
@@ -35395,7 +35420,7 @@ helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
     + "</div>\n	</div>\n</div>\n";
   return buffer;
   });
-},{"handlebars/runtime":10}],72:[function(require,module,exports){
+},{"handlebars/runtime":10}],73:[function(require,module,exports){
 var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
   this.compilerInfo = [4,'>= 1.0.0'];
 helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
@@ -35508,7 +35533,7 @@ function program4(depth0,data) {
   buffer += "\n</div>\n\n";
   return buffer;
   });
-},{"handlebars/runtime":10}],73:[function(require,module,exports){
+},{"handlebars/runtime":10}],74:[function(require,module,exports){
 var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
   this.compilerInfo = [4,'>= 1.0.0'];
 helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
@@ -35543,7 +35568,7 @@ function program1(depth0,data) {
   buffer += "\n				</tbody>\n			</table>\n		</div>	\n	</div>\n</div>\n";
   return buffer;
   });
-},{"handlebars/runtime":10}],74:[function(require,module,exports){
+},{"handlebars/runtime":10}],75:[function(require,module,exports){
 var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
   this.compilerInfo = [4,'>= 1.0.0'];
 helpers = this.merge(helpers, Handlebars.helpers); partials = this.merge(partials, Handlebars.partials); data = data || {};
@@ -35556,7 +35581,7 @@ helpers = this.merge(helpers, Handlebars.helpers); partials = this.merge(partial
   buffer += "\n					</ul>\n				</li>\n			</ul>\n		</div>\n	</div>\n</nav>\n";
   return buffer;
   });
-},{"handlebars/runtime":10}],75:[function(require,module,exports){
+},{"handlebars/runtime":10}],76:[function(require,module,exports){
 var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
   this.compilerInfo = [4,'>= 1.0.0'];
 helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
@@ -35574,7 +35599,7 @@ helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
     + "</a>";
   return buffer;
   });
-},{"handlebars/runtime":10}],76:[function(require,module,exports){
+},{"handlebars/runtime":10}],77:[function(require,module,exports){
 var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
   this.compilerInfo = [4,'>= 1.0.0'];
 helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
@@ -35583,7 +35608,24 @@ helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
 
   return "<div id=\"services\" class=\"container-fluid\">\n        <div class=\"row\">\n            <div class=\"col-md-8\">\n                <h2>TAG PROCESS SERVICES LLC</h2>\n                <p>Our competitors may offer numerous services, both related and unrelated to the service of process, TAG PROCESS flat rate pricing include many of the services you currently pay extra for with other process serving companies.</p>\n                <h2>Our Price Includes:</h2>\n                <ul>\n                    <li>Picking up documents at your office</li>\n                    <li>Issuing documents at respective courts</li>\n                    <li>Effecting service</li>\n                    <li>Skip trace bad addresses*</li>\n                    <li>File return of service with respective court</li>\n                </ul>\n            </div>\n            <div class=\"col-md-4 text-right\">\n                <img class=\"img-rounded img-responsive pull-left col-md-7 col-xs-12\" src=\"app/images/android.jpg\" style=\"height: 160px;\"></img>\n                <p class=\"text-info col-md-5 col-xs-12 text-left\">The technology we have is designed to save our clients time and money. <a href=\"#contactus\">Contact us</a> for more information and your 1st two jobs are FREE.</p>\n            </div>\n        </div>\n        <h2>In Addition, Our Clients Enjoy:</h2>\n        <h3>THE MOST COMPREHENSIVE WEBSITE</h3>\n        <p>Featuring real-time information on every paper</p>\n        <h3>PHOTOGRAPHIC, GPS COORDINATES, DATE AND TIME STAMPED EVIDENCE</h3>\n        <p>Every attempt and serves available for viewing and printing at all times.</p>\n        <h3>UNIFIED CALENDAR</h3>\n        <p>See and print your pretrial/deposition calendar for any range of dates you select or export the entire calendar along with case and court information needed to manage appearances and outside counsel.</p>\n        <h3>SKIP TRACING</h3>\n        <p>By using our exclusive skip trace queue, clients can give feedback on any paper that's in our system requiring a skip trace. Also have full control of number of skips attempts and allowed on address before \"Non- Serving.\"</p>\n        <h3>VIEW AND PRINT AFFIDAVIT OF SERVICE</h3>\n        <p>Copies of affidavits always available for download.</p>\n        <h3>SEARCH AND REPORT</h3>\n        <p>Search and reports feature allows our clients to search our database. Which allows our clients to give feed back on specific report with the requested information in the format you select.</p>\n        <h3>DOWNLOAD CENTER</h3>\n        <p>Our daily reports are delivered in the format needed, which allows our clients to view and manage their files. Which can then be imported into your collection software allowing you to update your files instantly.</p>\n        <h3>INSTANT COMMUNICATION</h3>\n        <p>By Sending an instant message directly to the desktop of your account manager for immediate action.</p>\n        <h3>EASY FILE ACCESS</h3>\n        <p>View cases and court information on current files</p>\n</div>\n";
   });
-},{"handlebars/runtime":10}],77:[function(require,module,exports){
+},{"handlebars/runtime":10}],78:[function(require,module,exports){
+var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
+  this.compilerInfo = [4,'>= 1.0.0'];
+helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
+  var buffer = "", stack1, self=this;
+
+function program1(depth0,data) {
+  
+  
+  return "\nPlaceholder to disable client login\n";
+  }
+
+  stack1 = helpers['if'].call(depth0, (depth0 && depth0.admin), {hash:{},inverse:self.noop,fn:self.program(1, program1, data),data:data});
+  if(stack1 || stack1 === 0) { buffer += stack1; }
+  buffer += "\nPlaceholder for user settings\n";
+  return buffer;
+  });
+},{"handlebars/runtime":10}],79:[function(require,module,exports){
 var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
   this.compilerInfo = [4,'>= 1.0.0'];
 helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
@@ -35641,7 +35683,7 @@ function program5(depth0,data) {
   buffer += "\n</ul>\n<div id=\"sidebarWrapper\"></div>\n";
   return buffer;
   });
-},{"handlebars/runtime":10}],78:[function(require,module,exports){
+},{"handlebars/runtime":10}],80:[function(require,module,exports){
 var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
   this.compilerInfo = [4,'>= 1.0.0'];
 helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
@@ -35683,7 +35725,7 @@ function program4(depth0,data) {
   buffer += "\n						</tbody>\n					</table>\n				</div>\n			</div>\n		</div>\n	</div>\n</div>\n	\n";
   return buffer;
   });
-},{"handlebars/runtime":10}],79:[function(require,module,exports){
+},{"handlebars/runtime":10}],81:[function(require,module,exports){
 var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
   this.compilerInfo = [4,'>= 1.0.0'];
 helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
@@ -35692,7 +35734,7 @@ helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
 
   return "<div id=\"about\" class=\"container-fluid\">\n    <div class=\"row\">\n        <div class=\"col-md-6\">\n            <h2>Technology</h2>\n            <h3>Now available on Android and iPhone!</h3>\n            <h4>TAG Serve makes Tag Process number 1 in the country</h4>\n            <p>Can your process serving company show you proof of service using a time-stamped picture? Or do you have to call them and wait for them to give you a response on what the status is? With our new software Tag Serve, clients will no longer have to wait on status since it's updated real-time and you have 24 hour access!</p>\n        </div>\n        <div class=\"col-md-6\">\n            <img class=\"img-rounded img-responsive\" src=\"app/images/network.jpg\"></img>\n        </div>\n    </div>\n</div>";
   });
-},{"handlebars/runtime":10}],80:[function(require,module,exports){
+},{"handlebars/runtime":10}],82:[function(require,module,exports){
 var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
   this.compilerInfo = [4,'>= 1.0.0'];
 helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
@@ -35709,4 +35751,4 @@ function program1(depth0,data) {
   buffer += "\n<li>\n	<a href=\"#\" id=\"logout\"><span class=\"glyphicon glyphicon-log-out\"></span> Log Out...</a>\n</li>\n\n";
   return buffer;
   });
-},{"handlebars/runtime":10}]},{},[50])
+},{"handlebars/runtime":10}]},{},[51])
