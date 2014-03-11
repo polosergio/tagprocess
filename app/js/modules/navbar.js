@@ -5,7 +5,8 @@ var $ = jQuery = require('jquery'),
 	NavBarTemplate = require('../../templates/navbar.hbs'),
 	UserDropdown = require('../../templates/userDropdown.hbs'),
     Handlebars = require('handlebars/runtime').default,
-    NavButton = require('./navbutton');
+    NavButton = require('./navbutton'),
+	SettingsModal = require('./modals/settings');
 
 require('../../libs/bootstrap/bootstrap.js');
 Handlebars.registerPartial('userDropdown', UserDropdown);
@@ -20,12 +21,14 @@ module.exports = {
         template: NavBarTemplate,
 		initialize: function () {
             this.collection = new module.exports.Collection(TagProcess.locations);
+			this.settings = new SettingsModal();
             this.listenTo(TagProcess.vent, 'domchange:page', this.setActive);
 			this.listenTo(TagProcess.vent, 'signInSuccess', this.toggleUserDropdown);
 			this.listenTo(TagProcess.vent, 'signOutSuccess', this.toggleUserDropdown);
 		},
 		events: {
-			'click #logout': 'logout'
+			'click #logout'		: 'logout',
+			'click #settings'	: 'showSettings'
 		},
 		render: function () {
             var that = this,
@@ -59,7 +62,7 @@ module.exports = {
 		},
 		refreshUserDropdown: function () {
 			var payload = {
-				admin: TagProcess.Auth.user.hasPermission('admin')
+				admin: TagProcess.Auth.user ? TagProcess.Auth.user.hasPermission('admin') : false
 			};
 			this.$('#user-dropdown ul').empty().append(UserDropdown(payload));
 			return this;
@@ -67,6 +70,10 @@ module.exports = {
 		logout: function () {
 			TagProcess.Auth.signOut();
 			TagProcess.Auth.updateSignInMessage('You\'re currently not logged in');
+		},
+		showSettings: function (event) {
+			event.preventDefault();
+			this.$('#settingsWrapper').append(this.settings.open().$el);
 		}
 	})
 };

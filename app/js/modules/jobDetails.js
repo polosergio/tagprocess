@@ -11,7 +11,8 @@ var _ = require('underscore'),
 	UploaderModal = require('./modals/uploader'),
 	EmailModal = require('./modals/email'),
 	RosModal = require('./modals/returnOfService'),
-	InvoiceModal = require('./modals/invoices');
+	InvoiceModal = require('./modals/invoices'),
+	TagProcess = require('../tagprocess');
 
 module.exports = (function () {
     'use strict';
@@ -94,6 +95,7 @@ module.exports = (function () {
                 var data = this.model.toJSON(),
                     payload = {
                         job: _.omit(helpers.parseEditable(data), 'attachments'),
+						admin: TagProcess.Auth.user.hasPermission('admin'),
 						attachments: data.attachments || []
                     };
                 this.$el.empty().append(this.template(payload));

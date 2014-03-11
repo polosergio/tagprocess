@@ -23,7 +23,8 @@ module.exports = (function () {
 			},
 			render: function () {
 				var payload = {
-					locations: this.collection.toJSON()
+					locations: this.collection.toJSON(),
+					admin: TagProcess.Auth.user.hasPermission('admin')
 				}
 				this.$el.empty().append(this.template(payload));
 				return this;

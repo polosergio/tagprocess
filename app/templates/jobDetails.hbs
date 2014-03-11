@@ -4,6 +4,7 @@
 			<ul class="nav nav-stacked nav-pills">
 				<li><a href="#" id="viewDetails"		class="openModal" data-modal="details">Serve Details</a></li>
 				<li><a href="#" id="showInvoices"		class="openModal" data-modal="invoices">Invoices</a></li>
+				{{#if admin}}
 				<li><a href="#" id="addComment"			class="openModal" data-modal="comment">Add Comment</a></li>
 				<li><a href="#" id="serviceForm"		class="openModal" data-modal="service">Add Service</a></li>
 				<li><a href="#" id="uploaderForm"		class="openModal" data-modal="uploader">Upload Document</a></li>
@@ -17,6 +18,7 @@
 						<li><a href="/tagproc/fieldsheet.php?jobnumber={{ job.jobnumber.value }}&fieldsheet=PRIORITY" target="_blank">Priority</a></li>
 					</ul>
 				</li>
+				{{/if}}
 			</ul>
 		</div>
         <div class="col-md-10">
@@ -44,7 +46,9 @@
 									</button>
 								</form>
 								{{#if this.editable}}
-									<a href="#" class="edit col-md-2 col-xs-2 text-right"><span class="glyphicon glyphicon-pencil" style="color: goldenrod;"></span></a>
+									{{#if ../../admin}}
+										<a href="#" class="edit col-md-2 col-xs-2 text-right"><span class="glyphicon glyphicon-pencil" style="color: goldenrod;"></span></a>
+									{{/if}}
 								{{/if}}
 							</td>
 						</tr>
