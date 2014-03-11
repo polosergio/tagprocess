@@ -1,9 +1,26 @@
-<dl>
-	<dt>Name</dt><dd>User</dd>
-	<dt>Account</dt><dd>TEST</dd>
-</dl>
+<div class="table-responsive">
+<table class="table table-bordered table-condensed table-hover table-striped">
+	<tbody>
+		<tr>
+			<th>Name</th><td>{{user.name}}</td>
+		</tr>
+		<tr>
+			<th>Account</th><td>{{user.account}}</td>
+		</tr>
+		{{#if admin}}
+		<tr>
+			<th>Disable Login</th>
+			<td><button class="btn btn-default" id="disableLogin">Disable</button></td>
+		</tr>
+		<tr>
+			<td></td>
+			<td>
+				<div id="message" class="alert alert-info hide"></div>
+			</td>
+		</tr>
+		{{/if}}
+	</tbody>
+</table>
+</div>
 
 
-{{#if admin}}
-Placeholder to disable client login
-{{/if}}

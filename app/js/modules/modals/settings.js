@@ -11,8 +11,12 @@ module.exports = (function () {
 			initialize: function () {
 				this.modal = new Modal({size: ''});
 			},
+			events: {
+				'click #disableLogin': 'disableLogin'
+			},
 			render: function () {
 				var payload = {
+					user: TagProcess.Auth.user.toJSON(),
 					admin: TagProcess.Auth.user.hasPermission('admin')
 				};
 				this.modal.render()
@@ -23,6 +27,17 @@ module.exports = (function () {
 			},
 			open: function () {
 				this.render().modal.open();
+				return this;
+			},
+			disableLogin: function () {
+				var $message = this.$('#message');
+				$.ajax({
+					url: '/tagproc/api/disable/',
+					type: 'POST',
+					success: function (response) {
+						$message.empty().removeClass('hide').append(response.message);
+					}
+				});
 				return this;
 			}
 		});

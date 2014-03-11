@@ -12,6 +12,9 @@ module.exports = (function () {
 			initialize: function () {
 				this.modal = new Modal({size: ''});
 			},
+			events: {
+				'change #time': 'showCustomDate'
+			},
 			render: function () {
 				this.modal.render()
 					.setHeaderHTML('<h4>Generate Server Report</h4>')
@@ -22,6 +25,17 @@ module.exports = (function () {
 			open: function () {
 				this.render().modal.open();
                 Helpers.initSelectizeInputs(this);
+				return this;
+			},
+			showCustomDate: function (event) {
+				var $target = $(event.currentTarget),
+					 value = $target.val(),
+					 $date = this.$('input[name=custom]');
+				if (value === 'custom') {
+					$date.parents('.form-group').removeClass('hide');
+				} else {
+					$date.parents('.form-group').addClass('hide');
+				}
 				return this;
 			}
 		});

@@ -28732,6 +28732,9 @@ module.exports = (function () {
 			initialize: function () {
 				this.modal = new Modal({size: ''});
 			},
+			events: {
+				'change #time': 'showCustomDate'
+			},
 			render: function () {
 				this.modal.render()
 					.setHeaderHTML('<h4>Generate Server Report</h4>')
@@ -28742,6 +28745,17 @@ module.exports = (function () {
 			open: function () {
 				this.render().modal.open();
                 Helpers.initSelectizeInputs(this);
+				return this;
+			},
+			showCustomDate: function (event) {
+				var $target = $(event.currentTarget),
+					 value = $target.val(),
+					 $date = this.$('input[name=custom]');
+				if (value === 'custom') {
+					$date.parents('.form-group').removeClass('hide');
+				} else {
+					$date.parents('.form-group').addClass('hide');
+				}
 				return this;
 			}
 		});
@@ -28819,8 +28833,12 @@ module.exports = (function () {
 			initialize: function () {
 				this.modal = new Modal({size: ''});
 			},
+			events: {
+				'click #disableLogin': 'disableLogin'
+			},
 			render: function () {
 				var payload = {
+					user: TagProcess.Auth.user.toJSON(),
 					admin: TagProcess.Auth.user.hasPermission('admin')
 				};
 				this.modal.render()
@@ -28831,6 +28849,17 @@ module.exports = (function () {
 			},
 			open: function () {
 				this.render().modal.open();
+				return this;
+			},
+			disableLogin: function () {
+				var $message = this.$('#message');
+				$.ajax({
+					url: '/tagproc/api/disable/',
+					type: 'POST',
+					success: function (response) {
+						$message.empty().removeClass('hide').append(response.message);
+					}
+				});
 				return this;
 			}
 		});
@@ -35182,7 +35211,7 @@ helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
   
 
 
-  return "<form class=\"form-horizontal\" method=\"POST\"  action=\"/tagproc/serverreport.php\" target=\"_blank\" id=\"serverReportForm\">\n    <div class=\"form-group\">\n        <label for=\"serverid\" class=\"col-md-2 control-label\">Server</label>\n        <div class=\"col-md-10\">\n            <select id=\"serverid\" name=\"serverid\" class=\"form-control\" data-value=\"uniqueid\" data-label=\"firstname\" data-search=\"uniqueid,firstname,lastname,county\" data-url=\"/tagproc/api/servers\" required>\n				<option value=\"\">Please select one...</option>\n			</select>\n        </div>\n    </div>\n    <div class=\"form-group\">\n        <label for=\"time\" class=\"col-md-2 control-label\">Server</label>\n        <div class=\"col-md-10\">\n            <select id=\"time\" name=\"time\" class=\"form-control\" data-value=\"value\" data-search=\"text\" data-label=\"text\" required>\n				<option value=\"\">Please select one...</option>\n				<option value=\"current\">Current</option>\n				<option value=\"past_thirty\">Past 30</option>\n				<option value=\"past_sixty\">Past 60</option>\n				<option value=\"custom\">Custom</option>\n			</select>\n        </div>\n    </div>\n    <div class=\"form-group\">\n        <div class=\"col-sm-offset-2 col-sm-10\">\n            <button type=\"submit\" class=\"btn btn-primary\">Generate</button>\n        </div>\n    </div>\n</form>\n";
+  return "<form class=\"form-horizontal\" method=\"POST\"  action=\"/tagproc/serverreport.php\" target=\"_blank\" id=\"serverReportForm\">\n    <div class=\"form-group\">\n        <label for=\"serverid\" class=\"col-md-2 control-label\">Server</label>\n        <div class=\"col-md-10\">\n            <select id=\"serverid\" name=\"serverid\" class=\"form-control\" data-value=\"uniqueid\" data-label=\"firstname\" data-search=\"uniqueid,firstname,lastname,county\" data-url=\"/tagproc/api/servers\" required>\n				<option value=\"\">Please select one...</option>\n			</select>\n        </div>\n    </div>\n    <div class=\"form-group\">\n        <label for=\"time\" class=\"col-md-2 control-label\">Report Period</label>\n        <div class=\"col-md-10\">\n            <select id=\"time\" name=\"time\" class=\"form-control\" data-value=\"value\" data-search=\"text\" data-label=\"text\" required>\n				<option value=\"\">Please select one...</option>\n				<option value=\"current\">Current</option>\n				<option value=\"past_thirty\">Past 30</option>\n				<option value=\"past_sixty\">Past 60</option>\n				<option value=\"custom\">Custom</option>\n			</select>\n        </div>\n    </div>\n	<div class=\"form-group hide\">\n		<label class=\"col-md-2 control-label\">Custom Date</label>\n		<div class=\"col-md-10\">\n			<input type=\"month\" name=\"custom\" class=\"form-control\" placeholder=\"Month - Year\">\n		</div>\n	</div>\n    <div class=\"form-group\">\n        <div class=\"col-sm-offset-2 col-sm-10\">\n            <button type=\"submit\" class=\"btn btn-primary\">Generate</button>\n        </div>\n    </div>\n</form>\n";
   });
 },{"handlebars/runtime":10}],65:[function(require,module,exports){
 var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
@@ -35627,18 +35656,22 @@ function program1(depth0,data) {
 var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
   this.compilerInfo = [4,'>= 1.0.0'];
 helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
-  var buffer = "", stack1, self=this;
+  var buffer = "", stack1, functionType="function", escapeExpression=this.escapeExpression, self=this;
 
 function program1(depth0,data) {
   
   
-  return "\nPlaceholder to disable client login\n";
+  return "\n		<tr>\n			<th>Disable Login</th>\n			<td><button class=\"btn btn-default\" id=\"disableLogin\">Disable</button></td>\n		</tr>\n		<tr>\n			<td></td>\n			<td>\n				<div id=\"message\" class=\"alert alert-info hide\"></div>\n			</td>\n		</tr>\n		";
   }
 
-  buffer += "<dl>\n	<dt>Name</dt><dd>User</dd>\n	<dt>Account</dt><dd>TEST</dd>\n</dl>\n\n\n";
+  buffer += "<div class=\"table-responsive\">\n<table class=\"table table-bordered table-condensed table-hover table-striped\">\n	<tbody>\n		<tr>\n			<th>Name</th><td>"
+    + escapeExpression(((stack1 = ((stack1 = (depth0 && depth0.user)),stack1 == null || stack1 === false ? stack1 : stack1.name)),typeof stack1 === functionType ? stack1.apply(depth0) : stack1))
+    + "</td>\n		</tr>\n		<tr>\n			<th>Account</th><td>"
+    + escapeExpression(((stack1 = ((stack1 = (depth0 && depth0.user)),stack1 == null || stack1 === false ? stack1 : stack1.account)),typeof stack1 === functionType ? stack1.apply(depth0) : stack1))
+    + "</td>\n		</tr>\n		";
   stack1 = helpers['if'].call(depth0, (depth0 && depth0.admin), {hash:{},inverse:self.noop,fn:self.program(1, program1, data),data:data});
   if(stack1 || stack1 === 0) { buffer += stack1; }
-  buffer += "\n";
+  buffer += "\n	</tbody>\n</table>\n</div>\n\n\n";
   return buffer;
   });
 },{"handlebars/runtime":10}],76:[function(require,module,exports){
