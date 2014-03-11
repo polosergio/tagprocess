@@ -1,0 +1,33 @@
+<form class="form-horizontal" method="POST"  action="/tagproc/serverreport.php" target="_blank" id="serverReportForm">
+    <div class="form-group">
+        <label for="serverid" class="col-md-2 control-label">Server</label>
+        <div class="col-md-10">
+            <select id="serverid" name="serverid" class="form-control" data-value="uniqueid" data-label="firstname" data-search="uniqueid,firstname,lastname,county" data-url="/tagproc/api/servers" required>
+				<option value="">Please select one...</option>
+			</select>
+        </div>
+    </div>
+    <div class="form-group">
+        <label for="time" class="col-md-2 control-label">Report Period</label>
+        <div class="col-md-10">
+            <select id="time" name="time" class="form-control" data-value="value" data-search="text" data-label="text" required>
+				<option value="">Please select one...</option>
+				<option value="current">Current</option>
+				<option value="past_thirty">Past 30</option>
+				<option value="past_sixty">Past 60</option>
+				<option value="custom">Custom</option>
+			</select>
+        </div>
+    </div>
+	<div class="form-group hide">
+		<label class="col-md-2 control-label">Custom Date</label>
+		<div class="col-md-10">
+			<input type="month" name="custom" class="form-control" placeholder="Month - Year">
+		</div>
+	</div>
+    <div class="form-group">
+        <div class="col-sm-offset-2 col-sm-10">
+            <button type="submit" class="btn btn-primary">Generate</button>
+        </div>
+    </div>
+</form>

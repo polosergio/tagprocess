@@ -1,0 +1,151 @@
+<div class="container-fluid">
+	<div class="row">
+		<div class="col-md-2 sidebar"></div>
+		<div class="col-md-10">
+			<form class="form-horizontal" data-url="/tagproc/api/case" id="caseForm" style="padding-bottom: 50px;">
+			    <div class="form-group">
+					<label for="account" class="col-sm-2 control-label">Account Responsible</label>
+					<div class="col-sm-10">
+						<select class="form-control" id="account" name="account" data-value="accountname" data-label="accountname" data-search="accountname" data-url="/tagproc/api/accounts" required>
+							<option value="">Please select one...</option>
+						</select>
+					</div>
+				</div>
+				<div class="form-group">
+					<label for="server" class="col-sm-2 control-label">Server Assigned</label>
+					<div class="col-sm-10">
+						<select class="form-control" id="server" name="server" data-value="uniqueid" data-label="firstname" data-search="uniqueid,firstname,lastname,county" data-url="/tagproc/api/servers" required>
+							<option value="">Please select one...</option>
+						</select>
+					</div>
+				</div>
+				<div class="form-group">
+					<label for="served_party" class="col-sm-2 control-label">Party to be served</label>
+					<div class="col-sm-10">
+						<input type="text" class="form-control" id="served_party" name="served_party" placeholder="Served party">
+					</div>
+				</div>
+				<div class="form-group">
+					<label for="served_person" class="col-sm-2 control-label">Person to be served</label>
+					<div class="col-sm-10">
+						<input type="text" class="form-control" id="served_person" name="served_person" placeholder="Served Person">
+					</div>
+				</div>
+				<div class="form-group">
+					<label for="date_received" class="col-sm-2 control-label">Received Date</label>
+					<div class="col-sm-10">
+						<input type="date" class="form-control" id="date_received" name="date_received" placeholder="Date Received">
+					</div>
+				</div>
+				<div class="form-group">
+					<label for="time_received" class="col-sm-2 control-label">Received Time</label>
+					<div class="col-sm-10">
+						<input type="time" class="form-control" id="time_received" name="time_received" placeholder="Time Received">
+					</div>
+				</div>
+				<div class="form-group">
+					<label for="served_documents" class="col-sm-2 control-label">Documents to be Served</label>
+					<div class="col-sm-10">
+						<input type="text" class="form-control" id="served_documents" name="served_documents" placeholder="Served Documents">
+					</div>
+				</div>
+				<div class="form-group">
+					<label for="date_court" class="col-sm-2 control-label">Court Date/Time</label>
+					<div class="col-sm-10">
+						<input type="datetime-local" class="form-control" id="date_court" name="date_court" placeholder="Court Date and Time">
+					</div>
+				</div>
+				<div class="form-group">
+					<label for="casenumber" class="col-sm-2 control-label">Case Number</label>
+					<div class="col-sm-10">
+						<input type="text" class="form-control" id="casenumber" name="casenumber" placeholder="Case Number">
+					</div>
+				</div>
+				<div class="form-group">
+					<label for="judge" class="col-sm-2 control-label">Judge</label>
+					<div class="col-sm-10">
+						<input type="text" class="form-control" id="judge" name="judge" placeholder="Judge">
+					</div>
+				</div>
+				<div class="form-group">
+					<label for="plaintiff" class="col-sm-2 control-label">Plaintiff</label>
+					<div class="col-sm-10">
+						<input type="text" class="form-control" id="plaintiff" name="plaintiff" placeholder="Plaintiff">
+					</div>
+				</div>
+				<div class="form-group">
+					<label for="defendant" class="col-sm-2 control-label">Defendant</label>
+					<div class="col-sm-10">
+						<input type="text" class="form-control" id="defendant" name="defendant" placeholder="Defendant">
+					</div>
+				</div>
+				<div class="form-group">
+					<label for="attorney" class="col-sm-2 control-label">Attorney</label>
+					<div class="col-sm-10">
+						<select class="form-control" id="attorney" name="attorney" data-value="attorney" data-label="attorney" data-search="attorney" data-url="/tagproc/api/attorneys" required>
+							<option value="">Please select one...</option>
+						</select>
+					</div>
+				</div>
+				<div class="form-group">
+					<label for="state" class="col-sm-2 control-label">State</label>
+					<div class="col-sm-10">
+						<input type="text" class="form-control" id="state" name="state" placeholder="State">
+					</div>
+				</div>
+				<div class="form-group">
+					<label for="county" class="col-sm-2 control-label">County</label>
+					<div class="col-sm-10">
+						<input type="text" class="form-control" id="county" name="county" placeholder="County">
+					</div>
+				</div>
+				<div class="form-group">
+					<label for="courttype" class="col-sm-2 control-label">Type of Court</label>
+					<div class="col-sm-10">
+						<select class="form-control" id="courttype" name="courttype" data-value="value" data-search="text" data-label="text" required>
+							<option value="">Please select one...</option>
+							<option value="Circuit">Circuit</option>
+							<option value="Family">Family</option>
+							<option value="County">County</option>
+							<option value="District">District</option>
+						</select>
+					</div>
+				</div>
+				<h3>Invoice Details</h3>
+				<div class="form-group">
+					<label for="amount" class="col-sm-2 control-label">Amount</label>
+					<div class="col-sm-10">
+						<input type="number" class="form-control" id="amount" name="amount" placeholder="Amount">
+					</div>
+				</div>
+				<div class="form-group">
+					<label for="itemname" class="col-sm-2 control-label">Name</label>
+					<div class="col-sm-10">
+						<select class="form-control" id="itemname" name="itemname" data-value="value" data-search="text" data-label="text">
+                            <option value="">Please select one...</option>
+                            <option value="SUMMON">SUMMON</option>
+                            <option value="SUBPOENA">SUBPOENA</option>
+                            <option value="MANUAL INVOICE">MANUAL INVOICE</option>
+                            <option value="COURIER">COURIER</option>
+                            <option value="SKIP TRACE">SKIP TRACE</option>
+                            <option value="STAKEOUT">STAKEOUT</option>
+                            <option value="DEFAULT">DEFAULT</option>
+						</select>
+					</div>
+				</div>
+				<div class="form-group">
+					<label for="itemdescription" class="col-sm-2 control-label">Description</label>
+					<div class="col-sm-10">
+						<textarea class="form-control" id="itemdescription" name="itemdescription" placeholder="Description"></textarea>
+					</div>
+				</div>
+				<div class="alert alert-danger hide col-sm-offset-2 col-sm-10"></div>
+				<div class="form-group">
+					<div class="col-sm-offset-2 col-sm-10">
+						<button type="submit" class="btn btn-default btn-block">Submit</button>
+					</div>
+				</div>
+			</form>
+		</div>
+	</div>
+</div>

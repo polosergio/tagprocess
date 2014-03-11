@@ -1,0 +1,30 @@
+body {
+	padding-bottom: 40px;
+}
+span.glyphicon-big-alert {
+    font-size: 10em;
+    color: red;
+}
+.footer {
+	position: fixed;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	z-index: 1035;
+	background-color: #F8F8F8;
+	border-top: 1px solid #E0E0E0;
+	border-bottom: 1px solid #E0E0E0;
+	display: block;
+	height: 40px;
+}
+.noOverflow {
+    overflow: hidden;
+}
+.affix {
+	position: fixed;
+	top: 20px;
+}
+.alignLeft {
+	text-align: left !important;
+}
+

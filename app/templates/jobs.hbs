@@ -1,0 +1,88 @@
+{{#if no_access}}
+<div class="container-fluid">
+    <div class="row text-center">
+		<div class="well well-lg">
+			<span class="glyphicon glyphicon-ban-circle glyphicon-big-alert"></span>
+			<p class="text-danger">You do not have the required access right now.</p>
+		</div>
+	</div>
+</div>
+{{else}}
+<div class="container-fluid">
+	<div class="row">
+		<div class="col-md-2 sidebar"></div>
+		<div class="col-md-10">
+			<div class="row">
+				<form class="form-horizontal col-sm-8" role="form" id="searchForm">
+					<div class="form-group">
+						<div class="input-group">
+							<span class="input-group-addon">
+								<i class="glyphicon glyphicon-search"></i>
+							</span>
+							<input id="search" type="text" class="form-control" placeholder="Search" value="{{form.q}}" AUTOFOCUS>
+							<span class="input-group-btn">
+								<button class="btn btn-default dropdown-toggle" data-toggle="dropdown" type="button">
+									<span id="search-by-text">{{#if form.searchby}} {{form.searchby}}  {{else}} Search By {{/if}}</span>
+									<span class="caret"></span>
+								</button>
+								<ul class="dropdown-menu pull-right" id="searchby">
+									<li><a href="#" data-value="jobnumber">Job Number</a></li>
+									<li><a href="#" data-value="account">Client</a></li>
+									<li><a href="#" data-value="casenumber">Case</a></li>
+								</ul>
+							</span>
+						</div>
+					</div>
+				</form>
+				<div class="text-right col-sm-4" style="font-size: 24px;">
+					<a href="#" class="switch-page"  data-offset="-10" title="Previous">
+						<span class="glyphicon glyphicon-chevron-left"></span>
+					</a>
+					<a href="#" class="switch-page" data-offset="10" title="Next">
+						<span class="glyphicon glyphicon-chevron-right"></span>
+					</a>
+				</div>
+				<br>
+			</div>
+			<div class="row">
+				<div class="table-responsive">
+					<table class="table table-bordered table-condensed table-hover table-striped">
+						<thead>
+							<tr>
+								<th>Job #</th>
+								<th>Account</th>
+								<th>Reference</th>
+								<th>To Serve On</th>
+								<th>Court Date</th>
+								<th>Completed</th>
+								<th>Type of Service</th>
+								<th>Date Received</th>
+							</tr>
+						</thead>
+						<tbody>
+						{{#if items}}
+							{{#each items}}
+								<tr>
+									<td><a href="#jobs/{{jobnumber}}">{{jobnumber}}</a></td>
+									<td>{{account}}</td>
+									<td></td>
+									<td>{{served_party}}</td>
+									<td>{{date_court}}</td>
+									<td>{{date_served}}</td>
+									<td>{{served_documents}}</td>
+									<td>{{date_received}}</td>
+								</tr>
+							{{/each}}
+						{{else}}
+							<tr>
+								<td colspan="8"><em>No Jobs found.</em></td>
+							</tr>
+						{{/if}}
+						</tbody>
+					</table>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+{{/if}}

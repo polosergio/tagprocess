@@ -1,0 +1,62 @@
+<div class="container-fluid">
+	<div class="row">
+		<div class="col-md-2 sidebar"></div>
+		<div class="col-md-10">
+			<form class="form-horizontal" data-url="/tagproc/api/server" id="serverForm">
+				<div class="form-group">
+					<label for="firstname" class="col-sm-2 control-label">First Name</label>
+					<div class="col-sm-10">
+						<input type="text" class="form-control" id="firstname" name="firstname" placeholder="Server First Name" required>
+					</div>
+				</div>
+				<div class="form-group">
+					<label for="lastname" class="col-sm-2 control-label">Last Name</label>
+					<div class="col-sm-10">
+						<input type="text" class="form-control" id="lastname" name="lastname" placeholder="Server Last Name" required>
+					</div>
+				</div>
+				<div class="form-group">
+					<label for="type" class="col-sm-2 control-label">Server Type</label>
+					<div class="col-sm-10">
+						<select type="text" class="form-control" id="type" name="type" data-value="value" data-label="text" data-search="text" required>
+							<option value="">Please select one...</option>
+							<option value="Certified Process Server">Certified Process Server</option>
+							<option value="Special Process Server">Special Process Server</option>
+							<option value="Court Officer">Court Officer</option>
+						</select>
+					</div>
+				</div>
+				<div class="form-group">
+					<label for="uniqueid" class="col-sm-2 control-label">Server ID #</label>
+					<div class="col-sm-10">
+						<input type="tel" class="form-control" id="uniqueid" name="uniqueid" placeholder="Server's ID #" required>
+					</div>
+				</div>
+				<div class="form-group">
+					<label for="county" class="col-sm-2 control-label">County</label>
+					<div class="col-sm-10">
+						<input type="text" class="form-control" id="county" name="county" placeholder="County">
+					</div>
+				</div>
+				<div class="form-group">
+					<label for="phone" class="col-sm-2 control-label">Phone #</label>
+					<div class="col-sm-10">
+						<input type="tel" class="form-control" id="phone" name="phone" placeholder="Phone #">
+					</div>
+				</div>
+				<div class="form-group">
+					<label for="address" class="col-sm-2 control-label">Address</label>
+					<div class="col-sm-10">
+						<input type="text" class="form-control" id="address" name="address" placeholder="Server's Address" required>
+					</div>
+				</div>
+				<div class="alert alert-danger hide col-sm-offset-2 col-sm-10"></div>
+				<div class="form-group">
+					<div class="col-sm-offset-2 col-sm-10">
+						<button type="submit" class="btn btn-default btn-block">Submit</button>
+					</div>
+				</div>
+			</form>
+		</div>
+	</div>
+</div>
