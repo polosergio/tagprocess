@@ -46,35 +46,203 @@
 						</tr>
 						<tr>
 							<th>Served On</th>
-							<td>{{served_person}}</td>
+							<td>
+								<div class="col-md-10 col-xs-10 noOverflow">
+									{{served_person}}
+								</div>
+								{{#if admin}}
+									<form class="form-inline col-md-10 col-xs-10 hide editServeForm" role="form">
+										<div class="form-group col-md-8 col-xs-8">
+											<div class="input-group">
+												<label class="sr-only" for="served_form">{{served_person}}</label>
+												<input class="form-control" type="text" name="served_person" id="served_person" value="{{served_person}}">
+											</div>
+										</div>
+										<button type="submit" class="btn btn-default col-md-2 col-xs-2">
+											<span class="glyphicon glyphicon-floppy-disk"></span>
+										</button>
+										<button type="button" class="btn btn-default toggle col-md-2 col-xs-2">
+											<span class="glyphicon glyphicon-remove"></span>
+										</button>
+									</form>
+									<a href="#" class="toggle col-md-2 col-xs-2 text-right"><span class="glyphicon glyphicon-pencil" style="color: goldenrod;"></span></a>
+								{{/if}}
+							</td>
 						</tr>
 						<tr>
 							<th>Gender</th>
-							<td>{{gender}}</td>
+							<td>
+								<div class="col-md-10 col-xs-10 noOverflow">
+									{{gender}}
+								</div>
+								{{#if admin}}
+									<form class="form-inline col-md-10 col-xs-10 hide editServeForm" role="form">
+										<div class="form-group col-md-8 col-xs-8">
+											<div class="input-group">
+												<label class="sr-only" for="gender">{{gender}}</label>
+												<input class="form-control" type="text" name="gender" id="gender" value="{{gender}}">
+											</div>
+										</div>
+										<button type="submit" class="btn btn-default col-md-2 col-xs-2">
+											<span class="glyphicon glyphicon-floppy-disk"></span>
+										</button>
+										<button type="button" class="btn btn-default toggle col-md-2 col-xs-2">
+											<span class="glyphicon glyphicon-remove"></span>
+										</button>
+									</form>
+									<a href="#" class="toggle col-md-2 col-xs-2 text-right"><span class="glyphicon glyphicon-pencil" style="color: goldenrod;"></span></a>
+								{{/if}}
+							</td>
 						</tr>	
 						<tr>
 							<th>Age</th>
-							<td>{{age}}</td>
+							<td>
+								<div class="col-md-10 col-xs-10 noOverflow">
+									{{age}}
+								</div>
+								{{#if admin}}
+									<form class="form-inline col-md-10 col-xs-10 hide editServeForm" role="form">
+										<div class="form-group col-md-8 col-xs-8">
+											<div class="input-group">
+												<label class="sr-only" for="age">{{age}}</label>
+												<input class="form-control" type="text" name="age" id="age" value="{{age}}">
+											</div>
+										</div>
+										<button type="submit" class="btn btn-default col-md-2 col-xs-2">
+											<span class="glyphicon glyphicon-floppy-disk"></span>
+										</button>
+										<button type="button" class="btn btn-default toggle col-md-2 col-xs-2">
+											<span class="glyphicon glyphicon-remove"></span>
+										</button>
+									</form>
+									<a href="#" class="toggle col-md-2 col-xs-2 text-right"><span class="glyphicon glyphicon-pencil" style="color: goldenrod;"></span></a>
+								{{/if}}
+							</td>
 						</tr>
 						<tr>
 							<th>Race</th>
-							<td>{{race}}</td>
+							<td>
+								<div class="col-md-10 col-xs-10 noOverflow">
+									{{race}}
+								</div>
+								{{#if admin}}
+									<form class="form-inline col-md-10 col-xs-10 hide editServeForm" role="form">
+										<div class="form-group col-md-8 col-xs-8">
+											<div class="input-group">
+												<label class="sr-only" for="race">{{race}}</label>
+												<input class="form-control" type="text" name="race" id="race" value="{{race}}">
+											</div>
+										</div>
+										<button type="submit" class="btn btn-default col-md-2 col-xs-2">
+											<span class="glyphicon glyphicon-floppy-disk"></span>
+										</button>
+										<button type="button" class="btn btn-default toggle col-md-2 col-xs-2">
+											<span class="glyphicon glyphicon-remove"></span>
+										</button>
+									</form>
+									<a href="#" class="toggle col-md-2 col-xs-2 text-right"><span class="glyphicon glyphicon-pencil" style="color: goldenrod;"></span></a>
+								{{/if}}
+							</td>
 						</tr>
 						<tr>
 							<th>Height</th>
-							<td>{{height}}</td>
+							<td>
+								<div class="col-md-10 col-xs-10 noOverflow">
+									{{height}}
+								</div>
+								{{#if admin}}
+									<form class="form-inline col-md-10 col-xs-10 hide editServeForm" role="form">
+										<div class="form-group col-md-8 col-xs-8">
+											<div class="input-group">
+												<label class="sr-only" for="height">{{height}}</label>
+												<input class="form-control" type="text" name="height" id="height" value="{{height}}">
+											</div>
+										</div>
+										<button type="submit" class="btn btn-default col-md-2 col-xs-2">
+											<span class="glyphicon glyphicon-floppy-disk"></span>
+										</button>
+										<button type="button" class="btn btn-default toggle col-md-2 col-xs-2">
+											<span class="glyphicon glyphicon-remove"></span>
+										</button>
+									</form>
+									<a href="#" class="toggle col-md-2 col-xs-2 text-right"><span class="glyphicon glyphicon-pencil" style="color: goldenrod;"></span></a>
+								{{/if}}
+							</td>
 						</tr>
 						<tr>
 							<th>Weight</th>
-							<td>{{weight}}</td>
+							<td>
+								<div class="col-md-10 col-xs-10 noOverflow">
+									{{weight}}
+								</div>
+								{{#if admin}}
+									<form class="form-inline col-md-10 col-xs-10 hide editServeForm" role="form">
+										<div class="form-group col-md-8 col-xs-8">
+											<div class="input-group">
+												<label class="sr-only" for="weight">{{weight}}</label>
+												<input class="form-control" type="text" name="weight" id="weight" value="{{weight}}">
+											</div>
+										</div>
+										<button type="submit" class="btn btn-default col-md-2 col-xs-2">
+											<span class="glyphicon glyphicon-floppy-disk"></span>
+										</button>
+										<button type="button" class="btn btn-default toggle col-md-2 col-xs-2">
+											<span class="glyphicon glyphicon-remove"></span>
+										</button>
+									</form>
+									<a href="#" class="toggle col-md-2 col-xs-2 text-right"><span class="glyphicon glyphicon-pencil" style="color: goldenrod;"></span></a>
+								{{/if}}
+							</td>
 						</tr>
 						<tr>
 							<th>Hair</th>
-							<td>{{hair}}</td>
+							<td>
+								<div class="col-md-10 col-xs-10 noOverflow">
+									{{hair}}
+								</div>
+								{{#if admin}}
+									<form class="form-inline col-md-10 col-xs-10 hide editServeForm" role="form">
+										<div class="form-group col-md-8 col-xs-8">
+											<div class="input-group">
+												<label class="sr-only" for="hair">{{hair}}</label>
+												<input class="form-control" type="text" name="hair" id="hair" value="{{hair}}">
+											</div>
+										</div>
+										<button type="submit" class="btn btn-default col-md-2 col-xs-2">
+											<span class="glyphicon glyphicon-floppy-disk"></span>
+										</button>
+										<button type="button" class="btn btn-default toggle col-md-2 col-xs-2">
+											<span class="glyphicon glyphicon-remove"></span>
+										</button>
+									</form>
+									<a href="#" class="toggle col-md-2 col-xs-2 text-right"><span class="glyphicon glyphicon-pencil" style="color: goldenrod;"></span></a>
+								{{/if}}
+							</td>
 						</tr>
 						<tr>
 							<th>Glasses</th>
-							<td>{{glasses}}</td>
+							<td>
+								<div class="col-md-10 col-xs-10 noOverflow">
+									{{glasses}}
+								</div>
+								{{#if admin}}
+									<form class="form-inline col-md-10 col-xs-10 hide editServeForm" role="form">
+										<div class="form-group col-md-8 col-xs-8">
+											<div class="input-group">
+												<label class="sr-only" for="glasses">{{glasses}}</label>
+												<input class="form-control" type="text" name="glasses" id="glasses" value="{{glasses}}">
+											</div>
+										</div>
+										<button type="submit" class="btn btn-default col-md-2 col-xs-2">
+											<span class="glyphicon glyphicon-floppy-disk"></span>
+										</button>
+										<button type="button" class="btn btn-default toggle col-md-2 col-xs-2">
+											<span class="glyphicon glyphicon-remove"></span>
+										</button>
+									</form>
+									<a href="#" class="toggle col-md-2 col-xs-2 text-right"><span class="glyphicon glyphicon-pencil" style="color: goldenrod;"></span></a>
+								{{/if}}
+							</td>
 						</tr>
 					</tbody>
 				</table>
