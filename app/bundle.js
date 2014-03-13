@@ -28647,7 +28647,10 @@ var Modal = require('./modal'),
 	DetailsTemplate = require('../../../templates/modals/serveDetails.hbs'),
     Handlebars = require('handlebars/runtime').default,
 	_ = require('underscore'),
-	Backbone = require('backbone');
+	Backbone = require('backbone'),
+	TagProcess = require('../../tagprocess'),
+	Notify = require('../../utilities/notify'),
+	Helpers = require('../../utilities/helpers');
 
 
 Handlebars.registerHelper('parseImageOrVideo', function (image, className) {
@@ -28686,7 +28689,9 @@ module.exports = (function () {
 			},
 			events: {
 				'click .openDetails': 'openDetails',
-				'click .openList'	: 'openList'
+				'click .openList'	: 'openList',
+				'click .toggle'		: 'toggleEdit',
+				'submit .editServeForm'	: 'submitEdit'
 			},
 			render: function () {
 				var data = this.model.toJSON();
@@ -28704,6 +28709,7 @@ module.exports = (function () {
 				event.preventDefault();
 				var id = $(event.currentTarget).data('id'),
 					data = id ? _.findWhere(this.model.get('comments'), {id: id.toString()}) : this.model.get('serve');
+				_.extend(data, {admin: TagProcess.Auth.user.hasPermission('admin')});
 				this.modal.setContentHTML(this.detailsTemplate(data));
 				return this.delegateEvents();
 			},
@@ -28712,12 +28718,41 @@ module.exports = (function () {
 				var data = this.model.toJSON();
 				this.modal.setContentHTML(this.template(data));
 				return this.delegateEvents();
+			},
+            toggleEdit: function (event) {
+                if (_.isFunction(event.preventDefault)) { event.preventDefault(); }
+                var $target = $(event.currentTarget).parents('td');
+				$target.children(':not(a)').toggleClass('hide').find('input').focus();
+				return this;
+			},
+			submitEdit: function (event) {
+                event.preventDefault();
+				var $form = $(event.currentTarget),
+					data = Helpers.serializeObject($form.serializeArray()),
+					key = Object.keys(data)[0],
+					value = data[key],
+                    that = this;
+				 $.ajax({
+					url: '/tagproc/api/job',
+					data: _.extend(data, {jobnumber: that.model.get('jobnumber')}),
+					type: 'POST',
+					success: function (response) {
+						var field = response[0].data;
+						$form.siblings('div').html(field[key]);
+                        that.toggleEdit({currentTarget: $form.siblings('a')});
+                        Notify.create({title: 'Saved', body: 'Field ' + key + ' has been updated to ' + value, tag: key, icon: 'app/images/save.png'});
+					},
+                    error: function (e) {
+                        Notify.create({title: 'Error', body: e.statusText, icon: ''})
+                    }
+				 });
+				return this;
 			}
-	});
+		});
 	return exports;
 }());
 
-},{"../../../templates/modals/serveDetails.hbs":73,"../../../templates/modals/serveList.hbs":74,"./modal":29,"backbone":1,"handlebars/runtime":10,"underscore":14}],32:[function(require,module,exports){
+},{"../../../templates/modals/serveDetails.hbs":73,"../../../templates/modals/serveList.hbs":74,"../../tagprocess":44,"../../utilities/helpers":45,"../../utilities/notify":46,"./modal":29,"backbone":1,"handlebars/runtime":10,"underscore":14}],32:[function(require,module,exports){
 var Modal = require('./modal'),
 	_ = require('underscore'),
 	Template = require('../../../templates/forms/serverReport.hbs'),
@@ -35564,39 +35599,63 @@ function program4(depth0,data) {
   if (helper = helpers.longitude) { stack1 = helper.call(depth0, {hash:{},data:data}); }
   else { helper = (depth0 && depth0.longitude); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
   buffer += escapeExpression(stack1)
-    + "</td>\n						</tr>\n						<tr>\n							<th>Served On</th>\n							<td>";
+    + "</td>\n						</tr>\n						<tr>\n							<th>Served On</th>\n							<td>\n								<div class=\"col-md-10 col-xs-10 noOverflow\">\n									";
   if (helper = helpers.served_person) { stack1 = helper.call(depth0, {hash:{},data:data}); }
   else { helper = (depth0 && depth0.served_person); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
   buffer += escapeExpression(stack1)
-    + "</td>\n						</tr>\n						<tr>\n							<th>Gender</th>\n							<td>";
+    + "\n								</div>\n								";
+  stack1 = helpers['if'].call(depth0, (depth0 && depth0.admin), {hash:{},inverse:self.noop,fn:self.program(5, program5, data),data:data});
+  if(stack1 || stack1 === 0) { buffer += stack1; }
+  buffer += "\n							</td>\n						</tr>\n						<tr>\n							<th>Gender</th>\n							<td>\n								<div class=\"col-md-10 col-xs-10 noOverflow\">\n									";
   if (helper = helpers.gender) { stack1 = helper.call(depth0, {hash:{},data:data}); }
   else { helper = (depth0 && depth0.gender); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
   buffer += escapeExpression(stack1)
-    + "</td>\n						</tr>	\n						<tr>\n							<th>Age</th>\n							<td>";
+    + "\n								</div>\n								";
+  stack1 = helpers['if'].call(depth0, (depth0 && depth0.admin), {hash:{},inverse:self.noop,fn:self.program(7, program7, data),data:data});
+  if(stack1 || stack1 === 0) { buffer += stack1; }
+  buffer += "\n							</td>\n						</tr>	\n						<tr>\n							<th>Age</th>\n							<td>\n								<div class=\"col-md-10 col-xs-10 noOverflow\">\n									";
   if (helper = helpers.age) { stack1 = helper.call(depth0, {hash:{},data:data}); }
   else { helper = (depth0 && depth0.age); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
   buffer += escapeExpression(stack1)
-    + "</td>\n						</tr>\n						<tr>\n							<th>Race</th>\n							<td>";
+    + "\n								</div>\n								";
+  stack1 = helpers['if'].call(depth0, (depth0 && depth0.admin), {hash:{},inverse:self.noop,fn:self.program(9, program9, data),data:data});
+  if(stack1 || stack1 === 0) { buffer += stack1; }
+  buffer += "\n							</td>\n						</tr>\n						<tr>\n							<th>Race</th>\n							<td>\n								<div class=\"col-md-10 col-xs-10 noOverflow\">\n									";
   if (helper = helpers.race) { stack1 = helper.call(depth0, {hash:{},data:data}); }
   else { helper = (depth0 && depth0.race); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
   buffer += escapeExpression(stack1)
-    + "</td>\n						</tr>\n						<tr>\n							<th>Height</th>\n							<td>";
+    + "\n								</div>\n								";
+  stack1 = helpers['if'].call(depth0, (depth0 && depth0.admin), {hash:{},inverse:self.noop,fn:self.program(11, program11, data),data:data});
+  if(stack1 || stack1 === 0) { buffer += stack1; }
+  buffer += "\n							</td>\n						</tr>\n						<tr>\n							<th>Height</th>\n							<td>\n								<div class=\"col-md-10 col-xs-10 noOverflow\">\n									";
   if (helper = helpers.height) { stack1 = helper.call(depth0, {hash:{},data:data}); }
   else { helper = (depth0 && depth0.height); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
   buffer += escapeExpression(stack1)
-    + "</td>\n						</tr>\n						<tr>\n							<th>Weight</th>\n							<td>";
+    + "\n								</div>\n								";
+  stack1 = helpers['if'].call(depth0, (depth0 && depth0.admin), {hash:{},inverse:self.noop,fn:self.program(13, program13, data),data:data});
+  if(stack1 || stack1 === 0) { buffer += stack1; }
+  buffer += "\n							</td>\n						</tr>\n						<tr>\n							<th>Weight</th>\n							<td>\n								<div class=\"col-md-10 col-xs-10 noOverflow\">\n									";
   if (helper = helpers.weight) { stack1 = helper.call(depth0, {hash:{},data:data}); }
   else { helper = (depth0 && depth0.weight); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
   buffer += escapeExpression(stack1)
-    + "</td>\n						</tr>\n						<tr>\n							<th>Hair</th>\n							<td>";
+    + "\n								</div>\n								";
+  stack1 = helpers['if'].call(depth0, (depth0 && depth0.admin), {hash:{},inverse:self.noop,fn:self.program(15, program15, data),data:data});
+  if(stack1 || stack1 === 0) { buffer += stack1; }
+  buffer += "\n							</td>\n						</tr>\n						<tr>\n							<th>Hair</th>\n							<td>\n								<div class=\"col-md-10 col-xs-10 noOverflow\">\n									";
   if (helper = helpers.hair) { stack1 = helper.call(depth0, {hash:{},data:data}); }
   else { helper = (depth0 && depth0.hair); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
   buffer += escapeExpression(stack1)
-    + "</td>\n						</tr>\n						<tr>\n							<th>Glasses</th>\n							<td>";
+    + "\n								</div>\n								";
+  stack1 = helpers['if'].call(depth0, (depth0 && depth0.admin), {hash:{},inverse:self.noop,fn:self.program(17, program17, data),data:data});
+  if(stack1 || stack1 === 0) { buffer += stack1; }
+  buffer += "\n							</td>\n						</tr>\n						<tr>\n							<th>Glasses</th>\n							<td>\n								<div class=\"col-md-10 col-xs-10 noOverflow\">\n									";
   if (helper = helpers.glasses) { stack1 = helper.call(depth0, {hash:{},data:data}); }
   else { helper = (depth0 && depth0.glasses); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
   buffer += escapeExpression(stack1)
-    + "</td>\n						</tr>\n					</tbody>\n				</table>\n			</div>\n		</div>\n		";
+    + "\n								</div>\n								";
+  stack1 = helpers['if'].call(depth0, (depth0 && depth0.admin), {hash:{},inverse:self.noop,fn:self.program(19, program19, data),data:data});
+  if(stack1 || stack1 === 0) { buffer += stack1; }
+  buffer += "\n							</td>\n						</tr>\n					</tbody>\n				</table>\n			</div>\n		</div>\n		";
   stack1 = (helper = helpers.parseImageOrVideo || (depth0 && depth0.parseImageOrVideo),options={hash:{},inverse:self.noop,fn:self.program(2, program2, data),data:data},helper ? helper.call(depth0, (depth0 && depth0.image), "img-responsive col-md-6", options) : helperMissing.call(depth0, "parseImageOrVideo", (depth0 && depth0.image), "img-responsive col-md-6", options));
   if(stack1 || stack1 === 0) { buffer += stack1; }
   buffer += "\n	</div>\n	<div class=\"row\">\n		<img src=\"";
@@ -35608,6 +35667,125 @@ function program4(depth0,data) {
   else { helper = (depth0 && depth0.satellite); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
   buffer += escapeExpression(stack1)
     + "\" class=\"img-responsive col-md-6\">\n	</div>\n";
+  return buffer;
+  }
+function program5(depth0,data) {
+  
+  var buffer = "", stack1, helper;
+  buffer += "\n									<form class=\"form-inline col-md-10 col-xs-10 hide editServeForm\" role=\"form\">\n										<div class=\"form-group col-md-8 col-xs-8\">\n											<div class=\"input-group\">\n												<label class=\"sr-only\" for=\"served_form\">";
+  if (helper = helpers.served_person) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.served_person); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "</label>\n												<input class=\"form-control\" type=\"text\" name=\"served_person\" id=\"served_person\" value=\"";
+  if (helper = helpers.served_person) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.served_person); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "\">\n											</div>\n										</div>\n										<button type=\"submit\" class=\"btn btn-default col-md-2 col-xs-2\">\n											<span class=\"glyphicon glyphicon-floppy-disk\"></span>\n										</button>\n										<button type=\"button\" class=\"btn btn-default toggle col-md-2 col-xs-2\">\n											<span class=\"glyphicon glyphicon-remove\"></span>\n										</button>\n									</form>\n									<a href=\"#\" class=\"toggle col-md-2 col-xs-2 text-right\"><span class=\"glyphicon glyphicon-pencil\" style=\"color: goldenrod;\"></span></a>\n								";
+  return buffer;
+  }
+
+function program7(depth0,data) {
+  
+  var buffer = "", stack1, helper;
+  buffer += "\n									<form class=\"form-inline col-md-10 col-xs-10 hide editServeForm\" role=\"form\">\n										<div class=\"form-group col-md-8 col-xs-8\">\n											<div class=\"input-group\">\n												<label class=\"sr-only\" for=\"gender\">";
+  if (helper = helpers.gender) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.gender); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "</label>\n												<input class=\"form-control\" type=\"text\" name=\"gender\" id=\"gender\" value=\"";
+  if (helper = helpers.gender) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.gender); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "\">\n											</div>\n										</div>\n										<button type=\"submit\" class=\"btn btn-default col-md-2 col-xs-2\">\n											<span class=\"glyphicon glyphicon-floppy-disk\"></span>\n										</button>\n										<button type=\"button\" class=\"btn btn-default toggle col-md-2 col-xs-2\">\n											<span class=\"glyphicon glyphicon-remove\"></span>\n										</button>\n									</form>\n									<a href=\"#\" class=\"toggle col-md-2 col-xs-2 text-right\"><span class=\"glyphicon glyphicon-pencil\" style=\"color: goldenrod;\"></span></a>\n								";
+  return buffer;
+  }
+
+function program9(depth0,data) {
+  
+  var buffer = "", stack1, helper;
+  buffer += "\n									<form class=\"form-inline col-md-10 col-xs-10 hide editServeForm\" role=\"form\">\n										<div class=\"form-group col-md-8 col-xs-8\">\n											<div class=\"input-group\">\n												<label class=\"sr-only\" for=\"age\">";
+  if (helper = helpers.age) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.age); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "</label>\n												<input class=\"form-control\" type=\"text\" name=\"age\" id=\"age\" value=\"";
+  if (helper = helpers.age) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.age); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "\">\n											</div>\n										</div>\n										<button type=\"submit\" class=\"btn btn-default col-md-2 col-xs-2\">\n											<span class=\"glyphicon glyphicon-floppy-disk\"></span>\n										</button>\n										<button type=\"button\" class=\"btn btn-default toggle col-md-2 col-xs-2\">\n											<span class=\"glyphicon glyphicon-remove\"></span>\n										</button>\n									</form>\n									<a href=\"#\" class=\"toggle col-md-2 col-xs-2 text-right\"><span class=\"glyphicon glyphicon-pencil\" style=\"color: goldenrod;\"></span></a>\n								";
+  return buffer;
+  }
+
+function program11(depth0,data) {
+  
+  var buffer = "", stack1, helper;
+  buffer += "\n									<form class=\"form-inline col-md-10 col-xs-10 hide editServeForm\" role=\"form\">\n										<div class=\"form-group col-md-8 col-xs-8\">\n											<div class=\"input-group\">\n												<label class=\"sr-only\" for=\"race\">";
+  if (helper = helpers.race) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.race); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "</label>\n												<input class=\"form-control\" type=\"text\" name=\"race\" id=\"race\" value=\"";
+  if (helper = helpers.race) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.race); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "\">\n											</div>\n										</div>\n										<button type=\"submit\" class=\"btn btn-default col-md-2 col-xs-2\">\n											<span class=\"glyphicon glyphicon-floppy-disk\"></span>\n										</button>\n										<button type=\"button\" class=\"btn btn-default toggle col-md-2 col-xs-2\">\n											<span class=\"glyphicon glyphicon-remove\"></span>\n										</button>\n									</form>\n									<a href=\"#\" class=\"toggle col-md-2 col-xs-2 text-right\"><span class=\"glyphicon glyphicon-pencil\" style=\"color: goldenrod;\"></span></a>\n								";
+  return buffer;
+  }
+
+function program13(depth0,data) {
+  
+  var buffer = "", stack1, helper;
+  buffer += "\n									<form class=\"form-inline col-md-10 col-xs-10 hide editServeForm\" role=\"form\">\n										<div class=\"form-group col-md-8 col-xs-8\">\n											<div class=\"input-group\">\n												<label class=\"sr-only\" for=\"height\">";
+  if (helper = helpers.height) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.height); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "</label>\n												<input class=\"form-control\" type=\"text\" name=\"height\" id=\"height\" value=\"";
+  if (helper = helpers.height) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.height); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "\">\n											</div>\n										</div>\n										<button type=\"submit\" class=\"btn btn-default col-md-2 col-xs-2\">\n											<span class=\"glyphicon glyphicon-floppy-disk\"></span>\n										</button>\n										<button type=\"button\" class=\"btn btn-default toggle col-md-2 col-xs-2\">\n											<span class=\"glyphicon glyphicon-remove\"></span>\n										</button>\n									</form>\n									<a href=\"#\" class=\"toggle col-md-2 col-xs-2 text-right\"><span class=\"glyphicon glyphicon-pencil\" style=\"color: goldenrod;\"></span></a>\n								";
+  return buffer;
+  }
+
+function program15(depth0,data) {
+  
+  var buffer = "", stack1, helper;
+  buffer += "\n									<form class=\"form-inline col-md-10 col-xs-10 hide editServeForm\" role=\"form\">\n										<div class=\"form-group col-md-8 col-xs-8\">\n											<div class=\"input-group\">\n												<label class=\"sr-only\" for=\"weight\">";
+  if (helper = helpers.weight) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.weight); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "</label>\n												<input class=\"form-control\" type=\"text\" name=\"weight\" id=\"weight\" value=\"";
+  if (helper = helpers.weight) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.weight); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "\">\n											</div>\n										</div>\n										<button type=\"submit\" class=\"btn btn-default col-md-2 col-xs-2\">\n											<span class=\"glyphicon glyphicon-floppy-disk\"></span>\n										</button>\n										<button type=\"button\" class=\"btn btn-default toggle col-md-2 col-xs-2\">\n											<span class=\"glyphicon glyphicon-remove\"></span>\n										</button>\n									</form>\n									<a href=\"#\" class=\"toggle col-md-2 col-xs-2 text-right\"><span class=\"glyphicon glyphicon-pencil\" style=\"color: goldenrod;\"></span></a>\n								";
+  return buffer;
+  }
+
+function program17(depth0,data) {
+  
+  var buffer = "", stack1, helper;
+  buffer += "\n									<form class=\"form-inline col-md-10 col-xs-10 hide editServeForm\" role=\"form\">\n										<div class=\"form-group col-md-8 col-xs-8\">\n											<div class=\"input-group\">\n												<label class=\"sr-only\" for=\"hair\">";
+  if (helper = helpers.hair) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.hair); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "</label>\n												<input class=\"form-control\" type=\"text\" name=\"hair\" id=\"hair\" value=\"";
+  if (helper = helpers.hair) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.hair); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "\">\n											</div>\n										</div>\n										<button type=\"submit\" class=\"btn btn-default col-md-2 col-xs-2\">\n											<span class=\"glyphicon glyphicon-floppy-disk\"></span>\n										</button>\n										<button type=\"button\" class=\"btn btn-default toggle col-md-2 col-xs-2\">\n											<span class=\"glyphicon glyphicon-remove\"></span>\n										</button>\n									</form>\n									<a href=\"#\" class=\"toggle col-md-2 col-xs-2 text-right\"><span class=\"glyphicon glyphicon-pencil\" style=\"color: goldenrod;\"></span></a>\n								";
+  return buffer;
+  }
+
+function program19(depth0,data) {
+  
+  var buffer = "", stack1, helper;
+  buffer += "\n									<form class=\"form-inline col-md-10 col-xs-10 hide editServeForm\" role=\"form\">\n										<div class=\"form-group col-md-8 col-xs-8\">\n											<div class=\"input-group\">\n												<label class=\"sr-only\" for=\"glasses\">";
+  if (helper = helpers.glasses) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.glasses); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "</label>\n												<input class=\"form-control\" type=\"text\" name=\"glasses\" id=\"glasses\" value=\"";
+  if (helper = helpers.glasses) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.glasses); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "\">\n											</div>\n										</div>\n										<button type=\"submit\" class=\"btn btn-default col-md-2 col-xs-2\">\n											<span class=\"glyphicon glyphicon-floppy-disk\"></span>\n										</button>\n										<button type=\"button\" class=\"btn btn-default toggle col-md-2 col-xs-2\">\n											<span class=\"glyphicon glyphicon-remove\"></span>\n										</button>\n									</form>\n									<a href=\"#\" class=\"toggle col-md-2 col-xs-2 text-right\"><span class=\"glyphicon glyphicon-pencil\" style=\"color: goldenrod;\"></span></a>\n								";
   return buffer;
   }
 
