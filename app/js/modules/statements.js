@@ -1,5 +1,4 @@
 var _ = require('underscore'),
-	$ = require('jquery'),
 	Backbone = require('backbone'),
 	Sidebar = require('./sidebar'),
 	Helpers = require('../utilities/helpers'),
@@ -31,24 +30,15 @@ module.exports = (function () {
 				this.collection.fetch();
 			},
 			events: {
-				'click .switch-page'			: 'switchPage',
 				'change select[name=time]'		: 'showCustomDate'
 			},
 			render: function () {
 				var data = this.collection.toJSON(),
 					payload = {clients: data};
 				this.$el.empty().append(this.template(payload));
-				this.$('.sidebar').html(this.sidebar.render().$el);
-				this.$('.switch-page').tooltip();
+				this.$('.sidebar').html(this.sidebar.render().delegateEvents().$el);
                 Helpers.initSelectizeInputs(this);
 				return this;
-			},
-			setSearchBy: function (event) {
-				event.preventDefault();
-				var $target = $(event.currentTarget),
-					$button = $target.parents('ul').siblings();
-				$button.find('#search-by-text').html($target.html());
-				this.collection.params.searchby = $target.data('value');
 			},
 			showCustomDate: function (event) {
 				var $target = $(event.currentTarget),
@@ -59,12 +49,6 @@ module.exports = (function () {
 					$target.parent('.form-group').siblings('.form-group').addClass('hide');
 				}
 				return this;
-			},
-			switchPage: function (event) {
-				event.preventDefault();
-				var offset = parseInt($(event.currentTarget).data('offset'), 10);
-				this.collection.params.offset = this.collection.params.offset + offset >= 0 ? this.collection.params.offset + offset : 0;
-				this.collection.fetch();
 			}
 		})
 	});
