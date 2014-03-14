@@ -29210,7 +29210,6 @@ module.exports = (function () {
 
 },{"../../templates/sidebar.hbs":79,"../tagprocess":44,"./modals/serverReport":32,"backbone":1,"underscore":14}],41:[function(require,module,exports){
 var _ = require('underscore'),
-	$ = require('jquery'),
 	Backbone = require('backbone'),
 	Sidebar = require('./sidebar'),
 	Helpers = require('../utilities/helpers'),
@@ -29242,24 +29241,15 @@ module.exports = (function () {
 				this.collection.fetch();
 			},
 			events: {
-				'click .switch-page'			: 'switchPage',
 				'change select[name=time]'		: 'showCustomDate'
 			},
 			render: function () {
 				var data = this.collection.toJSON(),
 					payload = {clients: data};
 				this.$el.empty().append(this.template(payload));
-				this.$('.sidebar').html(this.sidebar.render().$el);
-				this.$('.switch-page').tooltip();
+				this.$('.sidebar').html(this.sidebar.render().delegateEvents().$el);
                 Helpers.initSelectizeInputs(this);
 				return this;
-			},
-			setSearchBy: function (event) {
-				event.preventDefault();
-				var $target = $(event.currentTarget),
-					$button = $target.parents('ul').siblings();
-				$button.find('#search-by-text').html($target.html());
-				this.collection.params.searchby = $target.data('value');
 			},
 			showCustomDate: function (event) {
 				var $target = $(event.currentTarget),
@@ -29270,19 +29260,13 @@ module.exports = (function () {
 					$target.parent('.form-group').siblings('.form-group').addClass('hide');
 				}
 				return this;
-			},
-			switchPage: function (event) {
-				event.preventDefault();
-				var offset = parseInt($(event.currentTarget).data('offset'), 10);
-				this.collection.params.offset = this.collection.params.offset + offset >= 0 ? this.collection.params.offset + offset : 0;
-				this.collection.fetch();
 			}
 		})
 	});
 	return exports;
 }());
 
-},{"../../templates/statements.hbs":80,"../utilities/helpers":45,"./sidebar":40,"backbone":1,"jquery":13,"underscore":14}],42:[function(require,module,exports){
+},{"../../templates/statements.hbs":80,"../utilities/helpers":45,"./sidebar":40,"backbone":1,"underscore":14}],42:[function(require,module,exports){
 var Backbone = require('backbone'),
     TechnologyTemplate = require('../../templates/technology.hbs');
 
